@@ -193,6 +193,15 @@ async function addFiles() {
     el.querySelector('.file-name').textContent = file.name;
     el.querySelector('.name').value = file.name.replace(/\.wav$/i, '').slice(0, 40);
     const row = { file, el, sha256: null };
+    // Only a loop is warped, so tempo and length only mean something for a loop.
+    const kind = el.querySelector('.kind');
+    const showKind = () => {
+      const oneshot = kind.value === 'oneshot';
+      for (const sel of ['.item-bpm', '.beats']) el.querySelector(sel).disabled = oneshot;
+      el.querySelector('.oneshot-hint').hidden = !oneshot;
+    };
+    kind.addEventListener('change', showKind);
+    showKind();
     el.querySelector('.remove').addEventListener('click', () => {
       rows = rows.filter((x) => x !== row);
       el.remove();
@@ -242,12 +251,14 @@ function buildManifest() {
     const name = q('.name').value.trim() || `Sound ${i + 1}`;
     const item = { id: `sound-${i + 1}`, file: serverFileName(r.file.name, i, taken), bytes: r.file.size, sha256: r.sha256, name, kind: q('.kind').value };
     if (q('.role').value) item.role = q('.role').value;
-    const itemBpm = numberIn(q('.item-bpm'));
-    if (itemBpm !== null && !(itemBpm >= 20 && itemBpm <= 999)) return { error: `${name}: the BPM must be a number from 20 to 999.` };
-    if (itemBpm !== null) item.bpm = itemBpm;
-    const beats = numberIn(q('.beats'));
-    if (beats !== null && !(beats > 0 && beats <= 4096)) return { error: `${name}: the length must be a number of beats above 0.` };
-    if (beats !== null) item.length_beats = beats;
+    if (item.kind === 'loop') {
+      const itemBpm = numberIn(q('.item-bpm'));
+      if (itemBpm !== null && !(itemBpm >= 20 && itemBpm <= 999)) return { error: `${name}: the BPM must be a number from 20 to 999.` };
+      if (itemBpm !== null) item.bpm = itemBpm;
+      const beats = numberIn(q('.beats'));
+      if (beats !== null && !(beats > 0 && beats <= 4096)) return { error: `${name}: the length must be a number of beats above 0.` };
+      if (beats !== null) item.length_beats = beats;
+    }
     if (q('.color').value) item.color = q('.color').value;
     r.item = item;
     items.push(item);

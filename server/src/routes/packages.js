@@ -50,6 +50,12 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
       if (item.error) throw new HttpError(422, `${item.name} ${item.error}`);
       if (!item.bytes || !item.sha256) throw new HttpError(422, `${item.name} needs bytes and sha256.`);
     }
+    // A tempo only changes a loop: Live plays a one-shot as it is. Say so, because an app that
+    // sends a BPM expects it to do something.
+    for (const item of pkg.items) {
+      if (item.kind !== 'loop' && (item.bpm || item.lengthBeats)) warnings.push(`${item.name}: bpm and length_beats only apply to a loop`);
+    }
+    if (pkg.bpm && !pkg.items.some((item) => item.kind === 'loop')) warnings.push('tempo.bpm only applies to loops, and this package has none');
     const text = JSON.stringify(raw);
     if (Buffer.byteLength(text) > MAX_JSON_BYTES) throw new HttpError(413, 'The request is larger than 1 MB.');
     const totalBytes = pkg.items.reduce((n, item) => n + item.bytes, 0);

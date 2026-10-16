@@ -56,6 +56,21 @@ test('POST /packages: what the device would only warn about comes back as warnin
   const r = await s.request('POST', '/api/packages', { token: p.appToken, body });
   assert.equal(r.status, 201);
   assert.deepEqual(r.json.warnings, ['no title', 'Sound 1: kind "drone" unknown, placed as one-shot', 'Sound 1: role "lead" unknown']);
+  // A tempo on one-shots does nothing in Live: the app hears about it.
+  const shots = packageManifest(
+    [
+      { file: 'a.wav', data: SHOT, name: 'Hit', kind: 'oneshot', bpm: 135 },
+      { file: 'b.wav', data: SHOT, name: 'Clap', length_beats: 4 },
+    ],
+    { tempo: { bpm: 135 } }
+  );
+  const r2 = await s.request('POST', '/api/packages', { token: p.appToken, body: shots });
+  assert.deepEqual(r2.json.warnings, [
+    'Clap: kind "undefined" unknown, placed as one-shot',
+    'Hit: bpm and length_beats only apply to a loop',
+    'Clap: bpm and length_beats only apply to a loop',
+    'tempo.bpm only applies to loops, and this package has none',
+  ]);
 });
 
 test('POST /packages: every problem of a package or a sound is a 422 with a clear text', async () => {

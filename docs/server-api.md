@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.3.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.3.1" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -187,7 +187,7 @@ The manifest, see [manifest.md](manifest.md), at most 1 MB. The server gives the
 ```
 
 - `201`. The `upload` paths go after the base address; a file name with a space comes URL-encoded (`my%20kick.wav`).
-- `warnings`: what the device takes but ignores, for example `Kick: role "drum" unknown`. The package goes ahead; fix them in the app.
+- `warnings`: what the device takes but ignores, for example `Kick: role "drum" unknown`, or `Hit: bpm and length_beats only apply to a loop` (Live plays a one-shot as it is, without warp). The package goes ahead; fix them in the app.
 - Upload the files and commit within an hour; after that the package is gone. `expires_at` is when the package is deleted: 24 hours after this call, imported or not.
 - `422` with the reason when the device would refuse the package or a sound: `"The package has no sounds."`, `"This package uses app2live/2. Update LA2L to import it."`, `"Kick has no valid file name"`, `"Kick needs bytes and sha256."`, `"The package is 201 MB. LA2L takes 200 MB at most."`.
 - `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when 1 GB already waits for this computer, and `507 {"error": "The server is full. Try again later."}` when the server's disk is nearly full.

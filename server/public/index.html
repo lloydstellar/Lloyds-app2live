@@ -45,7 +45,7 @@
           <label class="field wide"><span class="label">Title</span>
             <input id="title" maxlength="60" value="Sender test" autocomplete="off">
           </label>
-          <label class="field"><span class="label">BPM <span class="hint">optional</span></span>
+          <label class="field"><span class="label">BPM <span class="hint">optional, for loops</span></span>
             <input id="bpm" inputmode="decimal" autocomplete="off" placeholder="120">
           </label>
         </div>
@@ -53,7 +53,7 @@
           <input type="file" id="files" accept=".wav,audio/wav,audio/x-wav" multiple>
           <span>Choose WAV files</span>
         </label>
-        <p class="hint">One track per file. Up to 32 files, 200 MB together.</p>
+        <p class="hint">One track per file. Up to 32 files, 200 MB together. A loop is warped to its BPM; a one-shot plays as it is.</p>
         <ol id="sounds" class="sounds"></ol>
         <button type="submit" id="send-button">Send</button>
       </fieldset>
@@ -83,8 +83,8 @@
       </label>
       <label class="field"><span class="label">Type</span>
         <select class="kind">
-          <option value="oneshot">One-shot</option>
           <option value="loop">Loop</option>
+          <option value="oneshot">One-shot</option>
         </select>
       </label>
       <label class="field"><span class="label">Role</span>
@@ -118,6 +118,7 @@
         </select>
       </label>
     </div>
+    <p class="hint oneshot-hint" hidden>A one-shot plays as it is: no warp, no tempo.</p>
     <progress class="progress" max="1" value="0" hidden></progress>
     <p class="sound-message message" role="status"></p>
   </li>
