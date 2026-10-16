@@ -4,6 +4,7 @@ The server between the apps and the LA2L device in Ableton Live. It runs on Erik
 
 - API: `https://lloydstellar.nl/la2l/api` (the device's default `serverUrl`)
 - LA2L Sender, a test page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`
+- Code: the `server/` folder of [lloydstellar/Lloyds-app2live](https://github.com/lloydstellar/Lloyds-app2live), the same repository as the device, because the server reuses the device's checks. On the VPS the repository is cloned at `~/la2l-server`, so this folder is `~/la2l-server/server`.
 
 The first build follows [BUILD-PROMPT.md](BUILD-PROMPT.md). Keep this file up to date when commands, layout or decisions change; the next Claude starts from it.
 
