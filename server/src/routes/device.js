@@ -29,6 +29,7 @@ function deviceRoutes(router, { config, store, storage, auth, limits, clock, log
     try {
       ok = store.ping();
       fs.accessSync(config.dataDir, fs.constants.W_OK);
+      fs.accessSync(storage.root, fs.constants.W_OK);
     } catch (e) {
       ok = false;
     }

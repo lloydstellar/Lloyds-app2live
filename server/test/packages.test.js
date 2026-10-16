@@ -543,6 +543,7 @@ test('restart: a waiting package and its files are still there', async () => {
   await t.stop({ keepData: true });
   const again = await startServer({}, {}, { dataDir: t.dataDir });
   try {
+    assert.ok(again.lines.some((l) => / state: 1 computer\(s\) and 1 app\(s\) paired, 1 package\(s\) waiting$/.test(l)), again.lines.join('\n'));
     assert.deepEqual((await again.request('GET', '/api/inbox', { token: p.deviceToken })).json.packages.map((x) => x.package_id), [id]);
     assert.ok((await again.request('GET', `/api/packages/${id}/files/a.wav`, { token: p.deviceToken })).body.equals(LOOP));
   } finally {

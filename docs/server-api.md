@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.3.1" }
+{ "ok": true, "name": "la2l-server", "version": "0.4.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -119,7 +119,8 @@ Body `{}`. Revoke the token: no app can send to this computer any more. The serv
 
 ## Retention and limits
 
-- A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it. la2l-server deletes the files at once after the ack and keeps the result for the app for 7 days.
+- A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it. la2l-server deletes the files at once after the ack and keeps the result for the app for 7 days. An upload that is not committed within an hour is deleted.
+- la2l-server never removes a paired computer because it is quiet: a computer may not import for months. Unpaired computers and apps are removed 30 days after the unpair.
 - A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too, but the server should refuse anything larger at upload.
 - Pairing: at most 10 code attempts per minute from one address (an IPv6 address counts by its /64), because a code is short.
 

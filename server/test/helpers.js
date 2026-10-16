@@ -71,6 +71,8 @@ async function startServer(env = {}, overrides = {}, opts = {}) {
     dataDir,
     lines,
     store: s.store,
+    // One run of the cleanup now, as the server does every minute. Returns the counts.
+    cleanup: () => s.cleanup(),
     request: (method, urlPath, o) => request(s.port, method, urlPath, o),
     // Stops the server; the data folder goes too, unless keepData.
     async stop({ keepData = false } = {}) {

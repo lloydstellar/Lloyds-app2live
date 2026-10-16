@@ -12,13 +12,14 @@ const { openDb, Store } = require('./db');
 const { Storage } = require('./storage');
 const { RateLimits } = require('./ratelimit');
 const { makeAuth } = require('./auth');
+const { makeCleanup } = require('./cleanup');
 const { deviceRoutes } = require('./routes/device');
 const { appRoutes } = require('./routes/app');
 const { packageRoutes } = require('./routes/packages');
 
 const isLoopback = (ip) => ip === '127.0.0.1' || ip === '::1';
 
-// Starts the server. Resolves to { server, port, store, close() } once it listens.
+// Starts the server. Resolves to { server, port, store, cleanup(), close() } once it listens.
 // opts.log(line) gets every log line (the default is stdout, which Docker keeps).
 // opts.clock() gives the time in ms (the default is Date.now); tests move it forward.
 async function start(config, opts = {}) {
@@ -40,6 +41,10 @@ async function start(config, opts = {}) {
   const pages = new StaticFiles();
   const sweeper = setInterval(() => limits.sweep(), 5 * 60000);
   sweeper.unref();
+  const cleanup = makeCleanup(deps);
+  cleanup.atStart();
+  const cleaner = setInterval(() => cleanup.tick(), 60000);
+  cleaner.unref();
 
   // One line per request. The route pattern stands in for the path, so a pair id or a file name
   // never reaches the log. The health check of Docker itself (loopback, no proxy) is left out.
@@ -104,19 +109,25 @@ async function start(config, opts = {}) {
     });
   } catch (e) {
     clearInterval(sweeper);
+    clearInterval(cleaner);
     store.close();
     throw e;
   }
   const port = server.address().port;
   log(`la2l-server ${config.version} listening on ${config.host}:${port}. Data: ${config.dataDir}. Public address: ${config.publicUrl}`);
+  // After a restart this says at a glance that nothing was lost.
+  const held = store.state();
+  log(`state: ${held.devices} computer(s) and ${held.apps} app(s) paired, ${held.waiting} package(s) waiting`);
 
   return {
     server,
     port,
     store,
+    cleanup: () => cleanup.tick(),
     close: () =>
       new Promise((resolve) => {
         clearInterval(sweeper);
+        clearInterval(cleaner);
         server.close(() => {
           store.close();
           resolve();

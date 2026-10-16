@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, fakeClock, pairStart, pairDevice } = require('./helpers');
 const { Server } = require('../../src/node/server');
-const { CODE_ALPHABET } = require('../src/tokens');
+const { CODE_ALPHABET, sha256 } = require('../src/tokens');
 
 const WRONG_CODE = { error: 'This code does not work. Check the code in Live.' };
 
@@ -269,6 +269,56 @@ test('rate limits: codes per address, claims per address, with Retry-After', asy
     const many = await t.request('POST', '/api/pair/start', { headers: from('198.51.100.1'), body: { device_id: 'rl-x' } });
     assert.equal(many.status, 429);
     assert.deepEqual(many.json, { error: 'Too many codes asked. Wait a few minutes.' });
+  } finally {
+    await t.stop();
+  }
+});
+
+test('rate limits: status calls per address, and calls per token', async () => {
+  const c = fakeClock();
+  const t = await startServer({ RATE_LIMITS: 'on', TRUST_PROXY: '1' }, {}, { clock: c });
+  try {
+    const from = { 'X-Forwarded-For': '198.51.100.9' };
+    const start = await t.request('POST', '/api/pair/start', { headers: from, body: { device_id: 'rl-status' } });
+    // The device asks every 2 seconds, 30 times a minute; 120 is the limit.
+    for (let i = 0; i < 120; i++) assert.equal((await t.request('GET', '/api/pair/' + start.json.pair_id, { headers: from })).status, 200);
+    const status = await t.request('GET', '/api/pair/' + start.json.pair_id, { headers: from });
+    assert.equal(status.status, 429);
+    assert.deepEqual(status.json, { error: 'Too many requests. Wait a minute.' });
+
+    c.add(60001);
+    const p = await pairDevice(t, { deviceId: 'rl-token' });
+    for (let i = 0; i < 600; i++) {
+      const r = await t.request('GET', '/api/app/me', { token: p.appToken });
+      if (r.status !== 200) assert.fail(`call ${i + 1} answered ${r.status}`);
+    }
+    const tooMany = await t.request('GET', '/api/app/me', { token: p.appToken });
+    assert.equal(tooMany.status, 429);
+    assert.ok(Number(tooMany.headers['retry-after']) >= 1);
+    // The computer has a count of its own.
+    assert.equal((await t.request('GET', '/api/inbox', { token: p.deviceToken })).status, 200);
+  } finally {
+    await t.stop();
+  }
+});
+
+test('the database keeps hashes of tokens and pair ids; the device token only until the device has it', async () => {
+  const clock = fakeClock();
+  const t = await startServer({}, {}, { clock });
+  try {
+    const p = await pairDevice(t);
+    const db = t.store.db;
+    const one = (sql, ...args) => db.prepare(sql).get(...args);
+    assert.ok(one('SELECT 1 AS x FROM devices WHERE token_hash = ?', sha256(p.deviceToken)));
+    assert.ok(one('SELECT 1 AS x FROM apps WHERE token_hash = ?', sha256(p.appToken)));
+    assert.ok(one('SELECT 1 AS x FROM pairings WHERE pair_hash = ?', sha256(p.pairId)));
+    const dump = () => ['devices', 'apps', 'pairings', 'packages'].map((table) => JSON.stringify(db.prepare(`SELECT * FROM ${table}`).all())).join('');
+    assert.ok(!dump().includes(p.appToken) && !dump().includes(p.pairId));
+    // The paired answer hands the device token out for a minute after the first delivery.
+    assert.ok(dump().includes(p.deviceToken));
+    clock.add(61000);
+    t.cleanup();
+    assert.ok(!dump().includes(p.deviceToken));
   } finally {
     await t.stop();
   }
