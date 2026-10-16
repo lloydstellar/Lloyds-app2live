@@ -1,0 +1,13 @@
+# The image of server/Dockerfile only needs src/node, src/ui and server/. Keep the rest out of
+# the build context.
+.git
+.github
+node_modules
+devices
+docs
+tests
+tools
+server/test
+server/data
+**/.env
+**/*.part

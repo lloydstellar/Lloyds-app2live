@@ -1,0 +1,36 @@
+# la2l-server on the VPS. Start or update: docker compose up -d --build (in this folder).
+# A fixed project name, so the data volume is la2l-server_la2l-data wherever the clone lives.
+name: la2l-server
+
+services:
+  la2l-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: la2l-server:local
+    container_name: la2l-server
+    restart: unless-stopped
+    # Settings: copy .env.example to .env and change what you need. Without .env the defaults hold.
+    env_file:
+      - path: .env
+        required: false
+    # Only the web server on this machine can reach it; it does TLS and forwards /la2l/.
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - la2l-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  la2l-data:
