@@ -18,11 +18,31 @@
   </div>
 </header>
 <main>
-  <section class="card">
-    <h2>Server</h2>
-    <p id="server" class="wait">Asking the server...</p>
-    <p class="note">Pairing and sending come to this page in the next version.</p>
+  <section class="card" id="pair" aria-labelledby="pair-title">
+    <h2 id="pair-title"><span class="step">1</span> Pair</h2>
+    <p id="pair-checking" class="wait">Checking the pairing...</p>
+    <form id="pair-form" hidden>
+      <p>In Live, click <strong>Pair app</strong> in the LA2L device and type the code it shows.</p>
+      <label for="code">Code</label>
+      <div class="row">
+        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="K7P 42Q" required>
+        <button type="submit" id="pair-button">Pair</button>
+      </div>
+    </form>
+    <div id="paired" hidden>
+      <p class="paired">Paired with <strong id="device-name"></strong></p>
+      <button type="button" id="unpair-button" class="secondary">Unpair this browser</button>
+    </div>
+    <p id="pair-message" class="message" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card" id="send" aria-labelledby="send-title">
+    <h2 id="send-title"><span class="step">2</span> Send sounds</h2>
+    <p class="wait">Sending comes to this page in the next version.</p>
   </section>
 </main>
+<footer class="foot">
+  <p id="server" class="wait">Asking the server...</p>
+</footer>
 </body>
 </html>

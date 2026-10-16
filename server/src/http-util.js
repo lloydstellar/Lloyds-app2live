@@ -54,11 +54,14 @@ function sendError(res, status, message, headers = {}) {
 const isJson = (type) => /^application\/json\s*(;.*)?$/i.test(String(type || '').trim());
 
 // The JSON body of a request: {} when it is empty. Larger than 1 MB: 413; another Content-Type:
-// 415; not valid JSON: 400. A body that is too large is still read to its end (and thrown away)
-// while the 413 goes out, so the client gets the answer instead of a broken connection.
+// 415; not valid JSON: 400.
+// A body that is too large gets its 413 at once, but what still comes is read and thrown away, so
+// the client can read the answer: closing a socket with unread data resets the connection, and
+// the client may lose the answer with it. A client that keeps sending far more is cut off.
+const DISCARD_LIMIT = 16 * 1048576;
+
 function readJson(req, limit = MAX_JSON_BYTES) {
   return new Promise((resolve, reject) => {
-    const tooLarge = () => new HttpError(413, 'The request is larger than 1 MB.', { Connection: 'close' });
     const chunks = [];
     let size = 0;
     let done = false;
@@ -69,19 +72,18 @@ function readJson(req, limit = MAX_JSON_BYTES) {
       if (err) reject(err);
       else resolve(value);
     };
-    if (Number(req.headers['content-length']) > limit) {
-      req.resume();
-      finish(tooLarge());
-      return;
-    }
+    const tooLarge = () => {
+      chunks.length = 0;
+      finish(new HttpError(413, 'The request is larger than 1 MB.'));
+    };
+    if (Number(req.headers['content-length']) > limit) tooLarge();
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (done) return;
-      if (size > limit) {
-        chunks.length = 0;
-        finish(tooLarge());
+      if (done) {
+        if (size > DISCARD_LIMIT) req.socket.destroy();
         return;
       }
+      if (size > limit) return tooLarge();
       chunks.push(chunk);
     });
     req.on('end', () => {
@@ -96,6 +98,18 @@ function readJson(req, limit = MAX_JSON_BYTES) {
     req.on('error', (e) => finish(e));
     req.on('close', () => finish(new Error('The client went away during the request.')));
   });
+}
+
+// Text from a request for a name or a label: no control or invisible format characters, single
+// spaces, at most `max` characters (not bytes). '' for anything that is not a string.
+function cleanText(value, max) {
+  if (typeof value !== 'string') return '';
+  const s = value
+    .normalize('NFC')
+    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return Array.from(s).slice(0, max).join('').trim();
 }
 
 // The path of the request exactly as sent, without the query. Routes match this raw path, so
@@ -116,4 +130,4 @@ function clientIp(req, trustProxy) {
   return String((req.socket && req.socket.remoteAddress) || '-').replace(/^::ffff:(?=\d+\.)/, '');
 }
 
-module.exports = { HttpError, CORS, PREFLIGHT, MAX_JSON_BYTES, sendJson, sendError, errorText, readJson, rawPath, clientIp };
+module.exports = { HttpError, CORS, PREFLIGHT, MAX_JSON_BYTES, sendJson, sendError, errorText, readJson, cleanText, rawPath, clientIp };

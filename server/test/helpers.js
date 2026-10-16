@@ -1,6 +1,6 @@
 'use strict';
 // Starts a real server for a test: port 0, a fresh data folder, rate limits off unless a test
-// turns them on, and every log line kept in `lines`.
+// turns them on, every log line kept in `lines`, and optionally a clock the test moves forward.
 
 const fs = require('fs');
 const os = require('os');
@@ -10,10 +10,17 @@ const { loadConfig } = require('../src/config');
 const { start } = require('../src/main');
 
 // One HTTP exchange with full control: the path goes out exactly as given (no normalising).
-// Resolves to { status, headers, body, json }.
-function request(port, method, urlPath, { headers = {}, body } = {}) {
+// A plain object as body is sent as JSON. Resolves to { status, headers, body, json }.
+function request(port, method, urlPath, { headers = {}, body, token } = {}) {
+  const h = Object.assign({}, headers);
+  if (token) h.Authorization = 'Bearer ' + token;
+  let data;
+  if (body !== undefined) {
+    data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
+    if (typeof body === 'object' && !Buffer.isBuffer(body) && !h['Content-Type']) h['Content-Type'] = 'application/json';
+  }
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, headers, agent: false }, (res) => {
+    const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, headers: h, agent: false }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
@@ -28,21 +35,30 @@ function request(port, method, urlPath, { headers = {}, body } = {}) {
       });
     });
     req.on('error', reject);
-    if (body === undefined) req.end();
-    else req.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
+    req.end(data);
   });
 }
 
-// env: settings as environment variables; overrides: fields of the config object itself
-// (times in ms), for the short times some tests need.
-async function startServer(env = {}, overrides = {}) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'la2l-server-'));
+// A clock for the server that only moves when the test says so.
+function fakeClock(startMs = Date.parse('2026-10-16T12:00:00.000Z')) {
+  let now = startMs;
+  const clock = () => now;
+  clock.add = (ms) => {
+    now += ms;
+  };
+  return clock;
+}
+
+// env: settings as environment variables. overrides: fields of the config object itself.
+// opts.clock: a fakeClock(); opts.dataDir: reuse a data folder (a restart).
+async function startServer(env = {}, overrides = {}, opts = {}) {
+  const dataDir = opts.dataDir || fs.mkdtempSync(path.join(os.tmpdir(), 'la2l-server-'));
   const config = Object.assign(
     loadConfig(Object.assign({ PORT: '0', HOST: '127.0.0.1', DATA_DIR: dataDir, RATE_LIMITS: 'off', TRUST_PROXY: '0' }, env)),
     overrides
   );
   const lines = [];
-  const s = await start(config, { log: (line) => lines.push(line) });
+  const s = await start(config, { log: (line) => lines.push(line), clock: opts.clock });
   const origin = `http://127.0.0.1:${s.port}`;
   return {
     port: s.port,
@@ -51,12 +67,34 @@ async function startServer(env = {}, overrides = {}) {
     config,
     dataDir,
     lines,
-    request: (method, urlPath, opts) => request(s.port, method, urlPath, opts),
-    async stop() {
+    store: s.store,
+    request: (method, urlPath, o) => request(s.port, method, urlPath, o),
+    // Stops the server; the data folder goes too, unless keepData.
+    async stop({ keepData = false } = {}) {
       await s.close();
-      fs.rmSync(dataDir, { recursive: true, force: true });
+      if (!keepData) fs.rmSync(dataDir, { recursive: true, force: true });
     },
   };
 }
 
-module.exports = { startServer, request };
+// Pair start as device 0.1.1 sends it. Resolves to the answer's JSON.
+async function pairStart(s, deviceId = 'dev-1', token) {
+  const r = await s.request('POST', '/api/pair/start', {
+    body: { device_id: deviceId, device_name: 'ERIK-PC', client: 'LA2L 0.1.1', platform: 'win32' },
+    token,
+  });
+  if (r.status !== 200) throw new Error(`pair/start answered ${r.status}: ${r.body}`);
+  return r.json;
+}
+
+// A whole pairing: start, claim, and the paired answer the device gets.
+// Resolves to { pairId, code, appToken, deviceToken, deviceName }.
+async function pairDevice(s, { deviceId = 'dev-1', appName = 'LA2L Sender', appId, token } = {}) {
+  const start = await pairStart(s, deviceId, token);
+  const claim = await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: appName, app_id: appId } });
+  if (claim.status !== 200) throw new Error(`pair/claim answered ${claim.status}: ${claim.body}`);
+  const status = await s.request('GET', '/api/pair/' + start.pair_id);
+  return { pairId: start.pair_id, code: start.code, appToken: claim.json.app_token, deviceToken: status.json.device_token, deviceName: claim.json.device_name };
+}
+
+module.exports = { startServer, request, fakeClock, pairStart, pairDevice };

@@ -1,6 +1,6 @@
 'use strict';
-// la2l-server. "node src/main.js" reads the settings and serves HTTP until it gets SIGTERM.
-// The tests call start() with settings of their own and port 0.
+// la2l-server. "node src/main.js" reads the settings, opens the database and serves HTTP until
+// it gets SIGTERM. The tests call start() with settings of their own, port 0 and their own clock.
 
 const http = require('http');
 const fs = require('fs');
@@ -8,26 +8,36 @@ const { loadConfig } = require('./config');
 const { Router } = require('./router');
 const { HttpError, CORS, PREFLIGHT, sendError, rawPath, clientIp } = require('./http-util');
 const { StaticFiles } = require('./static');
+const { openDb, Store } = require('./db');
+const { Storage } = require('./storage');
+const { RateLimits } = require('./ratelimit');
+const { makeAuth } = require('./auth');
 const { deviceRoutes } = require('./routes/device');
+const { appRoutes } = require('./routes/app');
 
 const isLoopback = (ip) => ip === '127.0.0.1' || ip === '::1';
 
-// Starts the server. Resolves to { server, port, close() } once it listens.
-// opts.log(line) gets every log line; the default is stdout, which Docker keeps.
+// Starts the server. Resolves to { server, port, store, close() } once it listens.
+// opts.log(line) gets every log line (the default is stdout, which Docker keeps).
+// opts.clock() gives the time in ms (the default is Date.now); tests move it forward.
 async function start(config, opts = {}) {
   const write = opts.log || ((line) => process.stdout.write(line + '\n'));
-  const log = (text) => write(`${new Date().toISOString()} ${text}`);
+  const clock = opts.clock || Date.now;
+  const log = (text) => write(`${new Date(clock()).toISOString()} ${text}`);
 
   fs.mkdirSync(config.dataDir, { recursive: true });
-  try {
-    fs.accessSync(config.dataDir, fs.constants.W_OK);
-  } catch (e) {
-    log(`WARNING the data folder ${config.dataDir} is not writable: ${e.message}`);
-  }
+  const store = new Store(openDb(config.dataDir));
+  const storage = new Storage(config.dataDir);
+  const limits = new RateLimits(config.rateLimits, clock);
+  const auth = makeAuth({ store, limits, clock });
+  const deps = { config, store, storage, limits, auth, clock, log };
 
   const router = new Router();
-  deviceRoutes(router, { config, log });
+  deviceRoutes(router, deps);
+  appRoutes(router, deps);
   const pages = new StaticFiles();
+  const sweeper = setInterval(() => limits.sweep(), 5 * 60000);
+  sweeper.unref();
 
   // One line per request. The route pattern stands in for the path, so a pair id or a file name
   // never reaches the log. The health check of Docker itself (loopback, no proxy) is left out.
@@ -85,19 +95,30 @@ async function start(config, opts = {}) {
   });
   server.timeout = 60000;
 
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(config.port, config.host, resolve);
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(config.port, config.host, resolve);
+    });
+  } catch (e) {
+    clearInterval(sweeper);
+    store.close();
+    throw e;
+  }
   const port = server.address().port;
   log(`la2l-server ${config.version} listening on ${config.host}:${port}. Data: ${config.dataDir}. Public address: ${config.publicUrl}`);
 
   return {
     server,
     port,
+    store,
     close: () =>
       new Promise((resolve) => {
-        server.close(() => resolve());
+        clearInterval(sweeper);
+        server.close(() => {
+          store.close();
+          resolve();
+        });
         server.closeIdleConnections();
         setTimeout(() => server.closeAllConnections(), 5000).unref();
       }),
