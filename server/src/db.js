@@ -286,6 +286,60 @@ class Store {
 
   // ---- packages ----
 
+  // p: { id, deviceRef, appRef, title, appName, itemCount, totalBytes, manifest, expiresAt }.
+  // files: [{ file, bytes, sha256 }].
+  createPackage(p, files, now) {
+    this.sql(
+      `INSERT INTO packages (id, device_ref, app_ref, title, app_name, item_count, total_bytes, manifest, status, created_at, expires_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?)`
+    ).run(p.id, p.deviceRef, p.appRef, p.title, p.appName, p.itemCount, p.totalBytes, p.manifest, now, p.expiresAt, now);
+    const add = this.sql('INSERT INTO files (package_id, file, bytes, sha256) VALUES (?, ?, ?, ?)');
+    for (const f of files) add.run(p.id, f.file, f.bytes, f.sha256);
+  }
+
+  // A package of this app, or of this device. Someone else's package is not there for them.
+  packageOfApp(id, appRef) {
+    return this.sql('SELECT * FROM packages WHERE id = ? AND app_ref = ?').get(id, appRef);
+  }
+
+  packageOfDevice(id, deviceRef) {
+    return this.sql('SELECT * FROM packages WHERE id = ? AND device_ref = ?').get(id, deviceRef);
+  }
+
+  fileOf(packageId, file) {
+    return this.sql('SELECT * FROM files WHERE package_id = ? AND file = ?').get(packageId, file);
+  }
+
+  // The files of a package that have not arrived yet, in manifest order.
+  missingFiles(packageId) {
+    return this.sql('SELECT file FROM files WHERE package_id = ? AND received = 0 ORDER BY rowid').all(packageId).map((r) => r.file);
+  }
+
+  markReceived(packageId, file) {
+    this.sql('UPDATE files SET received = 1 WHERE package_id = ? AND file = ?').run(packageId, file);
+  }
+
+  commitPackage(id, now) {
+    this.sql("UPDATE packages SET status = 'waiting', committed_at = ?, updated_at = ? WHERE id = ? AND status = 'uploading'").run(now, now, id);
+  }
+
+  // A failed ack: the package keeps its files and stays in the inbox.
+  markFailed(id, ack, now) {
+    this.sql("UPDATE packages SET status = 'failed', ack = ?, acked_at = ?, updated_at = ? WHERE id = ?").run(ack, now, now, id);
+  }
+
+  // imported, partial, expired or deleted: the files go, and with them the manifest, which only
+  // the device needed. The row stays for the status call. ack: the new ack JSON, or null to
+  // keep the one there is.
+  markDone(id, status, ack, now) {
+    if (ack !== null) {
+      this.sql("UPDATE packages SET status = ?, ack = ?, acked_at = ?, manifest = '', updated_at = ? WHERE id = ?").run(status, ack, now, now, id);
+    } else {
+      this.sql("UPDATE packages SET status = ?, manifest = '', updated_at = ? WHERE id = ?").run(status, now, id);
+    }
+    this.sql('DELETE FROM files WHERE package_id = ?').run(id);
+  }
+
   // What the device's Import gets: waiting and failed packages that have not expired, oldest first.
   inbox(deviceRef, now) {
     return this.sql(
@@ -298,6 +352,21 @@ class Store {
   // Packages of a device that still have files: uploading, waiting or failed.
   openPackagesOf(deviceRef) {
     return this.sql("SELECT id FROM packages WHERE device_ref = ? AND status IN ('uploading', 'waiting', 'failed')").all(deviceRef);
+  }
+
+  // The bytes kept for a device: its packages that have, or will soon have, files on disk.
+  bytesFor(deviceRef) {
+    return this.sql(
+      "SELECT COALESCE(SUM(total_bytes), 0) AS n FROM packages WHERE device_ref = ? AND status IN ('uploading', 'waiting', 'failed')"
+    ).get(deviceRef).n;
+  }
+
+  // The bytes still to come for uploads that have started: disk space that is spoken for.
+  bytesComing() {
+    return this.sql(
+      `SELECT COALESCE(SUM(f.bytes), 0) AS n FROM files f JOIN packages p ON p.id = f.package_id
+       WHERE p.status = 'uploading' AND f.received = 0`
+    ).get().n;
   }
 
   deletePackage(id) {

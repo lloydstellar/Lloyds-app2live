@@ -27,7 +27,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 
 | Command | Where | Does |
 |---|---|---|
-| `npm test` | `server/` | Server tests (from phase 4 on also an end-to-end test that runs the real device code against this server) |
+| `npm test` | `server/` | Server tests, with an end-to-end test that runs the real device code (pairing and Import) against this server |
 | `docker run --rm --user 1000:1000 -e HOME=/tmp -v "$PWD/..:/repo" -w /repo/server node:24-bookworm-slim npm test` | `server/` | The same on Node 24, on the VPS |
 | `npm test` | repository root | Device tests; run them after any change to `src/node/manifest.js`, `src/node/wav.js` or the API |
 | `docker compose up -d --build` | `server/` | Build and start, or update after `git pull` |

@@ -1,6 +1,6 @@
 # App2Live server API
 
-This is the contract between the LA2L device and the App2Live server, as version 0.1.1 of the device uses it. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. The second part (the app side) is what apps use; its pairing calls are final and served by `server/` (la2l-server), its package calls are still a proposal until the next server version.
+This is the contract between the LA2L device and the App2Live server, as version 0.1.1 of the device uses it. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. The second part (the app side) is what apps use; it is final and served by `server/` (la2l-server).
 
 ## Basics
 
@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.2.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.3.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -84,11 +84,13 @@ The packages that are waiting for this computer.
 
 ### `GET /packages/{package_id}/manifest`  (token)
 
-The package description, see [manifest.md](manifest.md).
+The package description, see [manifest.md](manifest.md). la2l-server sends it as the app sent it, with its own `package_id`, and `bytes` and `sha256` on every sound. Only for this computer's packages that wait or failed and have not expired; anything else, also a package of another computer, gets `404 {"error": "Unknown package."}`.
 
 ### `GET /packages/{package_id}/files/{file}`  (token)
 
 The bytes of one WAV file. `{file}` is the `file` field of the sound in the manifest, URL-encoded. Send `Content-Length` when possible: the device refuses a file larger than the `bytes` in the manifest, checks `bytes` and `sha256` after the download, and retries up to 3 times (after 1, 2 and 4 seconds) when the connection breaks, the checksum is wrong, or the server answers 5xx. A 404 is not retried.
+
+la2l-server sends `Content-Type: audio/wav` and the exact `Content-Length`, never compressed; `HEAD` gives the same headers without the file. A file that is missing on the server gets `404 {"error": "The file is gone. Send it again."}`.
 
 ### `POST /packages/{package_id}/ack`  (token)
 
@@ -109,6 +111,7 @@ The device says what happened to a package.
 - On `failed`: keep the package until it expires, so the user can try again (for example after updating LA2L).
 - A package the device imported before (because an earlier ack got lost) is confirmed again with `{"status": "imported", "items": [], "note": "imported before"}` and is not placed twice.
 - Network trouble while downloading stops the import without an ack; the package stays and is tried again at the next Import.
+- la2l-server keeps at most 64 sounds of an ack and 200 characters of every text. Another `status` is a 400. A `failed` for a package that is already in Live is ignored.
 
 ### `POST /unpair`  (token)
 
@@ -116,7 +119,7 @@ Body `{}`. Revoke the token: no app can send to this computer any more. The serv
 
 ## Retention and limits
 
-- A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it.
+- A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it. la2l-server deletes the files at once after the ack and keeps the result for the app for 7 days.
 - A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too, but the server should refuse anything larger at upload.
 - Pairing: at most 10 code attempts per minute from one address (an IPv6 address counts by its /64), because a code is short.
 
@@ -161,9 +164,69 @@ So the app can show "Paired with ERIK-PC". Ask this now and then, for example wh
 
 Body `{}` or none. Revokes this app token. The packages the app sent stay for the computer. Answer `{"ok": true}`.
 
-### Packages (proposal, final in the next server version)
+### Packages
 
-- `POST /packages` (app token) with the manifest. The server checks the schema and the limits and answers `{"package_id": "...", "upload": {"kick.wav": "/packages/<id>/files/kick.wav"}}`.
-- `PUT /packages/{package_id}/files/{file}` (app token) with the WAV bytes. The server checks `bytes` and `sha256` against the manifest.
-- `POST /packages/{package_id}/commit` (app token). Only now does the package show in the device's inbox. Uncommitted packages are deleted after an hour.
-- `GET /packages/{package_id}/status` (app token): `waiting`, `imported`, `partial` or `failed`, with the per-sound result from the ack, so the app can show "In Live".
+How an app sends sounds. LA2L Sender (`server/public/sender.js`) does exactly this.
+
+1. Pair once with `POST /pair/claim` and keep the app token. Check it now and then with `GET /app/me`; on a 401, forget it and show the pair screen.
+2. Per send: `POST /packages` with the manifest, then one `PUT` per file, then `POST /packages/{package_id}/commit`.
+3. While the app is open, ask `GET /packages/{package_id}/status` every few seconds until it says `imported`, `partial`, `failed` or `expired`. Until then, show "Waiting for Import in Live".
+4. Work out `bytes` and `sha256` of every file before you upload it. Send WAV only; convert in the app.
+
+### `POST /packages`  (app token)
+
+The manifest, see [manifest.md](manifest.md), at most 1 MB. The server gives the package its own `package_id` (one the app put there is replaced) and checks it as the device does, but stricter: every sound must be valid and must have `bytes` and `sha256`.
+
+```json
+{
+  "package_id": "7f3c2a9e-1b4d-4c8e-9a51-0d2e6f7b8c90",
+  "upload": { "kick.wav": "/packages/7f3c2a9e-1b4d-4c8e-9a51-0d2e6f7b8c90/files/kick.wav" },
+  "expires_at": "2026-10-17T14:30:00.000Z",
+  "warnings": []
+}
+```
+
+- `201`. The `upload` paths go after the base address; a file name with a space comes URL-encoded (`my%20kick.wav`).
+- `warnings`: what the device takes but ignores, for example `Kick: role "drum" unknown`. The package goes ahead; fix them in the app.
+- Upload the files and commit within an hour; after that the package is gone. `expires_at` is when the package is deleted: 24 hours after this call, imported or not.
+- `422` with the reason when the device would refuse the package or a sound: `"The package has no sounds."`, `"This package uses app2live/2. Update LA2L to import it."`, `"Kick has no valid file name"`, `"Kick needs bytes and sha256."`, `"The package is 201 MB. LA2L takes 200 MB at most."`.
+- `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when 1 GB already waits for this computer, and `507 {"error": "The server is full. Try again later."}` when the server's disk is nearly full.
+- At most 30 packages an hour per app, then 429.
+
+### `PUT /packages/{package_id}/files/{file}`  (app token)
+
+The bytes of one WAV file, with any `Content-Type`, up to 200 MB. Only for a file of this package, before the commit.
+
+- `200 {"ok": true, "file": "kick.wav", "bytes": 1693484}`.
+- The server checks the size and `sha256` against the manifest, and the WAV header as the device does. Damaged on the way: `422 {"error": "The file arrived damaged. Send it again."}`. Not a WAV Live can use: `422` with the device's text, for example `"This WAV file is compressed (format 85). Send plain PCM or float WAV."`.
+- Larger than the manifest said: `413 {"error": "The file is larger than the package said."}`, at once when `Content-Length` says so.
+- Sending a file again replaces it. One upload per file at a time: a second one meanwhile gets 409.
+- 404 for a file that is not in the package, a package that is committed or deleted, and an upload that took longer than an hour (`"The upload took too long. Send the package again."`).
+
+### `POST /packages/{package_id}/commit`  (app token)
+
+Body `{}` or none. Every file is there: from now on the device sees the package.
+
+- `200 {"ok": true, "status": "waiting"}`. Committing again answers 200 with the status the package has now.
+- Files missing: `409 {"error": "Not all files are there yet: kick.wav, robot.wav"}`.
+
+### `GET /packages/{package_id}/status`  (app token)
+
+```json
+{
+  "status": "partial",
+  "items": [
+    { "id": "kick", "name": "Kick", "status": "imported" },
+    { "id": "robot", "name": "Robot hallo", "status": "failed", "error": "is not a usable WAV: This WAV file is compressed (format 85). Send plain PCM or float WAV." }
+  ],
+  "updated_at": "2026-10-16T14:31:05.000Z"
+}
+```
+
+- `status`: `uploading`, `waiting`, `imported` (every sound is in Live), `partial` (some are), `failed` (none are; the package stays in the inbox, so a later Import can still bring it in) or `expired`.
+- `items`: per sound what the device said in its ack, empty until then. `error`: why the package as a whole failed, when the device said so.
+- Only for the app that sent the package, for 7 days. After that, and for anyone else: 404.
+
+### `DELETE /packages/{package_id}`  (app token)
+
+Takes a package back with its files, until it is in Live: `200 {"ok": true}`. After an import: `409 {"error": "This package is already in Live."}`.

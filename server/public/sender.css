@@ -118,7 +118,8 @@ label {
   flex-wrap: wrap;
 }
 
-input {
+input,
+select {
   flex: 1 1 180px;
   min-width: 0;
   min-height: 52px;
@@ -128,6 +129,10 @@ input {
   background: var(--field);
   color: var(--text);
   font: inherit;
+}
+
+select {
+  padding-right: 8px;
 }
 
 #code {
@@ -160,9 +165,163 @@ button:disabled {
 }
 
 input:focus-visible,
-button:focus-visible {
+select:focus-visible,
+button:focus-visible,
+.choose:focus-within {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+button.small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* Fields side by side where they fit, one under the other on a phone. */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px 12px;
+}
+
+/* The label sits right above its field; fields in one row line up at the bottom, also when a
+   label takes two lines. */
+.field {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.field.wide {
+  grid-column: 1 / -1;
+}
+
+.field input,
+.field select {
+  flex: none;
+  width: 100%;
+  font-weight: 400;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+/* The file input sits under its label, which looks like a button. */
+.choose {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 52px;
+  margin: 18px 0 4px;
+  padding: 0 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.choose input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+fieldset:disabled .choose {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sounds {
+  margin: 8px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.sound {
+  margin: 0 0 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.sound-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-name {
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+
+.sound-head .remove {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+.progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  margin-top: 12px;
+  accent-color: var(--accent);
+}
+
+.sent-status {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.items {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  color: var(--bad);
+}
+
+.items:empty {
+  display: none;
+}
+
+.recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.recent li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.recent p {
+  margin: 4px 0 0;
 }
 
 .paired {
