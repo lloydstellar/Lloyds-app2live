@@ -54,6 +54,7 @@ Planned in the build brief; correct them here once they exist.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
 - Data (the SQLite database and the package files) lives in a Docker volume, mounted at `/data`.
 - Update: `git pull && docker compose up -d --build` in `server/`.
+- GitHub: the clone on the VPS pushes and opens pull requests through the `gh` login of lloydstellar (https). No deploy key: Erik decided that on 2026-10-16, see section 13.1 of the build brief.
 - The website on lloydstellar.nl must keep working, including `http://lloydstellar.nl/test/test-file-voor-max.wav`, which the device's Test import downloads.
 - Ask Erik first before installing system packages, changing the web server, the firewall or another site, or deleting anything outside this repository and the server's volume.
 

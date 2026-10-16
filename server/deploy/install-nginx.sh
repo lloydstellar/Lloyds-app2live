@@ -178,7 +178,11 @@ check() {
     diff -u "$SNIPPET" "$SOURCE" || true
   fi
   report_la2l
-  say "To do it: sudo bash $SELF"
+  if has_include "$SITE" && cmp -s "$SOURCE" "$SNIPPET" 2>/dev/null; then
+    say "Nothing to do."
+  else
+    say "To do it: sudo bash $SELF"
+  fi
 }
 
 install_la2l() {

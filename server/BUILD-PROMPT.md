@@ -627,6 +627,8 @@ curl -sSI http://lloydstellar.nl/test/test-file-voor-max.wav | head -3   # still
 
 ### 13.1 Pushing from the VPS
 
+**Decided with Erik on 2026-10-16:** the VPS already has `gh` logged in as lloydstellar (https, scopes `repo` and `workflow`), so the clone pushes and opens pull requests through `gh`. There is no deploy key. A deploy key only limits access while no broader login is on the machine. The steps below are for a VPS without `gh`.
+
 Use a **deploy key** for this one repository, so the VPS can push here and nowhere else. If Erik already had you set one up to clone the repository, check that it has write access and skip to the last step.
 
 1. `ssh-keygen -t ed25519 -C "la2l VPS" -f ~/.ssh/la2l_deploy -N ""`
