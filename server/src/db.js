@@ -212,6 +212,13 @@ class Store {
     ).get(hash);
   }
 
+  // Whether an app and its computer are still paired.
+  isActiveApp(id) {
+    return !!this.sql(
+      'SELECT 1 AS x FROM apps a JOIN devices d ON d.id = a.device_ref WHERE a.id = ? AND a.revoked_at IS NULL AND d.revoked_at IS NULL'
+    ).get(id);
+  }
+
   createApp(a, now) {
     return Number(
       this.sql('INSERT INTO apps (device_ref, name, app_id, token_hash, created_at) VALUES (?, ?, ?, ?, ?)').run(

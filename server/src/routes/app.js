@@ -19,7 +19,7 @@ function appRoutes(router, { store, storage, auth, limits, clock, log }) {
     const code = normalizeCode(body.code);
     if (!code) throw new HttpError(404, WRONG_CODE);
     // The device shows this name: "Paired with LA2L Sender". Cleaned like a track name.
-    const appName = cleanName(body.app_name, 'App', 40);
+    const appName = cleanName(typeof body.app_name === 'string' ? body.app_name : '', 'App', 40);
     const appId = cleanText(body.app_id, 100);
     const now = iso(clock());
 

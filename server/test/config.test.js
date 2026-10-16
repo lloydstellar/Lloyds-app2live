@@ -24,6 +24,7 @@ test('defaults', () => {
   assert.equal(c.maxDeviceStorageBytes, 1024 * MB);
   assert.equal(c.minFreeDiskBytes, 2048 * MB);
   assert.equal(c.rateLimits, true);
+  assert.equal(c.wavCheckMs, 10000);
 });
 
 test('values are read and converted', () => {

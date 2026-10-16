@@ -174,6 +174,15 @@ test('pairing again with the same app_id replaces the old token of that app', as
   assert.equal((await s.request('GET', '/api/app/me', { token: again.json.app_token })).status, 200);
 });
 
+test('claim: an app_name that is not text becomes "App"', async () => {
+  for (const appName of [{ toString: 0 }, 808, ['a']]) {
+    const start = await pairStart(s, 'odd-name');
+    const r = await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: appName } });
+    assert.equal(r.status, 200, r.body.toString());
+    assert.equal((await s.request('GET', '/api/pair/' + start.pair_id)).json.app_name, 'App');
+  }
+});
+
 test('app_name is cleaned like a track name, 40 characters at most', async () => {
   const start = await pairStart(s, 'dev-name');
   await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: 'Robot <b>Voice</b>; "x" ' + 'é'.repeat(50) } });

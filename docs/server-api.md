@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.4.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.4.1" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
