@@ -2,3 +2,4 @@
 *.amxd binary
 *.png binary
 *.wav binary
+*.sh text eol=lf

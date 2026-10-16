@@ -4,6 +4,7 @@ The server between the apps and the LA2L device in Ableton Live. It runs on Erik
 
 - API: `https://lloydstellar.nl/la2l/api` (the device's default `serverUrl`)
 - LA2L Sender, a test page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`
+- Code: the `server/` folder of [lloydstellar/Lloyds-app2live](https://github.com/lloydstellar/Lloyds-app2live), the same repository as the device, because the server reuses the device's checks. On the VPS the repository is cloned at `~/la2l-server`, so this folder is `~/la2l-server/server`.
 
 The first build follows [BUILD-PROMPT.md](BUILD-PROMPT.md). Keep this file up to date when commands, layout or decisions change; the next Claude starts from it.
 
@@ -22,15 +23,18 @@ The first build follows [BUILD-PROMPT.md](BUILD-PROMPT.md). Keep this file up to
 
 ## Commands
 
-Planned in the build brief; correct them here once they exist.
+The server targets Node 24 (the image and CI use it). The VPS itself has Node 22, so run the server tests there in a `node:24` container (second row); they pass on Node 22 too, but Node 24 is what counts.
 
 | Command | Where | Does |
 |---|---|---|
-| `npm test` | `server/` | Server tests, including an end-to-end test that runs the real device code against this server |
+| `npm test` | `server/` | Server tests (from phase 4 on also an end-to-end test that runs the real device code against this server) |
+| `docker run --rm --user 1000:1000 -e HOME=/tmp -v "$PWD/..:/repo" -w /repo/server node:24-bookworm-slim npm test` | `server/` | The same on Node 24, on the VPS |
 | `npm test` | repository root | Device tests; run them after any change to `src/node/manifest.js`, `src/node/wav.js` or the API |
 | `docker compose up -d --build` | `server/` | Build and start, or update after `git pull` |
 | `docker compose logs -f --tail=200` | `server/` | Follow the log |
 | `curl -s https://lloydstellar.nl/la2l/api/health` | anywhere | Must answer `{"ok":true,...}` |
+| `bash deploy/install-nginx.sh --check` | `server/` | Shows what the nginx install would change; no sudo needed |
+| `sudo bash deploy/install-nginx.sh` | `server/` | Puts `deploy/nginx-la2l.conf` into nginx, or updates it after a change; `--remove` takes it out. Erik runs it: sudo needs his password |
 
 ## Rules that must not break
 
@@ -47,9 +51,11 @@ Planned in the build brief; correct them here once they exist.
 ## Deployment
 
 - Docker Compose. The container listens on `127.0.0.1:8787` only; the existing web server proxies `/la2l/` to it and keeps doing TLS.
+- nginx: `deploy/nginx-la2l.conf` is installed as `/etc/nginx/snippets/la2l.conf` and included in the 443 server block of lloydstellar.nl by `deploy/install-nginx.sh`, which backs up the site file, tests with `nginx -t` and puts everything back when the test fails. After a change to the snippet, run the script again.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
 - Data (the SQLite database and the package files) lives in a Docker volume, mounted at `/data`.
 - Update: `git pull && docker compose up -d --build` in `server/`.
+- GitHub: the clone on the VPS pushes and opens pull requests through the `gh` login of lloydstellar (https). No deploy key: Erik decided that on 2026-10-16, see section 13.1 of the build brief.
 - The website on lloydstellar.nl must keep working, including `http://lloydstellar.nl/test/test-file-voor-max.wav`, which the device's Test import downloads.
 - Ask Erik first before installing system packages, changing the web server, the firewall or another site, or deleting anything outside this repository and the server's volume.
 

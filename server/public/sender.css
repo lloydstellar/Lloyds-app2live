@@ -1,0 +1,99 @@
+/* LA2L Sender. No inline styles anywhere: the Content-Security-Policy allows only this file. */
+
+:root {
+  --bg: #f4f2ed;
+  --card: #ffffff;
+  --line: #d8d3c8;
+  --text: #1c1b18;
+  --muted: #5d594f;
+  --ok: #1f7a3a;
+  --bad: #b42318;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131210;
+    --card: #1d1b18;
+    --line: #36322c;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --ok: #5cc17a;
+    --bad: #ff8a7a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.top,
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding-top: 24px;
+  padding-bottom: 8px;
+}
+
+.top img {
+  flex: none;
+  border-radius: 50%;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.top p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.card {
+  margin: 16px 0;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.bad {
+  color: var(--bad);
+}
+
+.wait,
+.note {
+  color: var(--muted);
+}
+
+.note {
+  margin-bottom: 0;
+}
