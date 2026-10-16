@@ -32,6 +32,8 @@ Planned in the build brief; correct them here once they exist.
 | `docker compose up -d --build` | `server/` | Build and start, or update after `git pull` |
 | `docker compose logs -f --tail=200` | `server/` | Follow the log |
 | `curl -s https://lloydstellar.nl/la2l/api/health` | anywhere | Must answer `{"ok":true,...}` |
+| `bash deploy/install-nginx.sh --check` | `server/` | Shows what the nginx install would change; no sudo needed |
+| `sudo bash deploy/install-nginx.sh` | `server/` | Puts `deploy/nginx-la2l.conf` into nginx, or updates it after a change; `--remove` takes it out. Erik runs it: sudo needs his password |
 
 ## Rules that must not break
 
@@ -48,6 +50,7 @@ Planned in the build brief; correct them here once they exist.
 ## Deployment
 
 - Docker Compose. The container listens on `127.0.0.1:8787` only; the existing web server proxies `/la2l/` to it and keeps doing TLS.
+- nginx: `deploy/nginx-la2l.conf` is installed as `/etc/nginx/snippets/la2l.conf` and included in the 443 server block of lloydstellar.nl by `deploy/install-nginx.sh`, which backs up the site file, tests with `nginx -t` and puts everything back when the test fails. After a change to the snippet, run the script again.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
 - Data (the SQLite database and the package files) lives in a Docker volume, mounted at `/data`.
 - Update: `git pull && docker compose up -d --build` in `server/`.
