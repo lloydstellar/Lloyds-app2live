@@ -138,7 +138,7 @@ test('log: one line per request, with the route pattern and the client address',
     await t.request('GET', '/api/health'); // like the Docker health check: not logged
     await t.request('GET', '/api/some/secret-looking-path');
     await t.request('GET', '/');
-    const lines = t.lines.filter((l) => !/ listening on /.test(l));
+    const lines = t.lines.filter((l) => /Z (GET|HEAD|POST|PUT|DELETE|OPTIONS) /.test(l));
     assert.equal(lines.length, 3, lines.join('\n'));
     assert.match(lines[0], /^\d{4}-\d\d-\d\dT[\d:.]+Z GET \/api\/health 200 [\d.]+ms in=0 out=\d+ - 203\.0\.113\.9$/);
     assert.match(lines[1], / GET \(unknown\) 404 /);

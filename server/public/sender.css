@@ -6,6 +6,9 @@
   --line: #d8d3c8;
   --text: #1c1b18;
   --muted: #5d594f;
+  --accent: #b4420e;
+  --accent-text: #ffffff;
+  --field: #ffffff;
   --ok: #1f7a3a;
   --bad: #b42318;
   color-scheme: light dark;
@@ -18,6 +21,9 @@
     --line: #36322c;
     --text: #ece8df;
     --muted: #a39d91;
+    --accent: #f0a23a;
+    --accent-text: #1b1306;
+    --field: #15140f;
     --ok: #5cc17a;
     --bad: #ff8a7a;
   }
@@ -25,6 +31,10 @@
 
 * {
   box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 html {
@@ -39,7 +49,8 @@ body {
 }
 
 .top,
-main {
+main,
+.foot {
   max-width: 640px;
   margin: 0 auto;
   padding: 0 16px;
@@ -70,15 +81,106 @@ h1 {
 
 .card {
   margin: 16px 0;
-  padding: 18px 20px;
+  padding: 18px 20px 20px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 14px;
 }
 
 h2 {
-  margin: 0 0 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+}
+
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.95rem;
+}
+
+label {
+  display: block;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+input {
+  flex: 1 1 180px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+}
+
+#code {
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+button {
+  min-height: 52px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button.secondary {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.paired {
+  margin: 0 0 14px;
+  color: var(--ok);
   font-size: 1.15rem;
+}
+
+.message:empty {
+  display: none;
+}
+
+.message {
+  margin: 12px 0 0;
+}
+
+.message.bad {
+  color: var(--bad);
 }
 
 .ok {
@@ -89,11 +191,11 @@ h2 {
   color: var(--bad);
 }
 
-.wait,
-.note {
+.wait {
   color: var(--muted);
 }
 
-.note {
-  margin-bottom: 0;
+.foot {
+  padding-bottom: 32px;
+  font-size: 0.9rem;
 }

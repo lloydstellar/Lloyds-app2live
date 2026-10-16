@@ -1,6 +1,6 @@
 # App2Live server API
 
-This is the contract between the LA2L device and the App2Live server, as version 0.1.1 of the device uses it. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. The second part (the app side) is a proposal for when the server is built.
+This is the contract between the LA2L device and the App2Live server, as version 0.1.1 of the device uses it. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. The second part (the app side) is what apps use; its pairing calls are final and served by `server/` (la2l-server), its package calls are still a proposal until the next server version.
 
 ## Basics
 
@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.1.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.2.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -46,6 +46,8 @@ Answer:
 - `expires_in` in seconds is what the device counts down from (it does not trust the computer's clock); it keeps it between 30 and 1800. `expires_at` is only used when `expires_in` is missing.
 - `poll_ms`: how often the device asks for the status, 500 to 10000. Default 2000.
 - `pair_id` is a long random id, known only to the device. The status call below has no token, so `pair_id` must not be guessable.
+- One code per computer: a new start with the same `device_id` cancels its older code.
+- `device_id` is required: 1 to 100 characters of `A-Z a-z 0-9 -`, else `400 {"error": "device_id is missing."}`. At most 20 starts per 10 minutes from one address, then 429.
 
 ### `GET /pair/{pair_id}`
 
@@ -58,9 +60,9 @@ No token. The device asks this every `poll_ms` while the code shows.
 { "status": "cancelled" }
 ```
 
-- `device_token`: a long random secret. Give it out once: after the first `paired` answer, delete the pairing record (a later call may answer 404).
+- `device_token`: a long random secret. Give it out once: after the first `paired` answer, delete the pairing record (a later call may answer 404). la2l-server gives the same `paired` answer for 60 seconds after the first one, in case that answer got lost, and answers 404 after that.
 - `app_name`: shown in the device as "Paired with Web808".
-- 404 counts as expired.
+- 404 counts as expired. At most 120 calls a minute from one address, then 429.
 
 ### `POST /pair/{pair_id}/cancel`
 
@@ -110,19 +112,57 @@ The device says what happened to a package.
 
 ### `POST /unpair`  (token)
 
-Body `{}`. Revoke the token: no app can send to this computer any more. The device forgets the token even when this call fails.
+Body `{}`. Revoke the token: no app can send to this computer any more. The server also revokes every app token of this computer and deletes the packages that were still waiting for it. The device forgets the token even when this call fails.
 
 ## Retention and limits
 
 - A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it.
 - A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too, but the server should refuse anything larger at upload.
-- Pairing: limit code attempts (for example 5 per minute per IP address), because a code is short.
+- Pairing: at most 10 code attempts per minute from one address (an IPv6 address counts by its /64), because a code is short.
 
-## App side (proposal)
+## App side
 
-Not used by the device; written down so the server can be built in one go.
+For the Android and web apps, and for LA2L Sender, the test page at `https://lloydstellar.nl/la2l/`, which is the reference client (`server/public/sender.js`). Same base address; apps send `Authorization: Bearer <app_token>`.
 
-- `POST /pair/claim` with `{"code": "K7P42Q", "app_name": "Web808", "app_id": "..."}`. The server links the app to the waiting pairing (status `paired` for the device) and returns `{"app_token": "...", "device_name": "ERIK-PC"}`. Wrong or expired code: 404 with a short `error`.
+- **401 means this app token is unknown or revoked**: the computer was unpaired in Live, or the app paired again. Forget the token and show the pair screen.
+- **CORS**: every answer under `/api/` has `Access-Control-Allow-Origin: *`, and an `OPTIONS` preflight gets a 204, so a web app on any site can call the API. The token always goes in the `Authorization` header, never in a cookie.
+- Errors are `{"error": "short plain English"}`, at most 80 characters. Show the text to the user as it is.
+- Every caller with a token may make 600 calls a minute; then 429 with `Retry-After` (in seconds).
+
+### `POST /pair/claim`
+
+No token. Links the app to the computer that shows the code.
+
+```json
+{ "code": "K7P 42Q", "app_name": "Web808", "app_id": "8f1c0e2a-..." }
+```
+
+- `code`: as the user typed it. Case, spaces and dashes do not matter.
+- `app_name`: the device shows it: "Paired with Web808". 1 to 40 characters; letters of any language, digits, space and `_ - ( ) . ' & + # !`, anything else becomes a space. Default "App".
+- `app_id`: optional, the app's own id for this installation (at most 100 characters; a UUID made once is best). Pairing again with the same `app_id` revokes the old token of that installation.
+
+Answer:
+
+```json
+{ "app_token": "la2la_...", "device_name": "ERIK-PC" }
+```
+
+A wrong, used or expired code: `404 {"error": "This code does not work. Check the code in Live."}`, the same answer for all three. At most 10 tries a minute from one address, then 429.
+
+### `GET /app/me`  (app token)
+
+```json
+{ "device_name": "ERIK-PC", "app_name": "Web808", "paired_at": "2026-10-16T14:30:00.000Z" }
+```
+
+So the app can show "Paired with ERIK-PC". Ask this now and then, for example when the app starts; a 401 means it was unpaired.
+
+### `POST /app/unpair`  (app token)
+
+Body `{}` or none. Revokes this app token. The packages the app sent stay for the computer. Answer `{"ok": true}`.
+
+### Packages (proposal, final in the next server version)
+
 - `POST /packages` (app token) with the manifest. The server checks the schema and the limits and answers `{"package_id": "...", "upload": {"kick.wav": "/packages/<id>/files/kick.wav"}}`.
 - `PUT /packages/{package_id}/files/{file}` (app token) with the WAV bytes. The server checks `bytes` and `sha256` against the manifest.
 - `POST /packages/{package_id}/commit` (app token). Only now does the package show in the device's inbox. Uncommitted packages are deleted after an hour.
