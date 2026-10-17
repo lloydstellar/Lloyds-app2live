@@ -29,7 +29,7 @@ The contract between the two is [docs/server-api.md](docs/server-api.md); the pa
 
 ## The server
 
-See [server/CLAUDE.md](server/CLAUDE.md). In short: Node.js in Docker on the VPS, behind the web server that already serves lloydstellar.nl. It reuses `src/node/manifest.js` and `src/node/wav.js` from the device, so both sides check a package the same way.
+See [server/CLAUDE.md](server/CLAUDE.md). In short: Node.js in Docker on the VPS, behind the web server that already serves lloydstellar.nl. It reuses `src/node/manifest.js` and `src/node/wav.js` from the device, so both sides check a package the same way. What the server build changed for the device side, what Erik tested, and the open device points: [docs/server-handoff.md](docs/server-handoff.md).
 
 ## Git
 
