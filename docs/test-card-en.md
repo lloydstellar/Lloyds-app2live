@@ -98,17 +98,18 @@ This step needs server 0.6.0 or newer. Open `https://lloydstellar.nl/la2l/api/he
 
 ## 8. On a group track and on the Main track
 
-1. Select two empty audio tracks and press Ctrl+G (Cmd+G on a Mac) to put them in a group.
-2. Drag the device from its track onto the title bar of the group track.
-3. Click **Settings**, then **Test import**.
-4. Fold the group with the triangle in its title bar, then click **Test import** again.
-5. Drag the device onto the **Main** track and click **Test import** once more.
+1. Click **Settings** and check that **New tracks go** is on **After this track**. With At the end, new tracks always go after all other tracks, also from a group.
+2. Select two empty audio tracks and press Ctrl+G (Cmd+G on a Mac) to put them in a group.
+3. Drag the device from its track onto the title bar of the group track.
+4. Open **Settings** if it is closed, then click **Test import**.
+5. Fold the group with the triangle in its title bar, then click **Test import** again.
+6. Drag the device onto the **Main** track and click **Test import** once more.
 
 **You should see:**
 
-- After step 3: a new track **Snare (LA2L)** at the top of the group, inside it, with its clip at 1.1.1.
-- After step 4: the group unfolds by itself and shows a second Snare (LA2L) at its top.
-- After step 5: a new Snare (LA2L) after all other tracks, outside the group. With the device on the Main track, the Set sounds as before.
+- After step 4: a new track **Snare (LA2L)** at the top of the group, inside it, with its clip at 1.1.1.
+- After step 5: the group unfolds by itself and shows a second Snare (LA2L) at its top.
+- After step 6: a new Snare (LA2L) after all other tracks, outside the group. With the device on the Main track, the Set sounds as before.
 - If a new track lands somewhere else, send the log: its line `placed on track N in group "..."` says where Live put it.
 
 ## 9. Send back
@@ -128,5 +129,6 @@ The log shows how Live answered every step: which path form loaded the file, the
 | The device still shows an older version | Live still has the old device in memory. Quit Live completely and start it again. |
 | "Test failed. Snare ..." | Live could not place the file. The rest of the message and the log say why. |
 | The clip still starts at bar 9 | A device older than 0.2.0 is still loaded: check the version under the name. |
+| New tracks land after all other tracks, also with the device on a group | **New tracks go** in Settings is on At the end. Click **After this track**. The log says `tracks from the end` on the `Import` line. |
 | Pair app does not come back after "Unpair this browser" | Close Settings and wait 15 seconds. If Import stays, the log says why on a line that starts with `App list:`. |
 | "Could not copy the code. Type it in your app." | The log says why, on a line that starts with `Copy code:`. Type the code and send the log. |
