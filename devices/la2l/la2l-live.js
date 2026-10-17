@@ -18,7 +18,7 @@ autowatch = 0;
 inlets = 1;
 outlets = 2;
 
-var VERSION = '0.1.1';
+var VERSION = '0.2.0';
 
 var ready = false; // true after init
 var waiting = []; // requests that came before init
@@ -169,9 +169,11 @@ function* importJob(req) {
     sceneIndex = makeScene(song, req.sceneName || req.title || 'LA2L');
     sceneId = Number(api('live_set scenes ' + sceneIndex).id);
   } else {
-    position = arrangementPosition(song);
+    // Always at the start of the Arrangement (1.1.1), wherever the playhead is: after playing,
+    // the playhead can be minutes into the Set, and the new sounds then land out of sight.
+    position = 0;
   }
-  log('Import "' + req.title + '": ' + items.length + ' sound(s), ' + (session ? 'Session, scene ' + sceneIndex : 'Arrangement at beat ' + position) + ', tracks from ' + (base < 0 ? 'the end' : 'index ' + base));
+  log('Import "' + req.title + '": ' + items.length + ' sound(s), ' + (session ? 'Session, scene ' + sceneIndex : 'Arrangement at 1.1.1') + ', tracks from ' + (base < 0 ? 'the end' : 'index ' + base));
 
   var results = [];
   var placed = 0;
@@ -503,14 +505,6 @@ function setRange(clip, startProp, endProp, a, b) {
 
 // ---------------------------------------------------------------------------
 // Arrangement, scenes, gain, selection
-
-// The playhead, rounded to the nearest bar.
-function arrangementPosition(song) {
-  var t = num(song.get('current_song_time'));
-  var bar = (num(song.get('signature_numerator')) * 4) / (num(song.get('signature_denominator')) || 4);
-  if (!(bar > 0)) bar = 4;
-  return Math.max(0, Math.round(t / bar) * bar);
-}
 
 // Track.create_audio_clip cannot set the length of an Arrangement clip, and changing the warp
 // afterwards does not change it either. So the finished Session clip is copied to the Arrangement

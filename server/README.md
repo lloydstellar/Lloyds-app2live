@@ -123,7 +123,7 @@ Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.5.0 listening on ...` | The server started. |
+| `la2l-server 0.6.0 listening on ...` | The server started. |
 | `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. |
 | `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |
@@ -170,8 +170,8 @@ The first table lists the paired computers with their apps, the second the packa
 | An app gets 429 `Too many ...` | A rate limit (see [docs/server-api.md](../docs/server-api.md)). They live in memory; `docker compose restart` clears them. |
 | Live says `This computer is no longer paired. Click Pair app to pair again.` | Its token is unknown to the server: it was unpaired, the computer paired again (that replaces the old pairing), or a backup from before the pairing was restored. Click Pair app. |
 | The Sender page asks for a code again | Same reasons, for the app token: pair again. |
-| Live keeps saying "Paired with LA2L Sender" after every app unpaired | Device 0.1.1 only learns about apps when it pairs. It does no harm; Unpair in Live clears it. |
-| Import says `... did not download: The server does not know this address (404).` | A file of a waiting package is missing on the server. The log has an `ERROR package ...` line about it. Send the package again. |
+| Live keeps saying "Paired with LA2L Sender" after every app unpaired | Device 0.1.1 only learns about apps when it pairs; Unpair in Live clears it. Device 0.2.0 asks `GET /api/apps` when Live starts, after Import and in Self test, and then says "No app paired. Add one in Settings." |
+| Import says `... did not download: The server does not know this address (404). The file is gone. Send it again.` (device 0.1.1 shows only the first sentence) | A file of a waiting package is missing on the server. The log has an `ERROR package ...` line about it. Send the package again. |
 
 ## Remove
 

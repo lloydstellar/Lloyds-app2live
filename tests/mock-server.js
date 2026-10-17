@@ -1,6 +1,7 @@
 'use strict';
 // A fake App2Live server for the tests, following docs/server-api.md.
-// Everything lives in memory. Tests drive it with completePairing(), addPackage() and failNext().
+// Everything lives in memory. Tests drive it with completePairing(), addPackage(), removeApp()
+// and failNext(). appList = false makes it an older server without GET /apps.
 
 const http = require('http');
 const crypto = require('crypto');
@@ -16,6 +17,7 @@ class MockServer {
     this.log = [];
     this.failures = []; // { re, status, times }
     this.files = new Map(); // extra plain files, e.g. /test/snare.wav
+    this.appList = true; // false: answers GET /apps with 404, as la2l-server before 0.6.0
   }
 
   start() {
@@ -53,6 +55,11 @@ class MockServer {
 
   revokeAll() {
     this.tokens.clear();
+  }
+
+  // An app unpairs itself (POST /app/unpair in the real server): it drops out of every computer.
+  removeApp(appName) {
+    for (const t of this.tokens.values()) t.apps = t.apps.filter((a) => a !== appName);
   }
 
   // manifest: the package description. files: { 'kick.wav': Buffer }. sha256 and bytes are
@@ -128,7 +135,7 @@ class MockServer {
       return this.send(res, 200, { ok: true });
     }
     const token = this.auth(req);
-    if (p === '/api/inbox' || p.startsWith('/api/packages/') || p === '/api/unpair') {
+    if (p === '/api/inbox' || p.startsWith('/api/packages/') || p === '/api/unpair' || (p === '/api/apps' && this.appList)) {
       if (!token) return this.send(res, 401, { error: 'unknown token' });
     }
     if (req.method === 'GET' && p === '/api/inbox') {
@@ -140,6 +147,10 @@ class MockServer {
         created_at: x.createdAt,
       }));
       return this.send(res, 200, { packages });
+    }
+    if (req.method === 'GET' && p === '/api/apps' && this.appList) {
+      const apps = this.tokens.get(token).apps.map((name) => ({ name, paired_at: '2026-10-17T10:00:00.000Z', last_seen_at: null }));
+      return this.send(res, 200, { apps });
     }
     if ((m = /^\/api\/packages\/([^/]+)\/manifest$/.exec(p)) && req.method === 'GET') {
       const x = this.packages.get(decodeURIComponent(m[1]));

@@ -23,6 +23,8 @@ class NetError extends Error {
 }
 
 const USER_AGENT = `LA2L/${VERSION} (Max for Live; ${process.platform})`;
+// Of an error answer to a download, only this much is kept: enough for {"error": "..."}.
+const ERROR_BODY_BYTES = 65536;
 
 const TLS_CODES = new Set([
   'CERT_HAS_EXPIRED',
@@ -150,13 +152,17 @@ function exchange(urlText, opts = {}) {
         return exchange(next.href, nextOpts).then(resolve, reject);
       }
 
+      const ok = status >= 200 && status < 300;
+      // An error answer to a download is not the file: its size does not count, and only its
+      // start is kept, for the server's message.
+      const errorOfDownload = toFile && !ok;
       const declared = Number(res.headers['content-length']);
-      if (declared > maxBytes) {
+      if (declared > maxBytes && !errorOfDownload) {
         res.resume();
         return finish(new NetError(`The file is too large (${Math.round(declared / 1048576)} MB).`, { kind: 'toolarge', status, url: url.href }));
       }
-      const ok = status >= 200 && status < 300;
       let received = 0;
+      let kept = 0;
       const chunks = [];
       const hash = crypto.createHash('sha256');
       if (toFile && ok) {
@@ -166,6 +172,14 @@ function exchange(urlText, opts = {}) {
       }
       res.on('data', (chunk) => {
         received += chunk.length;
+        if (errorOfDownload) {
+          if (kept < ERROR_BODY_BYTES) {
+            const part = chunk.subarray(0, ERROR_BODY_BYTES - kept);
+            chunks.push(part);
+            kept += part.length;
+          }
+          return;
+        }
         if (received > maxBytes) {
           return finish(new NetError('The file is larger than the package said.', { kind: 'toolarge', status, url: url.href }));
         }
@@ -237,7 +251,8 @@ async function download(url, file, opts = {}) {
     try {
       const r = await exchange(url, Object.assign({ timeoutMs: 10 * 60000, idleMs: 20000 }, opts, { toFile: part }));
       if (r.status < 200 || r.status >= 300) {
-        throw statusError(r.status, '', r.url);
+        // The server's own text, as for JSON calls: "The file is gone. Send it again."
+        throw statusError(r.status, serverText(r.body), r.url);
       }
       if (expectBytes !== null && r.bytes !== expectBytes) {
         throw new NetError(`The file arrived damaged (${r.bytes} instead of ${expectBytes} bytes).`, { kind: 'checksum', url: r.url });

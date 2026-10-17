@@ -116,6 +116,22 @@ test('sound problems only mark that sound', () => {
   assert.equal(warnings.length, 9);
 });
 
+test('a sound without a kind is a one-shot, and the warning says so plainly', () => {
+  const x = example();
+  delete x.items[0].kind;
+  x.items[1].kind = null;
+  x.items.push({ file: 'odd.wav', name: 'Odd', kind: 'x'.repeat(500), role: 'y'.repeat(500) });
+  const { pkg, warnings } = m.validate(x);
+  assert.equal(pkg.items[0].kind, 'oneshot');
+  assert.equal(pkg.items[1].kind, 'oneshot');
+  assert.deepEqual(warnings, [
+    'Kick: no kind, placed as one-shot',
+    'Robot hallo: no kind, placed as one-shot',
+    `Odd: kind "${'x'.repeat(40)}" unknown, placed as one-shot`,
+    `Odd: role "${'y'.repeat(40)}" unknown`,
+  ]);
+});
+
 test('names are cleaned, missing ones get a default', () => {
   const x = example();
   x.title = 'Trein/beat; "live"';

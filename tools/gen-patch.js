@@ -321,7 +321,7 @@ function buildPatch() {
       num_lines_patching: 1,
       num_lines_presentation: 1,
       livemode: 1,
-      info: 'Arrangement: new clips start at the playhead, rounded to the nearest bar. Session: a new scene with one clip per track.',
+      info: 'Arrangement: new clips start at 1.1.1, the start of the Arrangement. Session: a new scene at the top with one clip per track.',
     }),
     's_place'
   );

@@ -10,7 +10,7 @@ const { URL } = require('url');
 const { spawn } = require('child_process');
 const { VERSION } = require('./version');
 const { Store, Log } = require('./settings');
-const { Server, readInbox } = require('./server');
+const { Server, readInbox, readApps } = require('./server');
 const { download, anyWebAddress, NetError } = require('./http');
 const { LiveBridge } = require('./live-bridge');
 const wav = require('./wav');
@@ -117,6 +117,8 @@ class App {
     this.tempoHint = null; // { bpm } offered with the "Use N BPM" button
     this.unpairArmedAt = 0;
     this.refreshing = false;
+    this.appsSerial = 0; // goes up with every pairing, so an app list asked before it is not used
+    this.startup = null; // the app list asked at start, a promise (tests wait for it)
   }
 
   // ---- log, status and errors ----
@@ -156,6 +158,7 @@ class App {
     this.showView();
     this.status(this.store.pairing ? 'Ready. Click Import to get new sounds.' : 'Ready.');
     this.refreshLive();
+    this.startup = this.checkApps();
   }
 
   sendSettings() {
@@ -166,7 +169,7 @@ class App {
 
   showPairedWith() {
     const apps = this.store.pairing ? this.store.pairing.apps : [];
-    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'Paired.'));
+    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'No app paired. Add one in Settings.'));
   }
 
   // The patch shows one view at a time: unpaired, pairing, paired, or the settings on top.
@@ -337,6 +340,7 @@ class App {
           const apps = same ? d.pairing.apps.filter((a) => a !== appName) : [];
           d.pairing = { token: r.device_token, apps: apps.concat(appName), pairedAt: new Date().toISOString() };
         });
+        this.appsSerial++;
         this.stopPairing();
         this.log(`Paired with ${appName}`);
         this.showPairedWith();
@@ -393,6 +397,60 @@ class App {
     this.setTempoHint(null);
   }
 
+  // ---- the apps of this computer ----
+
+  // Asks the server which apps can send to this computer now, and shows them ("Paired with ...").
+  // An app that unpaired itself drops out; nothing else tells the device. Resolves to
+  // { count, names }, or to null when the server does not say: a server older than 0.6.0
+  // answers 404, and then the device keeps the names it learned when pairing. A 401 is thrown.
+  async refreshApps(server) {
+    const token = this.store.pairing ? this.store.pairing.token : null;
+    if (!token) return null;
+    const serial = this.appsSerial;
+    let apps;
+    try {
+      apps = readApps(await server.apps());
+    } catch (e) {
+      if (e instanceof NetError && e.kind === 'unauthorized') throw e;
+      this.log(`App list: ${e instanceof NetError && e.status === 404 ? 'this server does not give one (older than 0.6.0)' : e.message}`);
+      return null;
+    }
+    if (!apps) {
+      this.log('App list: the server sent no list.');
+      return null;
+    }
+    this.store.load();
+    // A pairing that finished while we asked knows more than this answer.
+    if (!this.store.pairing || this.store.pairing.token !== token || this.appsSerial !== serial) return apps;
+    const before = this.store.pairing.apps;
+    if (before.join('\n') !== apps.names.join('\n')) {
+      this.store.update((d) => {
+        d.pairing.apps = apps.names;
+      });
+      this.log(`Apps of this computer: ${apps.names.join(', ') || 'none'} (before: ${before.join(', ') || 'none'})`);
+    }
+    this.showPairedWith();
+    return apps;
+  }
+
+  // At start, in the background: the apps of this computer, or that it is no longer paired.
+  async checkApps() {
+    const token = this.store.pairing ? this.store.pairing.token : null;
+    if (!token) return;
+    try {
+      await this.refreshApps(this.server());
+    } catch (e) {
+      this.log('App list at start: ' + e.message);
+      if (!(e instanceof NetError && e.kind === 'unauthorized')) return;
+      this.store.load();
+      if (!this.store.pairing || this.store.pairing.token !== token) return; // paired again meanwhile
+      this.forgetPairing();
+      if (this.pairing) return; // a code is showing: that pairing goes on with a new token
+      this.setView('unpaired');
+      this.status('This computer is no longer paired. Click Pair app to pair again.');
+    }
+  }
+
   // A 401 from the server means the token is gone (unpaired in the app, or revoked).
   handleError(prefix, e) {
     if (e instanceof NetError && e.kind === 'unauthorized') {
@@ -432,6 +490,7 @@ class App {
       this.log(`Inbox: ${packages.length} package(s): ${packages.map((p) => p.id).join(' ')}`);
       if (!packages.length) {
         this.status('Nothing new yet. Send a sound from your app first.');
+        await this.refreshApps(server);
         return;
       }
       const done = [];
@@ -443,6 +502,7 @@ class App {
         done.push(r);
       }
       this.status(this.summary(done, live));
+      await this.refreshApps(server);
     } catch (e) {
       this.handleError('Import stopped.', e);
     } finally {
@@ -777,7 +837,9 @@ class App {
       } else if (server) {
         try {
           const list = readInbox(await server.inbox());
-          parts.push(`paired with ${list.length} waiting`);
+          const apps = await this.refreshApps(server);
+          parts.push(apps ? (apps.count ? `paired with ${t.plural(apps.count, 'app')}` : 'no app paired') : 'paired');
+          parts.push(`${list.length} waiting`);
         } catch (e) {
           if (e instanceof NetError && e.kind === 'unauthorized') {
             this.forgetPairing();
@@ -842,7 +904,7 @@ class App {
     this.store.update((d) => {
       d.settings.placement = placement;
     });
-    this.status(placement === 'session' ? 'New sounds go to a new scene in Session View.' : 'New sounds go to the Arrangement at the playhead.');
+    this.status(placement === 'session' ? 'New sounds go to a new scene in Session View.' : 'New sounds go to the start of the Arrangement at 1.1.1.');
   }
 
   setNewTracks(value) {

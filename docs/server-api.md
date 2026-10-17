@@ -1,6 +1,6 @@
 # App2Live server API
 
-This is the contract between the LA2L device and the App2Live server, as version 0.1.1 of the device uses it. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. The second part (the app side) is what apps use; it is final and served by `server/` (la2l-server).
+This is the contract between the LA2L device and the App2Live server. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. Device 0.1.1 uses every device call except `GET /apps`, which came with device 0.2.0 and la2l-server 0.6.0. The second part (the app side) is what apps use; it is final and served by `server/` (la2l-server).
 
 ## Basics
 
@@ -8,7 +8,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 - Requests and answers are JSON (`Content-Type: application/json`), except the WAV downloads.
 - Calls marked **token** send `Authorization: Bearer <device_token>`.
 - **401 means the token is unknown or revoked.** The device then forgets its pairing and shows Pair app again. Use 401 for nothing else. A 403 (for example from a firewall) does not unpair the device.
-- Errors may carry `{"error": "short text"}`. For 4xx answers to JSON calls other than 401, the device shows that text (letters, digits and simple punctuation, at most 80 characters) after its own message, so keep it short and in plain English. For a file download it shows only its own message.
+- Errors may carry `{"error": "short text"}`. For 4xx answers other than 401, the device shows that text (letters, digits and simple punctuation, at most 80 characters) after its own message, so keep it short and in plain English. Device 0.1.1 does this for JSON calls only and shows only its own message when a file download fails; 0.2.0 does it for file downloads too.
 - Redirects are followed only to the same origin (scheme, host and port), at most 3.
 - Time limits on the device: 15 seconds per JSON call, 10 minutes per file with at most 20 seconds without data. A JSON answer may be 1 MB at most.
 
@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.5.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.6.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -83,6 +83,23 @@ The packages that are waiting for this computer.
 `package_id` must match `[A-Za-z0-9._-]{1,100}`; other entries are skipped. The device imports the packages oldest first, by `created_at` (ISO 8601, UTC).
 
 la2l-server lists the packages that are committed and wait, and those whose import failed, until they expire. `created_at` is the time of the commit.
+
+### `GET /apps`  (token)
+
+Device 0.2.0 and la2l-server 0.6.0 and newer. The apps that can send to this computer now, oldest pairing first.
+
+```json
+{
+  "apps": [
+    { "name": "LA2L Sender", "paired_at": "2026-10-17T10:30:00.000Z", "last_seen_at": "2026-10-17T10:41:12.000Z" }
+  ]
+}
+```
+
+- An app that unpaired itself (`POST /app/unpair`), or that paired again with the same `app_id` (which replaces its old token), is not in the list. One name can be in it twice: the same app in two browsers.
+- `last_seen_at`: the last call of that app, at most a minute off; `null` when it made none yet.
+- The device asks this when Live loads it, after every Import and in Self test. It shows every name once ("Paired with LA2L Sender and Robot Voice."), or "No app paired. Add one in Settings." for an empty list. The computer stays paired then, so Import and Add app keep working. Self test says `paired with 2 apps` or `no app paired`.
+- A server without this call answers 404. The device then keeps the names it learned when pairing, and Self test says `paired`.
 
 ### `GET /packages/{package_id}/manifest`  (token)
 

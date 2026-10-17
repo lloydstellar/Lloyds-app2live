@@ -320,7 +320,7 @@ test('test import uses the built-in loop when the download fails or is not a WAV
 test('self test reports Node, folder, Live, server and pairing', async () => {
   const d = await paired();
   await d.app.handle('selftest');
-  assert.match(d.status(), /^Self test: Node v\d+\.\d+\.\d+ \/ folder OK \/ Live 12\.4\.6 OK \/ Set not saved \/ server OK \/ paired with 0 waiting$/);
+  assert.match(d.status(), /^Self test: Node v\d+\.\d+\.\d+ \/ folder OK \/ Live 12\.4\.6 OK \/ Set not saved \/ server OK \/ paired with 1 app \/ 0 waiting$/);
   const off = device({ settings: { serverUrl: 'https://127.0.0.1:1/api' } });
   await off.app.handle('selftest');
   assert.match(off.status(), /server offline \/ not paired/);
@@ -335,6 +335,60 @@ test('self test says when the address is a web site without the App2Live server'
     const d = device({ settings: { serverUrl: server.origin + base } });
     await d.app.handle('selftest');
     assert.match(d.status(), new RegExp(`/ no App2Live server at ${host.replace(/[.]/g, '\\.')} / not paired$`), base);
+  }
+});
+
+test('an app that unpaired itself drops out of "Paired with" at the next Import or Self test', async () => {
+  const d = await paired({ appName: 'Web808' });
+  await d.app.handle('addapp');
+  await waitFor(() => d.view() === 'pairing', 'the code');
+  server.completePairing('Robot Voice');
+  await waitFor(() => d.view() === 'paired', 'paired again');
+  assert.equal(d.last('pairedwith').join(' '), 'Paired with Web808 and Robot Voice.');
+  server.removeApp('Web808');
+  await d.app.handle('import');
+  assert.equal(d.status(), 'Nothing new yet. Send a sound from your app first.');
+  assert.equal(d.last('pairedwith').join(' '), 'Paired with Robot Voice.');
+  assert.deepEqual(d.stored().pairing.apps, ['Robot Voice']);
+  server.removeApp('Robot Voice');
+  await d.app.handle('selftest');
+  assert.match(d.status(), / \/ server OK \/ no app paired \/ 0 waiting$/);
+  assert.equal(d.last('pairedwith').join(' '), 'No app paired. Add one in Settings.');
+  assert.equal(d.view(), 'paired', 'still paired: Import and Add app keep working');
+  assert.ok(d.stored().pairing.token);
+});
+
+test('at start the device asks for its apps; a revoked token goes back to Pair app', async () => {
+  const first = await paired({ appName: 'Web808' });
+  const pairing = first.stored().pairing;
+  server.removeApp('Web808');
+  const d = device({ pairing });
+  d.app.start();
+  await d.app.startup;
+  assert.equal(d.view(), 'paired');
+  assert.equal(d.last('pairedwith').join(' '), 'No app paired. Add one in Settings.');
+  assert.equal(d.status(), 'Ready. Click Import to get new sounds.');
+  server.revokeAll();
+  const gone = device({ pairing });
+  gone.app.start();
+  await gone.app.startup;
+  assert.equal(gone.view(), 'unpaired');
+  assert.equal(gone.status(), 'This computer is no longer paired. Click Pair app to pair again.');
+  assert.equal(gone.stored().pairing, null);
+});
+
+test('a server without the app list (older than 0.6.0): the device keeps the names it knows', async () => {
+  server.appList = false;
+  try {
+    const d = await paired({ appName: 'Web808' });
+    await d.app.startup;
+    await d.app.handle('selftest');
+    assert.match(d.status(), / \/ server OK \/ paired \/ 0 waiting$/);
+    await d.app.handle('import');
+    assert.equal(d.last('pairedwith').join(' '), 'Paired with Web808.');
+    assert.match(fs.readFileSync(path.join(d.home, 'la2l.log'), 'utf8'), /App list: this server does not give one/);
+  } finally {
+    server.appList = true;
   }
 });
 
