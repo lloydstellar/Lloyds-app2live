@@ -2,12 +2,13 @@
 
 Lloyd's App2Live (LA2L) brings sounds from apps (Android, web) into Ableton Live. An app sends a package (WAV files plus a short JSON description) to a server; the Max for Live device in Live imports it with one click, one new audio track per sound, named, coloured and warped to the tempo the app gave.
 
-This repository holds both ends of that chain:
+This repository holds the parts of that chain:
 
 | Part | Where | Runs on | State |
 |---|---|---|---|
 | The device | the repository root: `src/`, `tests/`, `tools/`, `devices/la2l/` | Erik's computer, inside Live 12.4 or newer (Windows and Mac) | 0.2.2, tested in Live 12.4.6 on Windows |
 | The server, `la2l-server` | `server/` | Erik's Linux VPS, at `https://lloydstellar.nl/la2l/` | 0.6.0, running; built from `server/BUILD-PROMPT.md`, run as `server/README.md` says |
+| The developer kit: SDKs, skill and test receiver for app makers | `sdk/` | npm, Maven Central and the server's pages | Planned; to be built on the VPS from `sdk/BUILD-PROMPT.md` |
 
 The contract between the two is [docs/server-api.md](docs/server-api.md); the package format is [docs/manifest.md](docs/manifest.md). Change them only together with the code on both sides, and keep device 0.1.1 working: it may still be installed somewhere, and the server must not care which version calls it.
 
