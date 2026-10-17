@@ -100,12 +100,12 @@ The simulated Live follows the Live Object Model documentation and what Live 12.
 | Whether `add_warp_marker` keeps `beat_time` when `sample_time` is given too | Yes, on Windows: in the 0.1.1 test a 135 BPM loop in a 120 BPM Set showed BPM 135.00 and Start 1.1.1, so the end marker did it | `"tempo":"exact (end marker)"` means yes, `"exact (first marker)"` means no |
 | Whether `Song.create_scene(0)` puts the new scene at the top | Yes, on Windows (0.1.1 test) | The Session View itself |
 | Whether `Song.file_path` gives the Set's path | Yes, on Windows | `Set: <path>` in the `Live 12.x.x` line |
-| Where `create_audio_track` puts a track next to a group | A [Max forum report](https://cycling74.com/forums/is-it-possible-to-create-grouped-tracks-with-lom): right after a group's header, inside the group. Not tested by us yet. The simulated Live assumes that a track at the end of the Set is in no group | `placed on track N in group "..."` and `Unfolded group` |
-| Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)); device 0.2.0 with la2l-server 0.6.0 for the app list, Import at 1.1.1 and an app that unpaired itself | `Inbox:`, `Paired with` and `Apps of this computer` |
+| Where `create_audio_track` puts a track next to a group | Right after a group's header: inside the group, at its top. Seen on Windows in the 0.2.2 test, as a [Max forum report](https://cycling74.com/forums/is-it-possible-to-create-grouped-tracks-with-lom) said. Not seen yet: unfolding a folded group through `fold_state`. The simulated Live assumes that a track at the end of the Set is in no group | `placed on track N in group "..."` and `Unfolded group` |
+| Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)); device 0.2.0 with la2l-server 0.6.0 for the app list, Import at 1.1.1 and an app that unpaired itself; device 0.2.2 for Pair app coming back by itself after Unpair this browser | `Inbox:`, `Paired with` and `Apps of this computer` |
 
 ## Next steps
 
-1. Test 0.2.2 in Live: steps 1, 7 and 8 of [test-card-en.md](test-card-en.md) on Windows, all steps on a Mac. Fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
+1. Test on a Mac: all steps of [test-card-en.md](test-card-en.md). Fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server. On Windows, 0.2.2 passed steps 1, 7 and 8 up to its part 4 on 2026-10-17; parts 5 and 6 of step 8 (a folded group, the Main track) have not run yet.
 2. The Android share target and the web app side, against the app side of [server-api.md](server-api.md). The server runs (`server/`).
 3. Freeze for release: the bundled `la2l-node.js`, `la2l-live.js` and the logos must all be listed in the Max console when freezing.
 4. MIDI parts (`midi` in the manifest): a MIDI track with a Simpler per drum sound.

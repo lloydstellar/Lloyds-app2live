@@ -296,10 +296,10 @@ class MockLive {
 
   // ---- song ----
 
-  // A new track joins the group of the track it pushes down: right after a group's header, or
-  // between two tracks of a group, it lands in that group (a Max forum report on Live). At the
-  // end of the Set, or before a track that is not in a group, it is in no group; that part is a
-  // guess about Live.
+  // A new track joins the group of the track it pushes down: right after a group's header it
+  // lands at the top of that group (seen in Live 12.4.6 on Windows), and between two tracks of a
+  // group in that group (a Max forum report). At the end of the Set, or before a track that is
+  // not in a group, it is in no group; that part is a guess about Live.
   createTrack(index) {
     const n = this.song.tracks.length;
     const at = index === -1 ? n : index;
