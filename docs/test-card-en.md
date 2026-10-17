@@ -1,20 +1,18 @@
-# LA2L 0.2.1 test card
+# LA2L 0.2.2 test card
 
-One test in Live, about twenty minutes. Steps 1 to 5 check the Live side of the device; steps 6 and 7 check pairing and Import through the server at `https://lloydstellar.nl/la2l/`. Version 0.2.0 passed all steps on Windows on 2026-10-17, so on that computer steps 1, 6 and 7 are enough for 0.2.1. On a Mac, do them all.
+One test in Live, about twenty-five minutes. Steps 1 to 5 and 8 check the Live side of the device; steps 6 and 7 check pairing and Import through the server at `https://lloydstellar.nl/la2l/`. Version 0.2.1 passed steps 1, 6 and 7 on Windows on 2026-10-17, after 0.2.0 had passed all of them, so on that computer steps 1, 7 and 8 are enough for 0.2.2. On a Mac, do them all.
 
 **You need:** Live 12.4 or newer with Max for Live, on Windows or a Mac. For step 7 the server must be version 0.6.0 or newer: `https://lloydstellar.nl/la2l/api/health` shows the version.
 
-**New in 0.2.1**, so check these first:
+**New in 0.2.2**, so check these first:
 
-- When no app is paired any more, the device shows **Pair app** again instead of Import, as when it is not paired. This computer keeps its pairing on the server, so Pair app then adds an app to it, as Add app does. In 0.2.0 the device kept the Import button and said "No app paired. Add one in Settings."
+- While Import shows, the device asks the server every 15 seconds which apps are paired. When the last app unpaired itself, **Pair app** comes back by itself within 15 seconds. In 0.2.1 that happened only at the next Import or Self test.
+- On a **group track**, new tracks go to the top of that group, and a folded group unfolds so you see them. On the **Main** track or a return track they go after all other tracks.
+
+**New in 0.2.1:**
+
+- When no app is paired any more, the device shows **Pair app** again instead of Import. This computer keeps its pairing on the server, so Pair app then adds an app to it, as Add app does.
 - While a code shows, **Copy code** puts it on the clipboard, so you can paste it in an app on this computer, such as LA2L Sender in a browser.
-
-**New in 0.2.0:**
-
-- In the Arrangement, new sounds always start at **1.1.1**, wherever the playhead is. In 0.1.1 they started at the playhead, which after playing could be minutes into the Set.
-- "Paired with ..." shows only the apps that are still paired. An app that unpaired itself drops out when Live starts, after an Import and at Self test.
-- Self test says how many apps are paired: "paired with 1 app / 0 waiting".
-- When a download fails, the status line also shows the server's reason, for example "The file is gone. Send it again."
 
 ## 1. Load the device
 
@@ -22,7 +20,7 @@ One test in Live, about twenty minutes. Steps 1 to 5 check the Live side of the 
 2. Open a new, empty Live Set.
 3. Drag `devices/la2l/Lloyds App2Live.amxd` onto the first audio track. Leave the other files of `devices/la2l` next to it.
 
-**You should see:** the Lloyd Stellar logo top left, "Lloyd's App2Live" and "v0.2.1", a Settings button on the right, the text "Send sounds from your apps to Live." with a Pair app button, and "Ready." at the bottom. If this computer is still paired from an earlier test, you see the Import button instead; that is fine.
+**You should see:** the Lloyd Stellar logo top left, "Lloyd's App2Live" and "v0.2.2", a Settings button on the right, the text "Send sounds from your apps to Live." with a Pair app button, and "Ready." at the bottom. If this computer is still paired from an earlier test, you see the Import button instead; that is fine.
 
 ## 2. Test import in the Arrangement
 
@@ -85,21 +83,39 @@ You need a browser, on this computer or on a phone, and the test file saved from
 
 This step needs server 0.6.0 or newer. Open `https://lloydstellar.nl/la2l/api/health` first: it must show `"version":"0.6.0"` or higher.
 
-1. On the page, click **Unpair this browser**.
-2. In the device, click **Self test** (Settings is still open), then **Close**.
+1. Make sure the device shows Import: click **Close** if Settings is open, and if it shows Pair app, pair it with the page first (Pair app, Copy code, paste, Pair), as in step 6.
+2. On the page, click **Unpair this browser**. Then wait, without clicking in the device.
 3. Click **Pair app**, then **Copy code**. Paste the code on the page and click **Pair**.
-4. Click **Settings**, then **Unpair**, twice.
+4. Click **Settings**, then **Self test**.
+5. Click **Unpair**, twice.
 
 **You should see:**
 
-- After step 2: the Self test line ends with "no app paired / 0 waiting". After Close the device shows **Pair app** again instead of Import. If the Self test line ends with "paired / 0 waiting" and Import is still there, the server is older than 0.6.0: the rest of the device still works, but it cannot see that the app left.
+- After step 2: within 15 seconds the device shows **Pair app** instead of Import, and the status line says "No app paired. Click Pair app to add one." If Import stays, wait a little longer and then click Self test: when its line ends with "paired / 0 waiting", the server is older than 0.6.0 and the device cannot see that the app left.
 - After step 3: "Paired with LA2L Sender." and the Import button again.
-- After step 4: the device says "Unpaired. Apps can no longer send sounds to this computer." When you reload the page, it asks for a code again.
+- After step 4: the Self test line ends with "paired with 1 app / 0 waiting".
+- After step 5: the device says "Unpaired. Apps can no longer send sounds to this computer." When you reload the page, it asks for a code again.
 
-## 8. Send back
+## 8. On a group track and on the Main track
+
+1. Click **Settings** and check that **New tracks go** is on **After this track**. With At the end, new tracks always go after all other tracks, also from a group.
+2. Select two empty audio tracks and press Ctrl+G (Cmd+G on a Mac) to put them in a group.
+3. Drag the device from its track onto the title bar of the group track.
+4. Open **Settings** if it is closed, then click **Test import**.
+5. Fold the group with the triangle in its title bar, then click **Test import** again.
+6. Drag the device onto the **Main** track and click **Test import** once more.
+
+**You should see:**
+
+- After step 4: a new track **Snare (LA2L)** at the top of the group, inside it, with its clip at 1.1.1.
+- After step 5: the group unfolds by itself and shows a second Snare (LA2L) at its top.
+- After step 6: a new Snare (LA2L) after all other tracks, outside the group. With the device on the Main track, the Set sounds as before.
+- If a new track lands somewhere else, send the log: its line `placed on track N in group "..."` says where Live put it.
+
+## 9. Send back
 
 1. Click **Open folder**. It opens `Documents/Lloyds App2Live`.
-2. Send `la2l.log`, plus a screenshot of the device and one of the Arrangement with the clips from steps 2 and 6.
+2. Send `la2l.log`, plus a screenshot of the device and one of the Arrangement with the clips from steps 2, 6 and 8.
 
 The log shows how Live answered every step: which path form loaded the file, the warp markers Live made and the ones LA2L left, whether the tempo is exact, and which apps the server listed. Send it also when everything looks fine; it settles the open questions in [design-notes.md](design-notes.md#proven-and-not-yet-proven-in-a-real-live).
 
@@ -113,4 +129,6 @@ The log shows how Live answered every step: which path form loaded the file, the
 | The device still shows an older version | Live still has the old device in memory. Quit Live completely and start it again. |
 | "Test failed. Snare ..." | Live could not place the file. The rest of the message and the log say why. |
 | The clip still starts at bar 9 | A device older than 0.2.0 is still loaded: check the version under the name. |
+| New tracks land after all other tracks, also with the device on a group | **New tracks go** in Settings is on At the end. Click **After this track**. The log says `tracks from the end` on the `Import` line. |
+| Pair app does not come back after "Unpair this browser" | Close Settings and wait 15 seconds. If Import stays, the log says why on a line that starts with `App list:`. |
 | "Could not copy the code. Type it in your app." | The log says why, on a line that starts with `Copy code:`. Type the code and send the log. |

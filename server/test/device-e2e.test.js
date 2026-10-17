@@ -48,7 +48,8 @@ function device(o = {}) {
       outs.push([name, ...args]);
       if (name === 'tolive') setImmediate(() => ctx.request(args[1]));
     },
-    timing: Object.assign({ liveTimeoutMs: 2000, importTimeoutMs: 5000, retryDelayMs: 5, liveRetryMs: 20, unpairConfirmMs: 2000 }, o.timing),
+    // appsCheckMs: the background check of the app list only runs in the test that asks for it.
+    timing: Object.assign({ liveTimeoutMs: 2000, importTimeoutMs: 5000, retryDelayMs: 5, liveRetryMs: 20, unpairConfirmMs: 2000, appsCheckMs: 600000 }, o.timing),
     openFolder: () => {},
   });
   ctx.init();
@@ -153,6 +154,22 @@ test('An app that unpairs itself drops out of "Paired with" in Live', async () =
   assert.equal(d.stored().pairing.token, token);
   await d.app.handle('selftest');
   assert.match(d.status(), / \/ server OK \/ paired with 1 app \/ 0 waiting$/);
+});
+
+test('"Unpair this browser": the device shows Pair app by itself, without a click in Live', async () => {
+  const d = device({ timing: { appsCheckMs: 50 } });
+  try {
+    d.app.start();
+    await d.app.handle('pair');
+    const sender = await claim(d, 'LA2L Sender', 'browser-background');
+    await waitFor(() => d.view() === 'paired', 'paired');
+    assert.equal((await s.request('POST', '/api/app/unpair', { token: sender.app_token })).status, 200);
+    await waitFor(() => d.view() === 'unpaired', 'Pair app');
+    assert.equal(d.status(), 'No app paired. Click Pair app to add one.');
+    assert.ok(d.stored().pairing.token, 'the computer keeps its token');
+  } finally {
+    d.app.stop();
+  }
 });
 
 test('Import: a loop and a one-shot sent through the app API become two tracks, at the tempo the app gave', async () => {

@@ -4,11 +4,11 @@ Lloyd's App2Live is an open source connection between Ableton Live and phone or 
 
 This repository holds both ends of that chain: the Max for Live device (the root of the repository) and the server, `la2l-server` (in [`server/`](server/)).
 
-The device is at version 0.2.1. It is tested against a simulated Live and a simulated server, and in Live 12.4.6 on Windows, with the real server too. The server runs at `https://lloydstellar.nl/la2l/`. The apps come next; until then, LA2L Sender on that address pairs with the device and sends WAV files from a browser. **Settings > Test import** places a test loop without a server, so the Live side can also be tested on its own.
+The device is at version 0.2.2. It is tested against a simulated Live and a simulated server, and in Live 12.4.6 on Windows, with the real server too. The server runs at `https://lloydstellar.nl/la2l/`. The apps come next; until then, LA2L Sender on that address pairs with the device and sends WAV files from a browser. **Settings > Test import** places a test loop without a server, so the Live side can also be tested on its own.
 
 ## What the device does
 
-- **Pair app** shows a six-character code. You type it in the app once; from then on that app can send sounds to this computer. **Copy code** puts the code on the clipboard, for an app on the same computer. The device says which apps are paired, and asks the server again when Live starts, after Import and in Self test, so an app that unpaired itself drops out; with no app left it shows Pair app again. *(needs the server)*
+- **Pair app** shows a six-character code. You type it in the app once; from then on that app can send sounds to this computer. **Copy code** puts the code on the clipboard, for an app on the same computer. The device says which apps are paired, and asks the server again when Live starts, after Import, in Self test and every 15 seconds while an app is paired, so an app that unpaired itself drops out; with no app left it shows Pair app again. *(needs the server)*
 - **Import** gets every package that is waiting on the server, downloads the WAV files, checks their size and checksum, and puts each sound on a new audio track. By default the clips go into the Arrangement at 1.1.1, its start, wherever the playhead is. In Session mode each package gets its own new scene at the top of the Session.
 - **Loops** are warped to the tempo the app sent. The warp mode follows what the sound is: Beats for drums, Tones for bass, Complex Pro for melodic parts and vocals. **One-shots** play exactly as the app made them: warp off, loop off.
 - When a package has a different tempo than the Set, a **Use 92 BPM** button appears. The device never changes the Set tempo by itself.
@@ -21,7 +21,7 @@ Ableton Live 12.4 or newer with Max for Live (Live Suite, or Live Standard with 
 ## Trying it in Live
 
 1. Restart Live. Live keeps a loaded device and its scripts in memory, so a new version only shows after a restart.
-2. Drag `devices/la2l/Lloyds App2Live.amxd` onto an audio track. The other files in `devices/la2l` must stay next to it.
+2. Drag `devices/la2l/Lloyds App2Live.amxd` onto an audio track. The other files in `devices/la2l` must stay next to it. A group track, a return track or the Main track works too, and the sound passes through unchanged: on a group track new tracks go to the top of that group, on a return or the Main track after all other tracks.
 3. Click **Settings**, then **Test import**.
 
 The full test, with what you should see at every step, is in [docs/test-card-en.md](docs/test-card-en.md).
