@@ -6,7 +6,7 @@ The server between the apps and the LA2L device in Ableton Live. It runs on Erik
 - LA2L Sender, a test page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`
 - Code: the `server/` folder of [lloydstellar/Lloyds-app2live](https://github.com/lloydstellar/Lloyds-app2live), the same repository as the device, because the server reuses the device's checks. On the VPS the repository is cloned at `~/la2l-server`, so this folder is `~/la2l-server/server`.
 
-The first build follows [BUILD-PROMPT.md](BUILD-PROMPT.md). Keep this file up to date when commands, layout or decisions change; the next Claude starts from it.
+The server was built from [BUILD-PROMPT.md](BUILD-PROMPT.md) in phases 0 to 5, finished on 2026-10-17; the brief stays as the record of what was decided and why. [README.md](README.md) says how to install, update, back up and troubleshoot it, and where the code is. Keep this file up to date when commands, layout or decisions change; the next Claude starts from it.
 
 ## What the server does
 
@@ -16,7 +16,7 @@ The first build follows [BUILD-PROMPT.md](BUILD-PROMPT.md). Keep this file up to
 
 ## Read first
 
-1. [../docs/server-api.md](../docs/server-api.md): the contract. The device side is fixed: device 0.1.1 is installed and must keep working. The app side was a proposal; the server makes it final.
+1. [../docs/server-api.md](../docs/server-api.md): the contract. Both sides are final. The device side is fixed: device 0.1.1 is installed and must keep working. Apps are built against the app side, and LA2L Sender (`public/sender.js`) is its reference client.
 2. [../docs/manifest.md](../docs/manifest.md): the package format.
 3. [../tests/mock-server.js](../tests/mock-server.js): the in-memory stand-in the device tests use. The real server answers every device route the same way.
 4. [../src/node/server.js](../src/node/server.js) and [../src/node/http.js](../src/node/http.js): how the device calls the server (time-outs, redirects, sizes, which status means what).
@@ -30,7 +30,10 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 | `npm test` | `server/` | Server tests, with an end-to-end test that runs the real device code (pairing and Import) against this server |
 | `docker run --rm --user 1000:1000 -e HOME=/tmp -v "$PWD/..:/repo" -w /repo/server node:24-bookworm-slim npm test` | `server/` | The same on Node 24, on the VPS |
 | `npm test` | repository root | Device tests; run them after any change to `src/node/manifest.js`, `src/node/wav.js` or the API |
-| `bash deploy/update.sh` | `server/` | Build and start what is checked out, after `git pull`. Saves the log of the old container to `~/la2l-server-logs` first (Docker drops it with the container), then waits for the health check |
+| `bash deploy/update.sh` | `server/` | Build and start what is checked out, after `git pull`. Saves the log of the old container to `~/la2l-server-logs` first (Docker drops it with the container), backs up the database, then waits for the health check |
+| `bash deploy/backup.sh` | `server/` | Copies the database to `~/la2l-server-backups` and keeps the newest 30, whether the server runs or not |
+| `bash deploy/restore.sh <backup>` | `server/` | Puts a backup back: checks it, asks, stops the server, backs up the current database, replaces it, starts, and prints how to undo it. Works whether the server runs, is stopped or keeps restarting |
+| `docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh` | `server/` | Checks the deploy scripts, as CI does |
 | `docker compose logs -f --tail=200` | `server/` | Follow the log of the running container |
 | `docker compose restart` | `server/` | Restart without a rebuild; the log stays |
 | `curl -s https://lloydstellar.nl/la2l/api/health` | anywhere | Must answer `{"ok":true,...}` |
@@ -54,8 +57,9 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 - Docker Compose. The container listens on `127.0.0.1:8787` only; the existing web server proxies `/la2l/` to it and keeps doing TLS.
 - nginx: `deploy/nginx-la2l.conf` is installed as `/etc/nginx/snippets/la2l.conf` and included in the 443 server block of lloydstellar.nl by `deploy/install-nginx.sh`, which backs up the site file, tests with `nginx -t` and puts everything back when the test fails. After a change to the snippet, run the script again.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
-- Data (the SQLite database and the package files) lives in a Docker volume, mounted at `/data`.
-- Update: `git pull && bash deploy/update.sh` in `server/`. A plain `docker compose up -d --build` works too, but loses the log of the old container.
+- Data (the SQLite database and the package files) lives in the Docker volume `la2l-server_la2l-data`, mounted at `/data`. At start the server removes leftovers there and marks packages whose files are gone as expired, so a restored database is consistent again.
+- Update: `git pull && bash deploy/update.sh` in `server/`. A plain `docker compose up -d --build` works too, but loses the log of the old container and makes no backup.
+- Backups: only the database (`deploy/backup.sh`, made before every update). The WAV files wait 24 hours at most and are not backed up. Restoring is `deploy/restore.sh`; README.md has the details. Both scripts reach the database through a short-lived container of the server's image with its volume (`deploy/copy-db.js`, `deploy/check-db.js`), so they never depend on the server running. Test them on a scratch container (`LA2L_CONTAINER`, `LA2L_BACKUP_DIR`), never on the real one.
 - GitHub: the clone on the VPS pushes and opens pull requests through the `gh` login of lloydstellar (https). No deploy key: Erik decided that on 2026-10-16, see section 13.1 of the build brief.
 - The website on lloydstellar.nl must keep working, including `http://lloydstellar.nl/test/test-file-voor-max.wav`, which the device's Test import downloads.
 - Ask Erik first before installing system packages, changing the web server, the firewall or another site, or deleting anything outside this repository and the server's volume.

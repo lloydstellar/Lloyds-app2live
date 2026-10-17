@@ -252,9 +252,12 @@ class Store {
     return !!this.sql("SELECT 1 FROM pairings WHERE code = ? AND status = 'waiting' AND expires_at > ? LIMIT 1").get(code, now);
   }
 
+  // A cancelled pairing no longer needs the device token an Add app pairing holds.
   cancelWaitingFor(deviceId, now) {
     return Number(
-      this.sql("UPDATE pairings SET status = 'cancelled', cancelled_at = ? WHERE device_id = ? AND status = 'waiting'").run(now, deviceId).changes
+      this.sql(
+        "UPDATE pairings SET status = 'cancelled', cancelled_at = ?, token_plain = NULL WHERE device_id = ? AND status = 'waiting'"
+      ).run(now, deviceId).changes
     );
   }
 
@@ -284,7 +287,13 @@ class Store {
   }
 
   cancelPairing(id, now) {
-    this.sql("UPDATE pairings SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status = 'waiting'").run(now, id);
+    this.sql("UPDATE pairings SET status = 'cancelled', cancelled_at = ?, token_plain = NULL WHERE id = ? AND status = 'waiting'").run(now, id);
+  }
+
+  // Waiting pairings past their end: the device token of an Add app pairing goes; the row stays
+  // an hour, so the device still hears "expired".
+  forgetEndedTokens(now) {
+    this.sql("UPDATE pairings SET token_plain = NULL WHERE status = 'waiting' AND expires_at <= ? AND token_plain IS NOT NULL").run(now);
   }
 
   deletePairing(id) {
@@ -320,6 +329,15 @@ class Store {
   // The files of a package that have not arrived yet, in manifest order.
   missingFiles(packageId) {
     return this.sql('SELECT file FROM files WHERE package_id = ? AND received = 0 ORDER BY rowid').all(packageId).map((r) => r.file);
+  }
+
+  // The files of a package that arrived, with the size they have on disk.
+  receivedFiles(packageId) {
+    return this.sql('SELECT file, bytes FROM files WHERE package_id = ? AND received = 1').all(packageId);
+  }
+
+  markNotReceived(packageId, file) {
+    this.sql('UPDATE files SET received = 0 WHERE package_id = ? AND file = ?').run(packageId, file);
   }
 
   markReceived(packageId, file) {
@@ -462,7 +480,7 @@ class Store {
 
   // The packages that have a folder on disk.
   packagesWithFiles() {
-    return this.sql("SELECT id FROM packages WHERE status IN ('uploading', 'waiting', 'failed')").all().map((r) => r.id);
+    return this.sql("SELECT id, status FROM packages WHERE status IN ('uploading', 'waiting', 'failed')").all();
   }
 }
 

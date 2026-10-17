@@ -1,5 +1,5 @@
-# Both test suites and the server's Docker image, on every push and pull request, so a broken
-# test or Dockerfile shows up before it reaches the VPS.
+# Both test suites, the server's Docker image and its deploy scripts, on every push and pull
+# request, so a broken test, Dockerfile or script shows up before it reaches the VPS.
 name: Tests
 
 on:
@@ -24,3 +24,6 @@ jobs:
         working-directory: server
       - name: Docker image
         run: docker build -f server/Dockerfile .
+      - name: Deploy scripts
+        run: docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh
+        working-directory: server

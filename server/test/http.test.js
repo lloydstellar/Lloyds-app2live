@@ -143,7 +143,8 @@ test('log: one line per request, with the route pattern and the client address',
     assert.match(lines[0], /^\d{4}-\d\d-\d\dT[\d:.]+Z GET \/api\/health 200 [\d.]+ms in=0 out=\d+ - 203\.0\.113\.9$/);
     assert.match(lines[1], / GET \(unknown\) 404 /);
     assert.doesNotMatch(lines.join('\n'), /secret-looking-path/);
-    assert.match(lines[2], / GET \/ 200 /);
+    const page = (await t.request('GET', '/')).body.length;
+    assert.match(lines[2], new RegExp(` GET / 200 [\\d.]+ms in=0 out=${page} - `), 'a page counts its bytes too');
   } finally {
     await t.stop();
   }
