@@ -16,7 +16,7 @@ The server was built from [BUILD-PROMPT.md](BUILD-PROMPT.md) in phases 0 to 5, f
 
 ## Read first
 
-1. [../docs/server-api.md](../docs/server-api.md): the contract. Both sides are final. The device side is fixed: device 0.1.1 is installed and must keep working. Apps are built against the app side, and LA2L Sender (`public/sender.js`) is its reference client.
+1. [../docs/server-api.md](../docs/server-api.md): the contract. Both sides are final. The device side is fixed: device 0.1.1 is installed and must keep working; device 0.2.0 added `GET /apps` (server 0.6.0). Apps are built against the app side, and LA2L Sender (`public/sender.js`) is its reference client.
 2. [../docs/manifest.md](../docs/manifest.md): the package format.
 3. [../tests/mock-server.js](../tests/mock-server.js): the in-memory stand-in the device tests use. The real server answers every device route the same way.
 4. [../src/node/server.js](../src/node/server.js) and [../src/node/http.js](../src/node/http.js): how the device calls the server (time-outs, redirects, sizes, which status means what).

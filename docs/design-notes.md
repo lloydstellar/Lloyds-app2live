@@ -28,7 +28,7 @@ Live applies some clip changes a moment later (switching warp on, for example). 
 2. Name and colour on the track.
 3. `ClipSlot.create_audio_clip(path)` in a Session slot: in Session mode the slot in a new scene at the top of the Session (`Song.create_scene(0)`), in Arrangement mode slot 0 of the new track. The native path is tried first, then the same path with forward slashes, and the log says which form worked.
 4. Warp, warp mode, tempo and loop (below), then clip gain.
-5. Arrangement mode: `Track.duplicate_clip_to_arrangement(clip, time)` at the playhead rounded to the nearest bar, then the Session clip is deleted. `Track.create_audio_clip(path, time)` would put the clip straight into the Arrangement, but its length is then the whole file and cannot be changed afterwards; the copy of a looped Session clip gets exactly the loop length. If the copy fails, the clip stays in the Session slot and the log says why.
+5. Arrangement mode: `Track.duplicate_clip_to_arrangement(clip, time)` at 1.1.1 (beat 0), then the Session clip is deleted. Until 0.1.1 this was the playhead rounded to the nearest bar; after playing, the playhead can be minutes into the Set, and the new sounds then landed out of sight. `Track.create_audio_clip(path, time)` would put the clip straight into the Arrangement, but its length is then the whole file and cannot be changed afterwards; the copy of a looped Session clip gets exactly the loop length. If the copy fails, the clip stays in the Session slot and the log says why.
 6. If anything fails, the new track is deleted again, so a failed sound never leaves an empty track. The other sounds of the package still go in. A new scene that got no clip at all is deleted too.
 7. The first new track is selected and its clip shown.
 
@@ -61,12 +61,17 @@ After every step it reads the markers back. The report per sound says `exact` (L
 
 - With a saved Set (`Song.file_path`), sounds go to `<project>/Samples/LA2L/<YYYY-MM-DD HHMM> <title>/`, so Collect All and Save keeps working. Otherwise to `Documents/Lloyds App2Live/Inbox/...`.
 - File names come from the sound name, cleaned to letters, digits, space, `-` and `_`. Names from a package never become a path, and an existing file is never overwritten.
-- A download goes to `<file>.part` and is renamed only when size and sha256 match.
+- A download goes to `<file>.part` and is renamed only when size and sha256 match. When the server answers a download with an error, the device keeps the first 64 KB of that answer and shows the server's `error` text after its own message, as for JSON calls.
+- The WAV header is read by walking its chunks, 8 bytes at a time. After 1000 chunks without both `fmt ` and `data` the file is refused as damaged: real files have a handful, and a file built of millions of empty chunks would otherwise keep Node busy for seconds. The server uses the same check (`src/node/wav.js`).
 - A Mac path in Max notation (`Macintosh HD:/Users/...`) loses its volume name before Node or Live uses it.
 
 ## Never twice
 
 `settings.json` keeps the last 200 imported package ids. If the server did not get the confirmation (the ack), the package shows up again; the device then confirms it again without placing it.
+
+## Which apps are paired
+
+The device learns the name of an app from the `paired` answer when that app pairs. Nothing tells it when an app unpairs itself, so from 0.2.0 it asks the server (`GET /apps`) when Live loads the device, after every Import and in Self test, and shows what the server says. With no apps left the computer stays paired: its token still works, packages that wait can still be imported, and Add app pairs a new app with the same token. A server without that call (404) leaves the names as they were. An answer that comes back after a pairing finished is not used, so it cannot drop the app that just paired.
 
 ## The patch
 
@@ -91,11 +96,11 @@ The simulated Live follows the Live Object Model documentation and what Live 12.
 | Whether `add_warp_marker` keeps `beat_time` when `sample_time` is given too | Yes, on Windows: in the 0.1.1 test a 135 BPM loop in a 120 BPM Set showed BPM 135.00 and Start 1.1.1, so the end marker did it | `"tempo":"exact (end marker)"` means yes, `"exact (first marker)"` means no |
 | Whether `Song.create_scene(0)` puts the new scene at the top | Yes, on Windows (0.1.1 test) | The Session View itself |
 | Whether `Song.file_path` gives the Set's path | Yes, on Windows | `Set: <path>` in the `Live 12.x.x` line |
+| Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)) | `Inbox:` and `Paired with` |
 
 ## Next steps
 
-1. Test 0.1.1 in Live on Windows and on a Mac (see [test-card-en.md](test-card-en.md)), and fix what the log shows.
-2. The server on lloydstellar.nl, following [server-api.md](server-api.md).
-3. The Android share target and the web app side.
-4. Freeze for release: the bundled `la2l-node.js`, `la2l-live.js` and the logos must all be listed in the Max console when freezing.
-5. MIDI parts (`midi` in the manifest): a MIDI track with a Simpler per drum sound.
+1. Test 0.2.0 in Live on Windows and on a Mac (see [test-card-en.md](test-card-en.md)), and fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
+2. The Android share target and the web app side, against the app side of [server-api.md](server-api.md). The server runs (`server/`).
+3. Freeze for release: the bundled `la2l-node.js`, `la2l-live.js` and the logos must all be listed in the Max console when freezing.
+4. MIDI parts (`midi` in the manifest): a MIDI track with a Simpler per drum sound.

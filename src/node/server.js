@@ -4,6 +4,7 @@
 
 const { URL } = require('url');
 const { requestJson, download, NetError } = require('./http');
+const { cleanName } = require('./text');
 
 // The server address from the settings. Only https, except localhost (for tests and self-hosting on one computer).
 function checkServerUrl(text) {
@@ -70,6 +71,12 @@ class Server {
     return this.call('GET', '/inbox');
   }
 
+  // The apps that can send to this computer now (device 0.2.0, la2l-server 0.6.0). An older
+  // server answers 404.
+  apps() {
+    return this.call('GET', '/apps');
+  }
+
   manifest(packageId) {
     return this.call('GET', '/packages/' + encodeURIComponent(packageId) + '/manifest');
   }
@@ -104,4 +111,17 @@ function readInbox(answer) {
     .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
 }
 
-module.exports = { Server, checkServerUrl, readInbox };
+// The answer of GET /apps: how many apps there are, and their names once each, oldest first.
+// null when the answer has no list.
+function readApps(answer) {
+  if (!answer || !Array.isArray(answer.apps)) return null;
+  const apps = answer.apps.filter((a) => a && typeof a === 'object');
+  const names = [];
+  for (const a of apps.slice(0, 1000)) {
+    const name = cleanName(typeof a.name === 'string' ? a.name : '', 'App', 40);
+    if (!names.includes(name)) names.push(name);
+  }
+  return { count: apps.length, names: names.slice(0, 50) };
+}
+
+module.exports = { Server, checkServerUrl, readInbox, readApps };

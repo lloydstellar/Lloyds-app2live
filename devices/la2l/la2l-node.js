@@ -56,7 +56,7 @@ const { URL } = require('url');
 const { spawn } = require('child_process');
 const { VERSION } = require('./version');
 const { Store, Log } = require('./settings');
-const { Server, readInbox } = require('./server');
+const { Server, readInbox, readApps } = require('./server');
 const { download, anyWebAddress, NetError } = require('./http');
 const { LiveBridge } = require('./live-bridge');
 const wav = require('./wav');
@@ -163,6 +163,8 @@ class App {
     this.tempoHint = null; // { bpm } offered with the "Use N BPM" button
     this.unpairArmedAt = 0;
     this.refreshing = false;
+    this.appsSerial = 0; // goes up with every pairing, so an app list asked before it is not used
+    this.startup = null; // the app list asked at start, a promise (tests wait for it)
   }
 
   // ---- log, status and errors ----
@@ -202,6 +204,7 @@ class App {
     this.showView();
     this.status(this.store.pairing ? 'Ready. Click Import to get new sounds.' : 'Ready.');
     this.refreshLive();
+    this.startup = this.checkApps();
   }
 
   sendSettings() {
@@ -212,7 +215,7 @@ class App {
 
   showPairedWith() {
     const apps = this.store.pairing ? this.store.pairing.apps : [];
-    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'Paired.'));
+    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'No app paired. Add one in Settings.'));
   }
 
   // The patch shows one view at a time: unpaired, pairing, paired, or the settings on top.
@@ -383,6 +386,7 @@ class App {
           const apps = same ? d.pairing.apps.filter((a) => a !== appName) : [];
           d.pairing = { token: r.device_token, apps: apps.concat(appName), pairedAt: new Date().toISOString() };
         });
+        this.appsSerial++;
         this.stopPairing();
         this.log(`Paired with ${appName}`);
         this.showPairedWith();
@@ -439,6 +443,60 @@ class App {
     this.setTempoHint(null);
   }
 
+  // ---- the apps of this computer ----
+
+  // Asks the server which apps can send to this computer now, and shows them ("Paired with ...").
+  // An app that unpaired itself drops out; nothing else tells the device. Resolves to
+  // { count, names }, or to null when the server does not say: a server older than 0.6.0
+  // answers 404, and then the device keeps the names it learned when pairing. A 401 is thrown.
+  async refreshApps(server) {
+    const token = this.store.pairing ? this.store.pairing.token : null;
+    if (!token) return null;
+    const serial = this.appsSerial;
+    let apps;
+    try {
+      apps = readApps(await server.apps());
+    } catch (e) {
+      if (e instanceof NetError && e.kind === 'unauthorized') throw e;
+      this.log(`App list: ${e instanceof NetError && e.status === 404 ? 'this server does not give one (older than 0.6.0)' : e.message}`);
+      return null;
+    }
+    if (!apps) {
+      this.log('App list: the server sent no list.');
+      return null;
+    }
+    this.store.load();
+    // A pairing that finished while we asked knows more than this answer.
+    if (!this.store.pairing || this.store.pairing.token !== token || this.appsSerial !== serial) return apps;
+    const before = this.store.pairing.apps;
+    if (before.join('\n') !== apps.names.join('\n')) {
+      this.store.update((d) => {
+        d.pairing.apps = apps.names;
+      });
+      this.log(`Apps of this computer: ${apps.names.join(', ') || 'none'} (before: ${before.join(', ') || 'none'})`);
+    }
+    this.showPairedWith();
+    return apps;
+  }
+
+  // At start, in the background: the apps of this computer, or that it is no longer paired.
+  async checkApps() {
+    const token = this.store.pairing ? this.store.pairing.token : null;
+    if (!token) return;
+    try {
+      await this.refreshApps(this.server());
+    } catch (e) {
+      this.log('App list at start: ' + e.message);
+      if (!(e instanceof NetError && e.kind === 'unauthorized')) return;
+      this.store.load();
+      if (!this.store.pairing || this.store.pairing.token !== token) return; // paired again meanwhile
+      this.forgetPairing();
+      if (this.pairing) return; // a code is showing: that pairing goes on with a new token
+      this.setView('unpaired');
+      this.status('This computer is no longer paired. Click Pair app to pair again.');
+    }
+  }
+
   // A 401 from the server means the token is gone (unpaired in the app, or revoked).
   handleError(prefix, e) {
     if (e instanceof NetError && e.kind === 'unauthorized') {
@@ -478,6 +536,7 @@ class App {
       this.log(`Inbox: ${packages.length} package(s): ${packages.map((p) => p.id).join(' ')}`);
       if (!packages.length) {
         this.status('Nothing new yet. Send a sound from your app first.');
+        await this.refreshApps(server);
         return;
       }
       const done = [];
@@ -489,6 +548,7 @@ class App {
         done.push(r);
       }
       this.status(this.summary(done, live));
+      await this.refreshApps(server);
     } catch (e) {
       this.handleError('Import stopped.', e);
     } finally {
@@ -823,7 +883,9 @@ class App {
       } else if (server) {
         try {
           const list = readInbox(await server.inbox());
-          parts.push(`paired with ${list.length} waiting`);
+          const apps = await this.refreshApps(server);
+          parts.push(apps ? (apps.count ? `paired with ${t.plural(apps.count, 'app')}` : 'no app paired') : 'paired');
+          parts.push(`${list.length} waiting`);
         } catch (e) {
           if (e instanceof NetError && e.kind === 'unauthorized') {
             this.forgetPairing();
@@ -888,7 +950,7 @@ class App {
     this.store.update((d) => {
       d.settings.placement = placement;
     });
-    this.status(placement === 'session' ? 'New sounds go to a new scene in Session View.' : 'New sounds go to the Arrangement at the playhead.');
+    this.status(placement === 'session' ? 'New sounds go to a new scene in Session View.' : 'New sounds go to the start of the Arrangement at 1.1.1.');
   }
 
   setNewTracks(value) {
@@ -909,7 +971,7 @@ __la2l.defs["version"] = function (module, exports, require) {
 // One place for the version and the names. tools/gen-patch.js and the tests read this file too.
 
 module.exports = {
-  VERSION: '0.1.1',
+  VERSION: '0.2.0',
   NAME: "Lloyd's App2Live",
   SHORT: 'LA2L',
   // The manifest format this device understands (see docs/manifest.md).
@@ -935,7 +997,7 @@ const { VERSION, FOLDER_NAME } = require('./version');
 const DEFAULT_SETTINGS = {
   // The App2Live server. Only https, except localhost for testing.
   serverUrl: 'https://lloydstellar.nl/la2l/api',
-  // Where new sounds go: 'arrangement' (at the playhead) or 'session' (a new scene).
+  // Where new sounds go: 'arrangement' (at 1.1.1) or 'session' (a new scene at the top).
   placement: 'arrangement',
   // Where new tracks go: 'afterDevice' (right after the track with this device) or 'end'.
   newTracks: 'afterDevice',
@@ -1130,6 +1192,7 @@ __la2l.defs["server"] = function (module, exports, require) {
 
 const { URL } = require('url');
 const { requestJson, download, NetError } = require('./http');
+const { cleanName } = require('./text');
 
 // The server address from the settings. Only https, except localhost (for tests and self-hosting on one computer).
 function checkServerUrl(text) {
@@ -1196,6 +1259,12 @@ class Server {
     return this.call('GET', '/inbox');
   }
 
+  // The apps that can send to this computer now (device 0.2.0, la2l-server 0.6.0). An older
+  // server answers 404.
+  apps() {
+    return this.call('GET', '/apps');
+  }
+
   manifest(packageId) {
     return this.call('GET', '/packages/' + encodeURIComponent(packageId) + '/manifest');
   }
@@ -1230,7 +1299,20 @@ function readInbox(answer) {
     .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
 }
 
-module.exports = { Server, checkServerUrl, readInbox };
+// The answer of GET /apps: how many apps there are, and their names once each, oldest first.
+// null when the answer has no list.
+function readApps(answer) {
+  if (!answer || !Array.isArray(answer.apps)) return null;
+  const apps = answer.apps.filter((a) => a && typeof a === 'object');
+  const names = [];
+  for (const a of apps.slice(0, 1000)) {
+    const name = cleanName(typeof a.name === 'string' ? a.name : '', 'App', 40);
+    if (!names.includes(name)) names.push(name);
+  }
+  return { count: apps.length, names: names.slice(0, 50) };
+}
+
+module.exports = { Server, checkServerUrl, readInbox, readApps };
 
 };
 
@@ -1260,6 +1342,8 @@ class NetError extends Error {
 }
 
 const USER_AGENT = `LA2L/${VERSION} (Max for Live; ${process.platform})`;
+// Of an error answer to a download, only this much is kept: enough for {"error": "..."}.
+const ERROR_BODY_BYTES = 65536;
 
 const TLS_CODES = new Set([
   'CERT_HAS_EXPIRED',
@@ -1387,13 +1471,17 @@ function exchange(urlText, opts = {}) {
         return exchange(next.href, nextOpts).then(resolve, reject);
       }
 
+      const ok = status >= 200 && status < 300;
+      // An error answer to a download is not the file: its size does not count, and only its
+      // start is kept, for the server's message.
+      const errorOfDownload = toFile && !ok;
       const declared = Number(res.headers['content-length']);
-      if (declared > maxBytes) {
+      if (declared > maxBytes && !errorOfDownload) {
         res.resume();
         return finish(new NetError(`The file is too large (${Math.round(declared / 1048576)} MB).`, { kind: 'toolarge', status, url: url.href }));
       }
-      const ok = status >= 200 && status < 300;
       let received = 0;
+      let kept = 0;
       const chunks = [];
       const hash = crypto.createHash('sha256');
       if (toFile && ok) {
@@ -1403,6 +1491,14 @@ function exchange(urlText, opts = {}) {
       }
       res.on('data', (chunk) => {
         received += chunk.length;
+        if (errorOfDownload) {
+          if (kept < ERROR_BODY_BYTES) {
+            const part = chunk.subarray(0, ERROR_BODY_BYTES - kept);
+            chunks.push(part);
+            kept += part.length;
+          }
+          return;
+        }
         if (received > maxBytes) {
           return finish(new NetError('The file is larger than the package said.', { kind: 'toolarge', status, url: url.href }));
         }
@@ -1474,7 +1570,8 @@ async function download(url, file, opts = {}) {
     try {
       const r = await exchange(url, Object.assign({ timeoutMs: 10 * 60000, idleMs: 20000 }, opts, { toFile: part }));
       if (r.status < 200 || r.status >= 300) {
-        throw statusError(r.status, '', r.url);
+        // The server's own text, as for JSON calls: "The file is gone. Send it again."
+        throw statusError(r.status, serverText(r.body), r.url);
       }
       if (expectBytes !== null && r.bytes !== expectBytes) {
         throw new NetError(`The file arrived damaged (${r.bytes} instead of ${expectBytes} bytes).`, { kind: 'checksum', url: r.url });
@@ -1494,476 +1591,6 @@ async function download(url, file, opts = {}) {
 }
 
 module.exports = { NetError, exchange, requestJson, download, sameOrigin, anyWebAddress, parseUrl, statusError, codeError, USER_AGENT };
-
-};
-
-__la2l.defs["live-bridge"] = function (module, exports, require) {
-'use strict';
-// Requests from Node to the Live part of the device, and their answers.
-// Node for Max cannot use the Live API. Node sends "tolive request <json>" to the patch, the [v8]
-// script la2l-live.js does the work in Live and answers with "live <json>". Answers are matched by id.
-
-class LiveError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'LiveError';
-  }
-}
-
-class LiveBridge {
-  // send(...values) sends one message to Max. log(line) writes to the log file.
-  constructor(send, log) {
-    this.send = send;
-    this.log = log || (() => {});
-    this.pending = new Map();
-    this.nextId = 1;
-  }
-
-  // Resolves with the answer. Rejects when the Live part stays silent for timeoutMs.
-  // Each progress message starts that time again: an import of many sounds may take a while.
-  request(type, payload = {}, opts = {}) {
-    const { timeoutMs = 5000, onProgress = null } = opts;
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      const entry = { resolve, reject, onProgress, timer: null };
-      entry.arm = () => {
-        clearTimeout(entry.timer);
-        entry.timer = setTimeout(() => {
-          this.pending.delete(id);
-          reject(
-            new LiveError(
-              type === 'getinfo'
-                ? 'The Live part of LA2L does not answer. LA2L needs Live 12.4 or newer.'
-                : 'Live stopped answering. Check the tracks and try again.'
-            )
-          );
-        }, timeoutMs);
-      };
-      this.pending.set(id, entry);
-      entry.arm();
-      this.send('tolive', 'request', JSON.stringify(Object.assign({}, payload, { id, type })));
-    });
-  }
-
-  // A "live <json>" message from the v8 script.
-  receive(text) {
-    let msg;
-    try {
-      msg = JSON.parse(String(text));
-    } catch (e) {
-      this.log('Live part sent something unreadable: ' + String(text).slice(0, 200));
-      return;
-    }
-    if (!msg || typeof msg !== 'object') return;
-    if (msg.type === 'log') {
-      this.log('live: ' + msg.text);
-      return;
-    }
-    const entry = this.pending.get(msg.id);
-    if (!entry) return; // an answer that came after its time-out
-    if (msg.type === 'progress') {
-      entry.arm();
-      if (entry.onProgress) {
-        try { entry.onProgress(msg); } catch (e) { this.log('progress handler failed: ' + e.message); }
-      }
-      return;
-    }
-    clearTimeout(entry.timer);
-    this.pending.delete(msg.id);
-    entry.resolve(msg);
-  }
-}
-
-module.exports = { LiveBridge, LiveError };
-
-};
-
-__la2l.defs["wav"] = function (module, exports, require) {
-'use strict';
-// Reads the header of a WAV file, and writes simple 16-bit WAV files (for the built-in test loop).
-// Only the header is read: Live reads the sound itself. The header tells us whether Live can
-// use the file and how long it is, which the device needs to work out the loop length.
-
-const fs = require('fs');
-
-class WavError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'WavError';
-  }
-}
-
-const PCM = 1;
-const FLOAT = 3;
-const EXTENSIBLE = 0xfffe;
-
-function parseFmt(b) {
-  if (b.length < 16) throw new WavError('The WAV header is damaged.');
-  const fmt = {
-    formatTag: b.readUInt16LE(0),
-    channels: b.readUInt16LE(2),
-    sampleRate: b.readUInt32LE(4),
-    blockAlign: b.readUInt16LE(12),
-    bitsPerSample: b.readUInt16LE(14),
-  };
-  // WAVE_FORMAT_EXTENSIBLE keeps the real format in the first two bytes of a GUID.
-  if (fmt.formatTag === EXTENSIBLE && b.length >= 26) fmt.formatTag = b.readUInt16LE(24);
-  return fmt;
-}
-
-function check(fmt) {
-  const { formatTag, channels, sampleRate, bitsPerSample } = fmt;
-  if (formatTag === PCM) {
-    if (![8, 16, 24, 32].includes(bitsPerSample)) throw new WavError(`${bitsPerSample}-bit PCM is not supported. Use 16 or 24 bit.`);
-  } else if (formatTag === FLOAT) {
-    if (![32, 64].includes(bitsPerSample)) throw new WavError(`${bitsPerSample}-bit float is not supported. Use 32-bit float.`);
-  } else {
-    throw new WavError(`This WAV file is compressed (format ${formatTag}). Send plain PCM or float WAV.`);
-  }
-  if (channels < 1 || channels > 2) throw new WavError(`The WAV file has ${channels} channels. Live places mono and stereo files only.`);
-  if (sampleRate < 8000 || sampleRate > 192000) throw new WavError(`The sample rate ${sampleRate} Hz is not supported.`);
-}
-
-// Returns { format, channels, sampleRate, bitsPerSample, blockAlign, dataOffset, dataBytes, frames, duration, fileBytes }.
-function readInfo(file) {
-  const fd = fs.openSync(file, 'r');
-  try {
-    const size = fs.fstatSync(fd).size;
-    const head = Buffer.alloc(12);
-    if (size < 12 || fs.readSync(fd, head, 0, 12, 0) < 12) throw new WavError('The file is too short to be a WAV file.');
-    const riff = head.toString('latin1', 0, 4);
-    if (riff === 'RF64' || riff === 'BW64') throw new WavError('RF64 files are not supported. Send a normal WAV file.');
-    if (riff !== 'RIFF' || head.toString('latin1', 8, 12) !== 'WAVE') throw new WavError('This is not a WAV file.');
-
-    let pos = 12;
-    let fmt = null;
-    let data = null;
-    const hdr = Buffer.alloc(8);
-    // Walk the chunks. Large chunks we do not need (LIST, bext, JUNK) are skipped, not read.
-    while (pos + 8 <= size && !(fmt && data)) {
-      fs.readSync(fd, hdr, 0, 8, pos);
-      const id = hdr.toString('latin1', 0, 4);
-      let len = hdr.readUInt32LE(4);
-      const body = pos + 8;
-      if (id === 'fmt ') {
-        const b = Buffer.alloc(Math.min(len, 64));
-        fs.readSync(fd, b, 0, b.length, body);
-        fmt = parseFmt(b);
-      } else if (id === 'data') {
-        // Some recorders leave the size at 0 or 0xFFFFFFFF while writing: use what is there.
-        if (len === 0 || len === 0xffffffff || body + len > size) len = size - body;
-        data = { offset: body, bytes: len };
-      }
-      pos = body + len + (len & 1);
-    }
-    if (!fmt) throw new WavError('The WAV file has no format block.');
-    if (!data) throw new WavError('The WAV file has no sound data.');
-    check(fmt);
-    const blockAlign = fmt.blockAlign || (fmt.channels * fmt.bitsPerSample) / 8;
-    const frames = Math.floor(data.bytes / blockAlign);
-    if (frames < 1) throw new WavError('The WAV file is empty.');
-    return {
-      format: fmt.formatTag === FLOAT ? 'float' : 'pcm',
-      channels: fmt.channels,
-      sampleRate: fmt.sampleRate,
-      bitsPerSample: fmt.bitsPerSample,
-      blockAlign,
-      dataOffset: data.offset,
-      dataBytes: data.bytes,
-      frames,
-      duration: frames / fmt.sampleRate,
-      fileBytes: size,
-    };
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-
-// A 16-bit PCM WAV file in memory. samples: numbers from -1 to 1, interleaved when stereo.
-function buildWav16(samples, channels, sampleRate) {
-  const dataBytes = samples.length * 2;
-  const b = Buffer.alloc(44 + dataBytes);
-  b.write('RIFF', 0, 'latin1');
-  b.writeUInt32LE(36 + dataBytes, 4);
-  b.write('WAVE', 8, 'latin1');
-  b.write('fmt ', 12, 'latin1');
-  b.writeUInt32LE(16, 16);
-  b.writeUInt16LE(PCM, 20);
-  b.writeUInt16LE(channels, 22);
-  b.writeUInt32LE(sampleRate, 24);
-  b.writeUInt32LE(sampleRate * channels * 2, 28);
-  b.writeUInt16LE(channels * 2, 32);
-  b.writeUInt16LE(16, 34);
-  b.write('data', 36, 'latin1');
-  b.writeUInt32LE(dataBytes, 40);
-  for (let i = 0; i < samples.length; i++) {
-    const v = Math.max(-1, Math.min(1, samples[i]));
-    b.writeInt16LE(Math.round(v * 32767), 44 + i * 2);
-  }
-  return b;
-}
-
-function writeWav16(file, samples, channels, sampleRate) {
-  fs.writeFileSync(file, buildWav16(samples, channels, sampleRate));
-}
-
-module.exports = { readInfo, buildWav16, writeWav16, WavError };
-
-};
-
-__la2l.defs["manifest"] = function (module, exports, require) {
-'use strict';
-// The App2Live manifest (docs/manifest.md). Checks a package description from an app and works
-// out how each sound goes into Live: warp on or off, warp mode, tempo and loop length.
-// The app only says what a sound is (loop or one-shot, drums or vocal); the device picks the Live settings.
-
-const { SCHEMA } = require('./version');
-const { cleanName, megabytes } = require('./text');
-
-const LIMITS = {
-  maxItems: 32,
-  maxPackageBytes: 200 * 1048576,
-};
-
-const ROLES = ['drums', 'bass', 'melodic', 'vocal', 'texture', 'fx'];
-
-// Live's warp modes (Clip.warp_mode). 5 is REX, which only REX files use.
-const WARP_MODES = { beats: 0, tones: 1, texture: 2, repitch: 3, complex: 4, complexpro: 6 };
-const MODE_NAMES = { 0: 'Beats', 1: 'Tones', 2: 'Texture', 3: 'Re-Pitch', 4: 'Complex', 6: 'Complex Pro' };
-
-// Role -> warp mode. Complex Pro sounds best on mixed material but costs the most CPU,
-// so only melodic parts and vocals get it.
-const ROLE_MODES = { drums: 0, bass: 1, melodic: 6, vocal: 6, texture: 2, fx: 4 };
-const DEFAULT_MODE = 4; // Complex, for fx and sounds without a role
-
-// Colours close to Live's palette. Live picks the nearest colour of its own palette anyway.
-const PALETTE = ['#FF94A6', '#FFA529', '#F7F47C', '#BFFB00', '#1AFF2F', '#5CFFE8', '#8BC5FF', '#5480E4', '#D86CE4', '#E553A0'];
-
-class ManifestError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ManifestError';
-  }
-}
-
-const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-
-function parseColor(v) {
-  if (typeof v !== 'string') return null;
-  const m = /^#?([0-9a-f]{6})$/i.exec(v.trim());
-  return m ? parseInt(m[1], 16) : null;
-}
-
-function paletteColor(index) {
-  return parseColor(PALETTE[((index % PALETTE.length) + PALETTE.length) % PALETTE.length]);
-}
-
-function parseWarpMode(v) {
-  if (typeof v === 'number') return [0, 1, 2, 3, 4, 6].includes(v) ? v : null;
-  if (typeof v !== 'string') return null;
-  const key = v.toLowerCase().replace(/[\s_-]/g, '');
-  return key in WARP_MODES ? WARP_MODES[key] : null;
-}
-
-function parseKind(v) {
-  const k = typeof v === 'string' ? v.toLowerCase().replace(/[\s_-]/g, '') : '';
-  if (k === 'loop') return 'loop';
-  if (k === 'oneshot') return 'oneshot';
-  return null;
-}
-
-// A file name as the server knows it. Used only to build the download address; the file on
-// disk gets a name made from the sound's name.
-function validFile(v) {
-  return typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,99}$/.test(v) && /\.wav$/i.test(v) && !v.includes('..');
-}
-
-// Checks a manifest and returns { pkg, warnings }. Problems with the whole package throw a
-// ManifestError. A problem with one sound only marks that sound (item.error), the rest still goes in.
-function validate(raw) {
-  const warnings = [];
-  if (!isObject(raw)) throw new ManifestError('The package description is not valid.');
-  if (typeof raw.schema !== 'string') throw new ManifestError('This is not an App2Live package.');
-  if (raw.schema !== SCHEMA) {
-    if (/^app2live\/\d+$/.test(raw.schema)) throw new ManifestError(`This package uses ${raw.schema}. Update LA2L to import it.`);
-    throw new ManifestError('This is not an App2Live package.');
-  }
-  if (typeof raw.package_id !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(raw.package_id)) {
-    throw new ManifestError('The package has no valid package_id.');
-  }
-  const source = isObject(raw.source) ? raw.source : {};
-  const tempo = isObject(raw.tempo) ? raw.tempo : {};
-  const pkg = {
-    packageId: raw.package_id,
-    title: cleanName(raw.title, 'Untitled', 60),
-    app: cleanName(source.app, 'App', 40),
-    appVersion: typeof source.app_version === 'string' ? source.app_version.slice(0, 40) : '',
-    platform: typeof source.platform === 'string' ? source.platform.slice(0, 40) : '',
-    createdAt: typeof raw.created_at === 'string' ? raw.created_at.slice(0, 40) : '',
-    bpm: null,
-    timeSignature: null,
-    items: [],
-    midiCount: Array.isArray(raw.midi) ? raw.midi.length : 0,
-  };
-  if (!raw.title) warnings.push('no title');
-  if (!source.app) warnings.push('no source.app');
-  if (tempo.bpm !== undefined) {
-    const b = num(tempo.bpm);
-    if (b !== null && b >= 20 && b <= 999) pkg.bpm = b;
-    else warnings.push('tempo.bpm is not a number from 20 to 999');
-  }
-  const ts = tempo.time_signature;
-  if (Array.isArray(ts) && ts.length === 2 && Number.isInteger(ts[0]) && Number.isInteger(ts[1])) pkg.timeSignature = ts;
-  if (pkg.midiCount) warnings.push(`${pkg.midiCount} MIDI parts ignored (MIDI comes in a later version)`);
-
-  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new ManifestError('The package has no sounds.');
-  if (raw.items.length > LIMITS.maxItems) {
-    throw new ManifestError(`The package has ${raw.items.length} sounds. LA2L takes ${LIMITS.maxItems} at most.`);
-  }
-
-  const files = new Set();
-  let total = 0;
-  raw.items.forEach((it, index) => {
-    const item = {
-      index,
-      id: '',
-      file: '',
-      sha256: null,
-      bytes: null,
-      name: `Sound ${index + 1}`,
-      kind: 'oneshot',
-      role: null,
-      lengthBeats: null,
-      warpMode: null,
-      bpm: null,
-      color: null,
-      gainDb: null,
-      error: null,
-    };
-    pkg.items.push(item);
-    if (!isObject(it)) {
-      item.error = 'is not described correctly';
-      return;
-    }
-    item.id = typeof it.id === 'string' && it.id ? it.id.slice(0, 100) : String(index + 1);
-    item.name = cleanName(it.name, `Sound ${index + 1}`, 40);
-    if (!validFile(it.file)) {
-      item.error = 'has no valid file name';
-      return;
-    }
-    if (files.has(it.file.toLowerCase())) {
-      item.error = 'uses the same file as another sound';
-      return;
-    }
-    files.add(it.file.toLowerCase());
-    item.file = it.file;
-
-    if (typeof it.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(it.sha256)) item.sha256 = it.sha256.toLowerCase();
-    else if (it.sha256 !== undefined) warnings.push(`${item.name}: sha256 ignored`);
-    if (Number.isInteger(it.bytes) && it.bytes > 0) {
-      item.bytes = it.bytes;
-      total += it.bytes;
-    } else if (it.bytes !== undefined) warnings.push(`${item.name}: bytes ignored`);
-
-    const kind = parseKind(it.kind);
-    if (kind) item.kind = kind;
-    else warnings.push(`${item.name}: kind "${it.kind}" unknown, placed as one-shot`);
-
-    if (typeof it.role === 'string' && ROLES.includes(it.role.toLowerCase())) item.role = it.role.toLowerCase();
-    else if (it.role !== undefined) warnings.push(`${item.name}: role "${it.role}" unknown`);
-
-    if (it.length_beats !== undefined) {
-      const l = num(it.length_beats);
-      if (l !== null && l > 0 && l <= 4096) item.lengthBeats = l;
-      else warnings.push(`${item.name}: length_beats ignored`);
-    }
-    if (it.warp_mode !== undefined) {
-      item.warpMode = parseWarpMode(it.warp_mode);
-      if (item.warpMode === null) warnings.push(`${item.name}: warp_mode "${it.warp_mode}" unknown`);
-    }
-    if (it.bpm !== undefined) {
-      const b = num(it.bpm);
-      if (b !== null && b >= 20 && b <= 999) item.bpm = b;
-      else warnings.push(`${item.name}: bpm ignored`);
-    }
-    if (it.color !== undefined) {
-      item.color = parseColor(it.color);
-      if (item.color === null) warnings.push(`${item.name}: color ignored`);
-    }
-    if (it.gain_db !== undefined) {
-      const g = num(it.gain_db);
-      if (g !== null) item.gainDb = Math.max(-70, Math.min(24, g));
-      else warnings.push(`${item.name}: gain_db ignored`);
-    }
-  });
-  if (total > LIMITS.maxPackageBytes) {
-    throw new ManifestError(`The package is ${megabytes(total)}. LA2L takes ${megabytes(LIMITS.maxPackageBytes)} at most.`);
-  }
-  return { pkg, warnings };
-}
-
-// A loop that is within 0.1 beat of a whole number of beats was meant to be that long.
-function snapBeats(raw) {
-  const whole = Math.round(raw);
-  if (whole >= 1 && Math.abs(raw - whole) <= 0.1) return whole;
-  return Math.round(raw * 1000) / 1000;
-}
-
-// How one sound goes into Live, given its length in seconds (from the WAV header).
-//   one-shot: warp off, loop off. It plays exactly as the app made it.
-//   loop: warp on, warp mode from the role, the tempo of the package, looped over its length.
-function planItem(item, pkg, duration) {
-  if (item.kind !== 'loop') {
-    return { warp: false, looping: false, warpMode: null, bpm: null, lengthBeats: null };
-  }
-  const warpMode = item.warpMode !== null ? item.warpMode : item.role ? ROLE_MODES[item.role] : DEFAULT_MODE;
-  let bpm = item.bpm || pkg.bpm || null;
-  let lengthBeats = item.lengthBeats || null;
-  if (!bpm && lengthBeats && duration > 0) bpm = (60 * lengthBeats) / duration;
-  if (bpm && (bpm < 5 || bpm > 999)) bpm = null;
-  if (bpm && !lengthBeats && duration > 0) lengthBeats = snapBeats((duration * bpm) / 60);
-  return { warp: true, looping: true, warpMode, bpm, lengthBeats };
-}
-
-function trackName(item, pkg, settings) {
-  return settings.appNameInTrackName ? `${item.name} (${pkg.app})` : item.name;
-}
-
-function sceneName(pkg) {
-  return `${pkg.title} (${pkg.app})`;
-}
-
-// The package that Test import places: one sound from the test address in the settings.
-function testManifest(settings) {
-  return {
-    schema: SCHEMA,
-    package_id: 'la2l-test-' + Date.now(),
-    created_at: new Date().toISOString(),
-    title: 'Test import',
-    source: { app: 'LA2L', platform: 'test' },
-    tempo: { bpm: settings.testBpm },
-    items: [{ id: 'test', file: 'test.wav', name: settings.testName, kind: settings.testKind, role: settings.testRole }],
-  };
-}
-
-module.exports = {
-  LIMITS,
-  ROLES,
-  ROLE_MODES,
-  MODE_NAMES,
-  PALETTE,
-  ManifestError,
-  validate,
-  planItem,
-  snapBeats,
-  parseColor,
-  paletteColor,
-  parseWarpMode,
-  trackName,
-  sceneName,
-  testManifest,
-};
 
 };
 
@@ -2084,6 +1711,484 @@ module.exports = {
   plural,
   bpmText,
   megabytes,
+};
+
+};
+
+__la2l.defs["live-bridge"] = function (module, exports, require) {
+'use strict';
+// Requests from Node to the Live part of the device, and their answers.
+// Node for Max cannot use the Live API. Node sends "tolive request <json>" to the patch, the [v8]
+// script la2l-live.js does the work in Live and answers with "live <json>". Answers are matched by id.
+
+class LiveError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'LiveError';
+  }
+}
+
+class LiveBridge {
+  // send(...values) sends one message to Max. log(line) writes to the log file.
+  constructor(send, log) {
+    this.send = send;
+    this.log = log || (() => {});
+    this.pending = new Map();
+    this.nextId = 1;
+  }
+
+  // Resolves with the answer. Rejects when the Live part stays silent for timeoutMs.
+  // Each progress message starts that time again: an import of many sounds may take a while.
+  request(type, payload = {}, opts = {}) {
+    const { timeoutMs = 5000, onProgress = null } = opts;
+    const id = this.nextId++;
+    return new Promise((resolve, reject) => {
+      const entry = { resolve, reject, onProgress, timer: null };
+      entry.arm = () => {
+        clearTimeout(entry.timer);
+        entry.timer = setTimeout(() => {
+          this.pending.delete(id);
+          reject(
+            new LiveError(
+              type === 'getinfo'
+                ? 'The Live part of LA2L does not answer. LA2L needs Live 12.4 or newer.'
+                : 'Live stopped answering. Check the tracks and try again.'
+            )
+          );
+        }, timeoutMs);
+      };
+      this.pending.set(id, entry);
+      entry.arm();
+      this.send('tolive', 'request', JSON.stringify(Object.assign({}, payload, { id, type })));
+    });
+  }
+
+  // A "live <json>" message from the v8 script.
+  receive(text) {
+    let msg;
+    try {
+      msg = JSON.parse(String(text));
+    } catch (e) {
+      this.log('Live part sent something unreadable: ' + String(text).slice(0, 200));
+      return;
+    }
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'log') {
+      this.log('live: ' + msg.text);
+      return;
+    }
+    const entry = this.pending.get(msg.id);
+    if (!entry) return; // an answer that came after its time-out
+    if (msg.type === 'progress') {
+      entry.arm();
+      if (entry.onProgress) {
+        try { entry.onProgress(msg); } catch (e) { this.log('progress handler failed: ' + e.message); }
+      }
+      return;
+    }
+    clearTimeout(entry.timer);
+    this.pending.delete(msg.id);
+    entry.resolve(msg);
+  }
+}
+
+module.exports = { LiveBridge, LiveError };
+
+};
+
+__la2l.defs["wav"] = function (module, exports, require) {
+'use strict';
+// Reads the header of a WAV file, and writes simple 16-bit WAV files (for the built-in test loop).
+// Only the header is read: Live reads the sound itself. The header tells us whether Live can
+// use the file and how long it is, which the device needs to work out the loop length.
+
+const fs = require('fs');
+
+class WavError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'WavError';
+  }
+}
+
+const PCM = 1;
+const FLOAT = 3;
+const EXTENSIBLE = 0xfffe;
+// Real files have a handful of chunks before the sound data. A file built of millions of empty
+// chunks would keep the walk below busy for many seconds, so it stops here.
+const MAX_CHUNKS = 1000;
+
+function parseFmt(b) {
+  if (b.length < 16) throw new WavError('The WAV header is damaged.');
+  const fmt = {
+    formatTag: b.readUInt16LE(0),
+    channels: b.readUInt16LE(2),
+    sampleRate: b.readUInt32LE(4),
+    blockAlign: b.readUInt16LE(12),
+    bitsPerSample: b.readUInt16LE(14),
+  };
+  // WAVE_FORMAT_EXTENSIBLE keeps the real format in the first two bytes of a GUID.
+  if (fmt.formatTag === EXTENSIBLE && b.length >= 26) fmt.formatTag = b.readUInt16LE(24);
+  return fmt;
+}
+
+function check(fmt) {
+  const { formatTag, channels, sampleRate, bitsPerSample } = fmt;
+  if (formatTag === PCM) {
+    if (![8, 16, 24, 32].includes(bitsPerSample)) throw new WavError(`${bitsPerSample}-bit PCM is not supported. Use 16 or 24 bit.`);
+  } else if (formatTag === FLOAT) {
+    if (![32, 64].includes(bitsPerSample)) throw new WavError(`${bitsPerSample}-bit float is not supported. Use 32-bit float.`);
+  } else {
+    throw new WavError(`This WAV file is compressed (format ${formatTag}). Send plain PCM or float WAV.`);
+  }
+  if (channels < 1 || channels > 2) throw new WavError(`The WAV file has ${channels} channels. Live places mono and stereo files only.`);
+  if (sampleRate < 8000 || sampleRate > 192000) throw new WavError(`The sample rate ${sampleRate} Hz is not supported.`);
+}
+
+// Returns { format, channels, sampleRate, bitsPerSample, blockAlign, dataOffset, dataBytes, frames, duration, fileBytes }.
+function readInfo(file) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const size = fs.fstatSync(fd).size;
+    const head = Buffer.alloc(12);
+    if (size < 12 || fs.readSync(fd, head, 0, 12, 0) < 12) throw new WavError('The file is too short to be a WAV file.');
+    const riff = head.toString('latin1', 0, 4);
+    if (riff === 'RF64' || riff === 'BW64') throw new WavError('RF64 files are not supported. Send a normal WAV file.');
+    if (riff !== 'RIFF' || head.toString('latin1', 8, 12) !== 'WAVE') throw new WavError('This is not a WAV file.');
+
+    let pos = 12;
+    let fmt = null;
+    let data = null;
+    const hdr = Buffer.alloc(8);
+    let chunks = 0;
+    // Walk the chunks. Large chunks we do not need (LIST, bext, JUNK) are skipped, not read.
+    while (pos + 8 <= size && !(fmt && data)) {
+      if (++chunks > MAX_CHUNKS) throw new WavError('The WAV header is damaged.');
+      fs.readSync(fd, hdr, 0, 8, pos);
+      const id = hdr.toString('latin1', 0, 4);
+      let len = hdr.readUInt32LE(4);
+      const body = pos + 8;
+      if (id === 'fmt ') {
+        const b = Buffer.alloc(Math.min(len, 64));
+        fs.readSync(fd, b, 0, b.length, body);
+        fmt = parseFmt(b);
+      } else if (id === 'data') {
+        // Some recorders leave the size at 0 or 0xFFFFFFFF while writing: use what is there.
+        if (len === 0 || len === 0xffffffff || body + len > size) len = size - body;
+        data = { offset: body, bytes: len };
+      }
+      pos = body + len + (len & 1);
+    }
+    if (!fmt) throw new WavError('The WAV file has no format block.');
+    if (!data) throw new WavError('The WAV file has no sound data.');
+    check(fmt);
+    const blockAlign = fmt.blockAlign || (fmt.channels * fmt.bitsPerSample) / 8;
+    const frames = Math.floor(data.bytes / blockAlign);
+    if (frames < 1) throw new WavError('The WAV file is empty.');
+    return {
+      format: fmt.formatTag === FLOAT ? 'float' : 'pcm',
+      channels: fmt.channels,
+      sampleRate: fmt.sampleRate,
+      bitsPerSample: fmt.bitsPerSample,
+      blockAlign,
+      dataOffset: data.offset,
+      dataBytes: data.bytes,
+      frames,
+      duration: frames / fmt.sampleRate,
+      fileBytes: size,
+    };
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+// A 16-bit PCM WAV file in memory. samples: numbers from -1 to 1, interleaved when stereo.
+function buildWav16(samples, channels, sampleRate) {
+  const dataBytes = samples.length * 2;
+  const b = Buffer.alloc(44 + dataBytes);
+  b.write('RIFF', 0, 'latin1');
+  b.writeUInt32LE(36 + dataBytes, 4);
+  b.write('WAVE', 8, 'latin1');
+  b.write('fmt ', 12, 'latin1');
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(PCM, 20);
+  b.writeUInt16LE(channels, 22);
+  b.writeUInt32LE(sampleRate, 24);
+  b.writeUInt32LE(sampleRate * channels * 2, 28);
+  b.writeUInt16LE(channels * 2, 32);
+  b.writeUInt16LE(16, 34);
+  b.write('data', 36, 'latin1');
+  b.writeUInt32LE(dataBytes, 40);
+  for (let i = 0; i < samples.length; i++) {
+    const v = Math.max(-1, Math.min(1, samples[i]));
+    b.writeInt16LE(Math.round(v * 32767), 44 + i * 2);
+  }
+  return b;
+}
+
+function writeWav16(file, samples, channels, sampleRate) {
+  fs.writeFileSync(file, buildWav16(samples, channels, sampleRate));
+}
+
+module.exports = { readInfo, buildWav16, writeWav16, WavError, MAX_CHUNKS };
+
+};
+
+__la2l.defs["manifest"] = function (module, exports, require) {
+'use strict';
+// The App2Live manifest (docs/manifest.md). Checks a package description from an app and works
+// out how each sound goes into Live: warp on or off, warp mode, tempo and loop length.
+// The app only says what a sound is (loop or one-shot, drums or vocal); the device picks the Live settings.
+
+const { SCHEMA } = require('./version');
+const { cleanName, megabytes } = require('./text');
+
+const LIMITS = {
+  maxItems: 32,
+  maxPackageBytes: 200 * 1048576,
+};
+
+const ROLES = ['drums', 'bass', 'melodic', 'vocal', 'texture', 'fx'];
+
+// Live's warp modes (Clip.warp_mode). 5 is REX, which only REX files use.
+const WARP_MODES = { beats: 0, tones: 1, texture: 2, repitch: 3, complex: 4, complexpro: 6 };
+const MODE_NAMES = { 0: 'Beats', 1: 'Tones', 2: 'Texture', 3: 'Re-Pitch', 4: 'Complex', 6: 'Complex Pro' };
+
+// Role -> warp mode. Complex Pro sounds best on mixed material but costs the most CPU,
+// so only melodic parts and vocals get it.
+const ROLE_MODES = { drums: 0, bass: 1, melodic: 6, vocal: 6, texture: 2, fx: 4 };
+const DEFAULT_MODE = 4; // Complex, for fx and sounds without a role
+
+// Colours close to Live's palette. Live picks the nearest colour of its own palette anyway.
+const PALETTE = ['#FF94A6', '#FFA529', '#F7F47C', '#BFFB00', '#1AFF2F', '#5CFFE8', '#8BC5FF', '#5480E4', '#D86CE4', '#E553A0'];
+
+class ManifestError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ManifestError';
+  }
+}
+
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+// A value from the manifest, quoted in a warning. Short, because apps see the warnings too.
+const shown = (v) => String(v).slice(0, 40);
+
+function parseColor(v) {
+  if (typeof v !== 'string') return null;
+  const m = /^#?([0-9a-f]{6})$/i.exec(v.trim());
+  return m ? parseInt(m[1], 16) : null;
+}
+
+function paletteColor(index) {
+  return parseColor(PALETTE[((index % PALETTE.length) + PALETTE.length) % PALETTE.length]);
+}
+
+function parseWarpMode(v) {
+  if (typeof v === 'number') return [0, 1, 2, 3, 4, 6].includes(v) ? v : null;
+  if (typeof v !== 'string') return null;
+  const key = v.toLowerCase().replace(/[\s_-]/g, '');
+  return key in WARP_MODES ? WARP_MODES[key] : null;
+}
+
+function parseKind(v) {
+  const k = typeof v === 'string' ? v.toLowerCase().replace(/[\s_-]/g, '') : '';
+  if (k === 'loop') return 'loop';
+  if (k === 'oneshot') return 'oneshot';
+  return null;
+}
+
+// A file name as the server knows it. Used only to build the download address; the file on
+// disk gets a name made from the sound's name.
+function validFile(v) {
+  return typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,99}$/.test(v) && /\.wav$/i.test(v) && !v.includes('..');
+}
+
+// Checks a manifest and returns { pkg, warnings }. Problems with the whole package throw a
+// ManifestError. A problem with one sound only marks that sound (item.error), the rest still goes in.
+function validate(raw) {
+  const warnings = [];
+  if (!isObject(raw)) throw new ManifestError('The package description is not valid.');
+  if (typeof raw.schema !== 'string') throw new ManifestError('This is not an App2Live package.');
+  if (raw.schema !== SCHEMA) {
+    if (/^app2live\/\d+$/.test(raw.schema)) throw new ManifestError(`This package uses ${raw.schema}. Update LA2L to import it.`);
+    throw new ManifestError('This is not an App2Live package.');
+  }
+  if (typeof raw.package_id !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(raw.package_id)) {
+    throw new ManifestError('The package has no valid package_id.');
+  }
+  const source = isObject(raw.source) ? raw.source : {};
+  const tempo = isObject(raw.tempo) ? raw.tempo : {};
+  const pkg = {
+    packageId: raw.package_id,
+    title: cleanName(raw.title, 'Untitled', 60),
+    app: cleanName(source.app, 'App', 40),
+    appVersion: typeof source.app_version === 'string' ? source.app_version.slice(0, 40) : '',
+    platform: typeof source.platform === 'string' ? source.platform.slice(0, 40) : '',
+    createdAt: typeof raw.created_at === 'string' ? raw.created_at.slice(0, 40) : '',
+    bpm: null,
+    timeSignature: null,
+    items: [],
+    midiCount: Array.isArray(raw.midi) ? raw.midi.length : 0,
+  };
+  if (!raw.title) warnings.push('no title');
+  if (!source.app) warnings.push('no source.app');
+  if (tempo.bpm !== undefined) {
+    const b = num(tempo.bpm);
+    if (b !== null && b >= 20 && b <= 999) pkg.bpm = b;
+    else warnings.push('tempo.bpm is not a number from 20 to 999');
+  }
+  const ts = tempo.time_signature;
+  if (Array.isArray(ts) && ts.length === 2 && Number.isInteger(ts[0]) && Number.isInteger(ts[1])) pkg.timeSignature = ts;
+  if (pkg.midiCount) warnings.push(`${pkg.midiCount} MIDI parts ignored (MIDI comes in a later version)`);
+
+  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new ManifestError('The package has no sounds.');
+  if (raw.items.length > LIMITS.maxItems) {
+    throw new ManifestError(`The package has ${raw.items.length} sounds. LA2L takes ${LIMITS.maxItems} at most.`);
+  }
+
+  const files = new Set();
+  let total = 0;
+  raw.items.forEach((it, index) => {
+    const item = {
+      index,
+      id: '',
+      file: '',
+      sha256: null,
+      bytes: null,
+      name: `Sound ${index + 1}`,
+      kind: 'oneshot',
+      role: null,
+      lengthBeats: null,
+      warpMode: null,
+      bpm: null,
+      color: null,
+      gainDb: null,
+      error: null,
+    };
+    pkg.items.push(item);
+    if (!isObject(it)) {
+      item.error = 'is not described correctly';
+      return;
+    }
+    item.id = typeof it.id === 'string' && it.id ? it.id.slice(0, 100) : String(index + 1);
+    item.name = cleanName(it.name, `Sound ${index + 1}`, 40);
+    if (!validFile(it.file)) {
+      item.error = 'has no valid file name';
+      return;
+    }
+    if (files.has(it.file.toLowerCase())) {
+      item.error = 'uses the same file as another sound';
+      return;
+    }
+    files.add(it.file.toLowerCase());
+    item.file = it.file;
+
+    if (typeof it.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(it.sha256)) item.sha256 = it.sha256.toLowerCase();
+    else if (it.sha256 !== undefined) warnings.push(`${item.name}: sha256 ignored`);
+    if (Number.isInteger(it.bytes) && it.bytes > 0) {
+      item.bytes = it.bytes;
+      total += it.bytes;
+    } else if (it.bytes !== undefined) warnings.push(`${item.name}: bytes ignored`);
+
+    const kind = parseKind(it.kind);
+    if (kind) item.kind = kind;
+    else if (it.kind === undefined || it.kind === null || it.kind === '') warnings.push(`${item.name}: no kind, placed as one-shot`);
+    else warnings.push(`${item.name}: kind "${shown(it.kind)}" unknown, placed as one-shot`);
+
+    if (typeof it.role === 'string' && ROLES.includes(it.role.toLowerCase())) item.role = it.role.toLowerCase();
+    else if (it.role !== undefined) warnings.push(`${item.name}: role "${shown(it.role)}" unknown`);
+
+    if (it.length_beats !== undefined) {
+      const l = num(it.length_beats);
+      if (l !== null && l > 0 && l <= 4096) item.lengthBeats = l;
+      else warnings.push(`${item.name}: length_beats ignored`);
+    }
+    if (it.warp_mode !== undefined) {
+      item.warpMode = parseWarpMode(it.warp_mode);
+      if (item.warpMode === null) warnings.push(`${item.name}: warp_mode "${shown(it.warp_mode)}" unknown`);
+    }
+    if (it.bpm !== undefined) {
+      const b = num(it.bpm);
+      if (b !== null && b >= 20 && b <= 999) item.bpm = b;
+      else warnings.push(`${item.name}: bpm ignored`);
+    }
+    if (it.color !== undefined) {
+      item.color = parseColor(it.color);
+      if (item.color === null) warnings.push(`${item.name}: color ignored`);
+    }
+    if (it.gain_db !== undefined) {
+      const g = num(it.gain_db);
+      if (g !== null) item.gainDb = Math.max(-70, Math.min(24, g));
+      else warnings.push(`${item.name}: gain_db ignored`);
+    }
+  });
+  if (total > LIMITS.maxPackageBytes) {
+    throw new ManifestError(`The package is ${megabytes(total)}. LA2L takes ${megabytes(LIMITS.maxPackageBytes)} at most.`);
+  }
+  return { pkg, warnings };
+}
+
+// A loop that is within 0.1 beat of a whole number of beats was meant to be that long.
+function snapBeats(raw) {
+  const whole = Math.round(raw);
+  if (whole >= 1 && Math.abs(raw - whole) <= 0.1) return whole;
+  return Math.round(raw * 1000) / 1000;
+}
+
+// How one sound goes into Live, given its length in seconds (from the WAV header).
+//   one-shot: warp off, loop off. It plays exactly as the app made it.
+//   loop: warp on, warp mode from the role, the tempo of the package, looped over its length.
+function planItem(item, pkg, duration) {
+  if (item.kind !== 'loop') {
+    return { warp: false, looping: false, warpMode: null, bpm: null, lengthBeats: null };
+  }
+  const warpMode = item.warpMode !== null ? item.warpMode : item.role ? ROLE_MODES[item.role] : DEFAULT_MODE;
+  let bpm = item.bpm || pkg.bpm || null;
+  let lengthBeats = item.lengthBeats || null;
+  if (!bpm && lengthBeats && duration > 0) bpm = (60 * lengthBeats) / duration;
+  if (bpm && (bpm < 5 || bpm > 999)) bpm = null;
+  if (bpm && !lengthBeats && duration > 0) lengthBeats = snapBeats((duration * bpm) / 60);
+  return { warp: true, looping: true, warpMode, bpm, lengthBeats };
+}
+
+function trackName(item, pkg, settings) {
+  return settings.appNameInTrackName ? `${item.name} (${pkg.app})` : item.name;
+}
+
+function sceneName(pkg) {
+  return `${pkg.title} (${pkg.app})`;
+}
+
+// The package that Test import places: one sound from the test address in the settings.
+function testManifest(settings) {
+  return {
+    schema: SCHEMA,
+    package_id: 'la2l-test-' + Date.now(),
+    created_at: new Date().toISOString(),
+    title: 'Test import',
+    source: { app: 'LA2L', platform: 'test' },
+    tempo: { bpm: settings.testBpm },
+    items: [{ id: 'test', file: 'test.wav', name: settings.testName, kind: settings.testKind, role: settings.testRole }],
+  };
+}
+
+module.exports = {
+  LIMITS,
+  ROLES,
+  ROLE_MODES,
+  MODE_NAMES,
+  PALETTE,
+  ManifestError,
+  validate,
+  planItem,
+  snapBeats,
+  parseColor,
+  paletteColor,
+  parseWarpMode,
+  trackName,
+  sceneName,
+  testManifest,
 };
 
 };

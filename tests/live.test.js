@@ -85,7 +85,7 @@ for (const addHonoursBeat of [true, false]) {
           assert.equal(track.slots[0].clip, null, 'the temporary Session clip is gone');
           assert.equal(track.arrangement.length, 1);
           const clip = track.arrangement[0];
-          assert.equal(clip.startTime, 8, 'playhead 9.3 rounds to bar 3 (beat 8)');
+          assert.equal(clip.startTime, 0, 'at 1.1.1, although the playhead is at beat 9.3');
           assert.equal(clip.warping, 1);
           assert.equal(clip.warpMode, 0);
           assert.equal(clip.looping, 1);

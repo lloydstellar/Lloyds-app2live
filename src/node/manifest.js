@@ -34,6 +34,8 @@ class ManifestError extends Error {
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+// A value from the manifest, quoted in a warning. Short, because apps see the warnings too.
+const shown = (v) => String(v).slice(0, 40);
 
 function parseColor(v) {
   if (typeof v !== 'string') return null;
@@ -154,10 +156,11 @@ function validate(raw) {
 
     const kind = parseKind(it.kind);
     if (kind) item.kind = kind;
-    else warnings.push(`${item.name}: kind "${it.kind}" unknown, placed as one-shot`);
+    else if (it.kind === undefined || it.kind === null || it.kind === '') warnings.push(`${item.name}: no kind, placed as one-shot`);
+    else warnings.push(`${item.name}: kind "${shown(it.kind)}" unknown, placed as one-shot`);
 
     if (typeof it.role === 'string' && ROLES.includes(it.role.toLowerCase())) item.role = it.role.toLowerCase();
-    else if (it.role !== undefined) warnings.push(`${item.name}: role "${it.role}" unknown`);
+    else if (it.role !== undefined) warnings.push(`${item.name}: role "${shown(it.role)}" unknown`);
 
     if (it.length_beats !== undefined) {
       const l = num(it.length_beats);
@@ -166,7 +169,7 @@ function validate(raw) {
     }
     if (it.warp_mode !== undefined) {
       item.warpMode = parseWarpMode(it.warp_mode);
-      if (item.warpMode === null) warnings.push(`${item.name}: warp_mode "${it.warp_mode}" unknown`);
+      if (item.warpMode === null) warnings.push(`${item.name}: warp_mode "${shown(it.warp_mode)}" unknown`);
     }
     if (it.bpm !== undefined) {
       const b = num(it.bpm);

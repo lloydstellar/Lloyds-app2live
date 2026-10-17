@@ -12,7 +12,7 @@ const { VERSION, FOLDER_NAME } = require('./version');
 const DEFAULT_SETTINGS = {
   // The App2Live server. Only https, except localhost for testing.
   serverUrl: 'https://lloydstellar.nl/la2l/api',
-  // Where new sounds go: 'arrangement' (at the playhead) or 'session' (a new scene).
+  // Where new sounds go: 'arrangement' (at 1.1.1) or 'session' (a new scene at the top).
   placement: 'arrangement',
   // Where new tracks go: 'afterDevice' (right after the track with this device) or 'end'.
   newTracks: 'afterDevice',

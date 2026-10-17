@@ -78,6 +78,17 @@ test('a data size of 0xFFFFFFFF (still recording) uses the real file size', () =
   assert.equal(info.frames, 1000);
 });
 
+test('a header of endless empty chunks is refused at once, a real header with many chunks is not', () => {
+  const empty = (n) => Buffer.alloc(8 * n); // an empty chunk: id "\0\0\0\0", size 0
+  const data = chunk('data', Buffer.alloc(200));
+  // fmt + empty chunks + data: exactly MAX_CHUNKS chunks still read, one more does not.
+  assert.equal(wav.readInfo(file([fmt({}), empty(wav.MAX_CHUNKS - 2), data])).frames, 100);
+  assert.throws(() => wav.readInfo(file([fmt({}), empty(wav.MAX_CHUNKS - 1), data])), /^WavError: The WAV header is damaged\.$/);
+  const start = Date.now();
+  assert.throws(() => wav.readInfo(file([empty(1048576)])), /The WAV header is damaged/, '8 MB of empty chunks');
+  assert.ok(Date.now() - start < 1000, `took ${Date.now() - start} ms`);
+});
+
 test('files Live cannot use are refused with a clear reason', () => {
   const cases = [
     [file([fmt({ tag: 0x55 }), chunk('data', Buffer.alloc(100))]), /compressed/],

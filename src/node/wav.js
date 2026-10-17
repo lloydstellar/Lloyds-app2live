@@ -15,6 +15,9 @@ class WavError extends Error {
 const PCM = 1;
 const FLOAT = 3;
 const EXTENSIBLE = 0xfffe;
+// Real files have a handful of chunks before the sound data. A file built of millions of empty
+// chunks would keep the walk below busy for many seconds, so it stops here.
+const MAX_CHUNKS = 1000;
 
 function parseFmt(b) {
   if (b.length < 16) throw new WavError('The WAV header is damaged.');
@@ -58,8 +61,10 @@ function readInfo(file) {
     let fmt = null;
     let data = null;
     const hdr = Buffer.alloc(8);
+    let chunks = 0;
     // Walk the chunks. Large chunks we do not need (LIST, bext, JUNK) are skipped, not read.
     while (pos + 8 <= size && !(fmt && data)) {
+      if (++chunks > MAX_CHUNKS) throw new WavError('The WAV header is damaged.');
       fs.readSync(fd, hdr, 0, 8, pos);
       const id = hdr.toString('latin1', 0, 4);
       let len = hdr.readUInt32LE(4);
@@ -126,4 +131,4 @@ function writeWav16(file, samples, channels, sampleRate) {
   fs.writeFileSync(file, buildWav16(samples, channels, sampleRate));
 }
 
-module.exports = { readInfo, buildWav16, writeWav16, WavError };
+module.exports = { readInfo, buildWav16, writeWav16, WavError, MAX_CHUNKS };

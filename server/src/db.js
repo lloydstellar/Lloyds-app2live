@@ -246,6 +246,11 @@ class Store {
     this.sql('UPDATE apps SET last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)').run(now, id, notSince);
   }
 
+  // The apps that can send to this computer now, oldest pairing first.
+  activeAppsOf(deviceRef) {
+    return this.sql('SELECT name, created_at, last_seen_at FROM apps WHERE device_ref = ? AND revoked_at IS NULL ORDER BY created_at, id').all(deviceRef);
+  }
+
   // ---- pairings ----
 
   codeTaken(code, now) {

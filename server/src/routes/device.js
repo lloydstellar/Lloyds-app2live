@@ -1,6 +1,7 @@
 'use strict';
-// The device side of the API, as LA2L 0.1.1 uses it (docs/server-api.md, "Device side").
-// That side is fixed: the device is installed and must keep working unchanged.
+// The device side of the API (docs/server-api.md, "Device side"): what LA2L 0.1.1 uses, plus
+// GET /apps, which came with 0.2.0. The 0.1.1 calls are fixed: that version is installed and must
+// keep working unchanged.
 
 const fs = require('fs');
 const { pipeline } = require('stream');
@@ -127,6 +128,15 @@ function deviceRoutes(router, { config, store, storage, auth, limits, clock, log
       created_at: p.committed_at,
     }));
     sendJson(ctx.res, 200, { packages });
+  });
+
+  // Device 0.2.0 and newer: the apps that can send to this computer now, so the device stops
+  // saying "Paired with ..." for an app that unpaired itself. Asked at start, after Import and in
+  // Self test.
+  router.add('GET', '/api/apps', (ctx) => {
+    const device = auth.device(ctx);
+    const apps = store.activeAppsOf(device.id).map((a) => ({ name: a.name, paired_at: a.created_at, last_seen_at: a.last_seen_at }));
+    sendJson(ctx.res, 200, { apps });
   });
 
   // A package the device may import: its own, waiting or failed, not expired.

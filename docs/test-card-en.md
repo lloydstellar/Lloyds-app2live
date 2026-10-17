@@ -1,14 +1,15 @@
-# LA2L 0.1.1 test card
+# LA2L 0.2.0 test card
 
-One test in Live, about fifteen minutes. Steps 1 to 5 check the Live side of the device; step 6 checks pairing and Import through the server at `https://lloydstellar.nl/la2l/`.
+One test in Live, about twenty minutes. Steps 1 to 5 check the Live side of the device; steps 6 and 7 check pairing and Import through the server at `https://lloydstellar.nl/la2l/`.
 
-**You need:** Live 12.4 or newer with Max for Live, on Windows or a Mac.
+**You need:** Live 12.4 or newer with Max for Live, on Windows or a Mac. For step 7 the server must be version 0.6.0 or newer: `https://lloydstellar.nl/la2l/api/health` shows the version.
 
-**New in 0.1.1**, so check these first:
+**New in 0.2.0**, so check these first:
 
-- The tempo of a loop is now right when the Set has another tempo. In 0.1.0 a 135 BPM loop in a Set at 120 BPM came out at 150.15 BPM.
-- In Session View the new scene goes to the top instead of the bottom.
-- Self test says "no App2Live server at lloydstellar.nl" instead of "server answered 200" when something other than an App2Live server answers.
+- In the Arrangement, new sounds always start at **1.1.1**, wherever the playhead is. In 0.1.1 they started at the playhead, which after playing could be minutes into the Set.
+- "Paired with ..." shows only the apps that are still paired. An app that unpaired itself drops out when Live starts, after an Import and at Self test. With no app left, the device says "No app paired. Add one in Settings."
+- Self test says how many apps are paired: "paired with 1 app / 0 waiting".
+- When a download fails, the status line also shows the server's reason, for example "The file is gone. Send it again."
 
 ## 1. Load the device
 
@@ -16,12 +17,12 @@ One test in Live, about fifteen minutes. Steps 1 to 5 check the Live side of the
 2. Open a new, empty Live Set.
 3. Drag `devices/la2l/Lloyds App2Live.amxd` onto the first audio track. Leave the other files of `devices/la2l` next to it.
 
-**You should see:** the Lloyd Stellar logo top left, "Lloyd's App2Live" and "v0.1.1", a Settings button on the right, the text "Send sounds from your apps to Live." with a Pair app button, and "Ready." at the bottom.
+**You should see:** the Lloyd Stellar logo top left, "Lloyd's App2Live" and "v0.2.0", a Settings button on the right, the text "Send sounds from your apps to Live." with a Pair app button, and "Ready." at the bottom. If this computer is still paired from an earlier test, you see the Import button instead; that is fine.
 
 ## 2. Test import in the Arrangement
 
-1. Set the Set tempo to **120**. The test file is 135 BPM, so this is the case that went wrong in 0.1.0.
-2. Make sure the playhead is somewhere in the Arrangement, for example at bar 3.
+1. Set the Set tempo to **120**. The test file is 135 BPM, so the device has to set the tempo of the clip.
+2. Click in the Arrangement at **bar 9**, so the playhead is there. You can also play the Set for a while and stop.
 3. Click **Settings**, then **Test import**. The test file is 95 MB, so the download takes a moment.
 
 **You should see:**
@@ -30,7 +31,7 @@ One test in Live, about fifteen minutes. Steps 1 to 5 check the Live side of the
 - If it says "but not at exactly 135 BPM" instead, Live did not take the tempo. Send the log; it has Live's warp markers.
 - If it adds "The test file did not download so the built-in loop was used.", the device could not get the WAV from lloydstellar.nl. The rest of the test still counts; the log says why.
 - A new audio track **right after** the track with the device, named **Snare (LA2L)**, with a colour.
-- In the Arrangement, one clip on that track starting at the bar nearest the playhead.
+- In the Arrangement, one clip on that track starting at **1.1.1**, not at bar 9.
 - Click the clip and look at its Clip View: **Warp** on, mode **Beats**, **Seg. BPM 135.00**, **Start 1.1.1**, **Loop** on over the whole file.
 - Play with the metronome on: the snare is in time at 120. Set the tempo to 100 and to 135: it stays in time.
 
@@ -40,6 +41,7 @@ If Start shows a position before 1.1.1 but Seg. BPM is 135.00, LA2L used its sec
 
 1. In Settings, set **New sounds go to** to **Session**.
 2. Click **Test import** again.
+3. Set **New sounds go to** back to **Arrangement**.
 
 **You should see:** a new scene **at the top** of the Session named **Test import (LA2L)**. The scenes that were there move down one row. In that scene, one clip on a new track Snare (LA2L), with the same warp settings as in step 2. Launch the scene: the snare plays in time.
 
@@ -54,31 +56,47 @@ If Start shows a position before 1.1.1 but Seg. BPM is 135.00, LA2L used its sec
 
 Click **Self test**.
 
-**You should see** a line like "Self test: Node v22... / folder OK / Live 12.4.x OK / server OK / not paired". When this computer is paired, it ends with "paired with 0 waiting": the number of packages that wait on the server.
+**You should see** a line like "Self test: Node v22... / folder OK / Live 12.4.x OK / server OK / not paired". When this computer is paired, it ends with "paired with 1 app / 0 waiting": how many apps can send to this computer, and how many packages wait on the server.
 
 ## 6. Pairing and Import
 
-You need a browser, on this computer or on a phone, and the test file saved from `http://lloydstellar.nl/test/test-file-voor-max.wav`.
+You need a browser, on this computer or on a phone, and the test file saved from `http://lloydstellar.nl/test/test-file-voor-max.wav`. If the device still shows Import from an earlier test, click **Settings**, then **Unpair** twice first.
 
-1. Click **Pair app**. The device shows a code of six characters.
-2. Open `https://lloydstellar.nl/la2l/`, type the code and click **Pair**.
-3. Under **Send sounds**, set BPM to **135** and choose the test file. In its row, set Name to **Snare**, leave Type on **Loop** and set Role to **drums**. Click **Send**.
-4. Click **Import** in the device.
-5. Click **Settings**, then **Unpair**, twice.
+1. Put the playhead at bar 9 again.
+2. Click **Pair app**. The device shows a code of six characters.
+3. Open `https://lloydstellar.nl/la2l/`, type the code and click **Pair**.
+4. Under **Send sounds**, set BPM to **135** and choose the test file. In its row, set Name to **Snare**, leave Type on **Loop** and set Role to **drums**. Click **Send**.
+5. Click **Import** in the device.
+6. Click **Settings**, then **Self test**.
 
 **You should see:**
 
-- After step 2: the device says "Paired with LA2L Sender. Send a sound from it and click Import." and the page says "Paired with" and the name of this computer.
-- After step 3: the page says "Waiting for Import in Live."
-- After step 4: a new track **Snare (LA2L Sender)** with Warp on and **Seg. BPM 135.00** in its Clip View. The page says "In Live: 1 of 1 sound."
-- After step 5: the device says "Unpaired. Apps can no longer send sounds to this computer." When you reload the page, it asks for a code again.
+- After step 3: the device says "Paired with LA2L Sender. Send a sound from it and click Import." and the page says "Paired with" and the name of this computer.
+- After step 4: the page says "Waiting for Import in Live."
+- After step 5: a new track **Snare (LA2L Sender)** with a clip at **1.1.1**, Warp on and **Seg. BPM 135.00** in its Clip View. The page says "In Live: 1 of 1 sound."
+- After step 6: the Self test line ends with "server OK / paired with 1 app / 0 waiting". If it ends with "server OK / paired / 0 waiting", the server is older than 0.6.0: update it before step 7.
 
-## 7. Send back
+## 7. An app that unpairs itself
+
+This step needs server 0.6.0 or newer. Open `https://lloydstellar.nl/la2l/api/health` first: it must show `"version":"0.6.0"` or higher.
+
+1. On the page, click **Unpair this browser**.
+2. In the device, click **Self test** (Settings is still open), then **Close**.
+3. Pair the page again: click **Settings**, then **Add app**, type the new code on the page and click **Pair**.
+4. Click **Settings**, then **Unpair**, twice.
+
+**You should see:**
+
+- After step 2: the Self test line ends with "no app paired / 0 waiting", and above the Import button the device says **"No app paired. Add one in Settings."** If it says "paired / 0 waiting" and still "Paired with LA2L Sender.", the server is older than 0.6.0: the rest of the device still works, but it cannot see that the app left.
+- After step 3: "Paired with LA2L Sender." again.
+- After step 4: the device says "Unpaired. Apps can no longer send sounds to this computer." When you reload the page, it asks for a code again.
+
+## 8. Send back
 
 1. Click **Open folder**. It opens `Documents/Lloyds App2Live`.
-2. Send `la2l.log`, plus a screenshot of the device and one of the Clip View of the new clip from step 2.
+2. Send `la2l.log`, plus a screenshot of the device and one of the Arrangement with the clips from steps 2 and 6.
 
-The log shows how Live answered every step: which path form loaded the file, the warp markers Live made and the ones LA2L left, and whether the tempo is exact. Send it also when everything looks fine; it settles the open questions in [design-notes.md](design-notes.md#proven-and-not-yet-proven-in-a-real-live).
+The log shows how Live answered every step: which path form loaded the file, the warp markers Live made and the ones LA2L left, whether the tempo is exact, and which apps the server listed. Send it also when everything looks fine; it settles the open questions in [design-notes.md](design-notes.md#proven-and-not-yet-proven-in-a-real-live).
 
 ## If something does not work
 
@@ -87,5 +105,6 @@ The log shows how Live answered every step: which path form loaded the file, the
 | The device stays on "Starting LA2L..." | Node did not start. Click Edit on the device title bar, then Window > Max Console in Max, and send what is in red. |
 | "The Live part of LA2L does not answer. LA2L needs Live 12.4 or newer." | The v8 script did not load or Live is too old. Check that `la2l-live.js` sits next to the `.amxd`, and send the Max Console. |
 | No logo | `la2l-logo.png` is not next to the `.amxd`. |
-| The device still shows v0.1.0 | Live still has the old device in memory. Quit Live completely and start it again. |
+| The device still shows v0.1.1 | Live still has the old device in memory. Quit Live completely and start it again. |
 | "Test failed. Snare ..." | Live could not place the file. The rest of the message and the log say why. |
+| The clip still starts at bar 9 | The old device is still loaded: check that it shows v0.2.0. |

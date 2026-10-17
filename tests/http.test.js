@@ -36,6 +36,20 @@ const routes = {
     res.end('{}');
   },
   '/broken': (req, res) => res.end('not json'),
+  '/gone': (req, res) => {
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: 'The file is gone. Send it again.' }));
+  },
+  '/gone-big': (req, res) => {
+    // An error answer far larger than the file may be: still read as an error, not "too large".
+    res.writeHead(404, { 'Content-Length': String(70000 + 50000) });
+    res.write(JSON.stringify({ error: 'x'.repeat(70000) }).slice(0, 70000));
+    res.end(DATA);
+  },
+  '/page': (req, res) => {
+    res.statusCode = 404;
+    res.end('<html>Not here</html>');
+  },
   '/data': (req, res) => res.end(DATA),
   '/flaky': (req, res) => {
     counts.flaky = (counts.flaky || 0) + 1;
@@ -157,6 +171,19 @@ test('download: 404 is not retried; too large is refused', async () => {
   await assert.rejects(download(a.url + '/big', path.join(dir, 'big.wav'), { maxBytes: 1000, retryDelayMs: 1 }), (e) => e.kind === 'toolarge');
   await assert.rejects(download(a.url + '/chunked', path.join(dir, 'ch.wav'), { maxBytes: 60000, retryDelayMs: 1 }), (e) => e.kind === 'toolarge');
   assert.ok(!fs.existsSync(path.join(dir, 'ch.wav.part')));
+});
+
+test('download: an error shows the server\'s own text after the device\'s', async () => {
+  const f = path.join(dir, 'gone.wav');
+  await assert.rejects(download(a.url + '/gone', f, { retryDelayMs: 1 }), (e) => {
+    assert.equal(e.message, 'The server does not know this address (404). The file is gone. Send it again.');
+    return true;
+  });
+  // Not JSON, or JSON cut off at the 64 KB the device keeps: only the device's own text.
+  await assert.rejects(download(a.url + '/page', f, { retryDelayMs: 1 }), (e) => e.message === 'The server does not know this address (404).');
+  await assert.rejects(download(a.url + '/gone-big', f, { maxBytes: 1000, retryDelayMs: 1 }), (e) => e.status === 404 && e.message === 'The server does not know this address (404).');
+  assert.ok(!fs.existsSync(f));
+  assert.ok(!fs.existsSync(f + '.part'));
 });
 
 test('download: a connection cut halfway is an error, not a short file', async () => {

@@ -66,7 +66,7 @@ test('POST /packages: what the device would only warn about comes back as warnin
   );
   const r2 = await s.request('POST', '/api/packages', { token: p.appToken, body: shots });
   assert.deepEqual(r2.json.warnings, [
-    'Clap: kind "undefined" unknown, placed as one-shot',
+    'Clap: no kind, placed as one-shot',
     'Hit: bpm and length_beats only apply to a loop',
     'Clap: bpm and length_beats only apply to a loop',
     'tempo.bpm only applies to loops, and this package has none',
@@ -196,7 +196,8 @@ test('PUT without Content-Length: cut off one byte past the declared size; one u
   assert.deepEqual((await slow.answer).json, { ok: true, file: 'loop.wav', bytes: LOOP.length });
 });
 
-// "RIFF....WAVE" and then only empty chunks: every 8 bytes one more chunk for wav.readInfo to walk.
+// "RIFF....WAVE" and then only empty chunks: every 8 bytes one more chunk. wav.readInfo stops
+// after wav.MAX_CHUNKS of them; before device 0.2.0 it walked them all, for many seconds.
 function emptyChunks(megabytes) {
   const b = Buffer.alloc(megabytes * 1048576);
   b.write('RIFF', 0, 'latin1');
@@ -205,45 +206,29 @@ function emptyChunks(megabytes) {
   return b;
 }
 
-test('PUT: the WAV check of a file built to be slow does not hold up other requests', async () => {
+test('PUT: a file built of endless empty chunks is refused at once', async () => {
   const p = await pair();
   const slow = emptyChunks(8);
   const created = await s.request('POST', '/api/packages', { token: p.appToken, body: packageManifest([{ file: 'slow.wav', data: slow }]) });
-  const order = [];
-  let settled = false;
-  const put = s.request('PUT', `/api/packages/${created.json.package_id}/files/slow.wav`, { token: p.appToken, body: slow }).then((r) => {
-    order.push('put');
-    settled = true;
-    return r;
-  });
-  // The server runs in this process. Once the whole file is on disk the check starts; a check on
-  // the main thread would keep this loop and the health check below waiting until it is done.
-  const part = path.join(packageDir(s, created.json.package_id), 'slow.wav.part');
-  const arrived = () => fs.existsSync(part) && fs.statSync(part).size === slow.length;
-  while (!settled && !arrived()) await new Promise((r) => setTimeout(r, 5));
-  const health = await s.request('GET', '/api/health');
-  order.push('health');
-  assert.equal(health.status, 200);
-  const r = await put;
+  const started = Date.now();
+  const r = await s.request('PUT', `/api/packages/${created.json.package_id}/files/slow.wav`, { token: p.appToken, body: slow });
   assert.equal(r.status, 422);
-  assert.deepEqual(r.json, { error: 'The WAV file has no format block.' });
-  assert.deepEqual(order, ['health', 'put'], 'the health check did not wait for the WAV check');
+  assert.deepEqual(r.json, { error: 'The WAV header is damaged.' });
+  assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
+  assert.deepEqual(fs.readdirSync(packageDir(s, created.json.package_id)), []);
 });
 
-test('PUT: a WAV check that takes too long refuses the file', async () => {
-  // Long enough for a thread to start and check a normal file, far too short for this one.
-  const t = await startServer({}, { wavCheckMs: 1000 });
+test('PUT: a WAV check that runs out of time refuses the file', async () => {
+  // The check runs in a thread of its own with a time limit, in case reading a header ever takes
+  // long. A thread cannot even start within 1 ms, so here every file runs out of time.
+  const t = await startServer({}, { wavCheckMs: 1 });
   try {
     const p = await pairDevice(t);
-    const slow = emptyChunks(32);
-    const created = await t.request('POST', '/api/packages', { token: p.appToken, body: packageManifest([{ file: 'slow.wav', data: slow }]) });
-    const r = await t.request('PUT', `/api/packages/${created.json.package_id}/files/slow.wav`, { token: p.appToken, body: slow });
+    const created = await t.request('POST', '/api/packages', { token: p.appToken, body: packageManifest([{ file: 'a.wav', data: SHOT }]) });
+    const r = await t.request('PUT', `/api/packages/${created.json.package_id}/files/a.wav`, { token: p.appToken, body: SHOT });
     assert.equal(r.status, 422);
     assert.deepEqual(r.json, { error: 'The WAV header is damaged.' });
     assert.deepEqual(fs.readdirSync(packageDir(t, created.json.package_id)), []);
-    // A normal file still goes through on that server.
-    const ok = await sendPackage(t, p.appToken, [{ file: 'a.wav', data: SHOT }]);
-    assert.ok(ok.packageId);
   } finally {
     await t.stop();
   }

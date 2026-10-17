@@ -1,8 +1,9 @@
 'use strict';
 // The WAV check of an upload: wav.readInfo from the device, in a worker thread. readInfo walks
-// the chunks of the file one small read at a time, and a file can be built of millions of empty
-// chunks; on the main thread that walk would hold up every other request for many seconds. In a
-// thread of its own it cannot, and after CHECK_MS the thread is stopped and the file refused.
+// the chunks of the file one small read at a time. Until device 0.2.0 a file built of millions of
+// empty chunks kept that walk busy for many seconds; now it stops after wav.MAX_CHUNKS. The thread
+// stays as a second guard: on the main thread a slow check would hold up every other request, in
+// a thread of its own it cannot, and after CHECK_MS the thread is stopped and the file refused.
 
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const wav = require('../../src/node/wav');

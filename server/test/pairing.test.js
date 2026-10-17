@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, fakeClock, pairStart, pairDevice } = require('./helpers');
-const { Server } = require('../../src/node/server');
+const { Server, readApps } = require('../../src/node/server');
 const { CODE_ALPHABET, sha256 } = require('../src/tokens');
 
 const WRONG_CODE = { error: 'This code does not work. Check the code in Live.' };
@@ -195,7 +195,7 @@ test('app_name is cleaned like a track name, 40 characters at most', async () =>
 
 test('401 only for an unknown or revoked token, and tokens only work on their own side', async () => {
   const p = await pairDevice(s, { deviceId: 'dev-401' });
-  for (const [path, method] of [['/api/inbox', 'GET'], ['/api/unpair', 'POST'], ['/api/app/me', 'GET'], ['/api/app/unpair', 'POST']]) {
+  for (const [path, method] of [['/api/inbox', 'GET'], ['/api/apps', 'GET'], ['/api/unpair', 'POST'], ['/api/app/me', 'GET'], ['/api/app/unpair', 'POST']]) {
     for (const auth of [undefined, 'Bearer', 'Bearer short', 'Basic abc', `Bearer ${'x'.repeat(43)}`]) {
       const r = await s.request(method, path, { headers: auth ? { Authorization: auth } : {}, body: method === 'POST' ? {} : undefined });
       assert.equal(r.status, 401, `${method} ${path} ${auth}`);
@@ -221,6 +221,58 @@ test('unpair: the device token and every app token of that computer stop working
   assert.equal((await s.request('GET', '/api/inbox', { token: p.deviceToken })).status, 401);
   assert.equal((await s.request('GET', '/api/app/me', { token: p.appToken })).status, 401);
   assert.equal((await s.request('GET', '/api/app/me', { token: second.json.app_token })).status, 401);
+});
+
+test('GET /apps: the apps that can send to this computer now, oldest first', async () => {
+  const at = () => new Date(clock()).toISOString();
+  const list = async (token) => {
+    const r = await s.request('GET', '/api/apps', { token });
+    assert.equal(r.status, 200);
+    return r.json.apps;
+  };
+  const addApp = async (deviceToken, appName, appId) => {
+    const start = await pairStart(s, 'dev-apps', deviceToken);
+    return (await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: appName, app_id: appId } })).json.app_token;
+  };
+  const first = await pairDevice(s, { deviceId: 'dev-apps', appName: 'LA2L Sender', appId: 'browser-1' });
+  const t1 = at();
+  assert.deepEqual(await list(first.deviceToken), [{ name: 'LA2L Sender', paired_at: t1, last_seen_at: null }]);
+
+  // Add app twice: another app, and the same app in a second browser.
+  clock.add(1000);
+  const robot = await addApp(first.deviceToken, 'Robot Voice', 'robot-1');
+  const t2 = at();
+  clock.add(1000);
+  const second = await addApp(first.deviceToken, 'LA2L Sender', 'browser-2');
+  const t3 = at();
+  clock.add(1000);
+  await s.request('GET', '/api/app/me', { token: robot });
+  assert.deepEqual(await list(first.deviceToken), [
+    { name: 'LA2L Sender', paired_at: t1, last_seen_at: null },
+    { name: 'Robot Voice', paired_at: t2, last_seen_at: at() },
+    { name: 'LA2L Sender', paired_at: t3, last_seen_at: null },
+  ]);
+
+  // Pairing browser-1 again replaces its old entry; an app that unpairs itself is gone.
+  clock.add(1000);
+  const firstAgain = await addApp(first.deviceToken, 'LA2L Sender', 'browser-1');
+  const t4 = at();
+  await s.request('POST', '/api/app/unpair', { token: second });
+  assert.deepEqual((await list(first.deviceToken)).map((a) => [a.name, a.paired_at]), [['Robot Voice', t2], ['LA2L Sender', t4]]);
+
+  // The device's own client reads it; another computer's apps are not in it.
+  const client = new Server(s.base, () => first.deviceToken);
+  assert.deepEqual(readApps(await client.apps()), { count: 2, names: ['Robot Voice', 'LA2L Sender'] });
+  const other = await pairDevice(s, { deviceId: 'dev-apps-other', appName: 'Elsewhere' });
+  assert.deepEqual((await list(other.deviceToken)).map((a) => a.name), ['Elsewhere']);
+
+  // Every app unpaired itself: an empty list, and the computer is still paired.
+  for (const token of [robot, firstAgain]) await s.request('POST', '/api/app/unpair', { token });
+  assert.deepEqual(await list(first.deviceToken), []);
+  assert.equal((await s.request('GET', '/api/inbox', { token: first.deviceToken })).status, 200);
+  // Unpair in Live: 401, as for every device call.
+  await s.request('POST', '/api/unpair', { body: {}, token: first.deviceToken });
+  assert.equal((await s.request('GET', '/api/apps', { token: first.deviceToken })).status, 401);
 });
 
 test('the device client of LA2L 0.1.1 pairs, reads the inbox and unpairs', async () => {

@@ -95,3 +95,16 @@ None of these is urgent. Each needs a new device version and a test in Live, so 
 | Device | 0.1.1, unchanged |
 | Server | 0.5.0. Pull requests #1 to #5 were the five phases, all merged. |
 | Running and backing up the server | [server/README.md](../server/README.md), for the VPS |
+
+## Follow-up: device 0.2.0 and server 0.6.0 (2026-10-17)
+
+Erik asked for the open points above, plus one he found himself: in the Arrangement, an Import now always starts at 1.1.1 instead of at the playhead, which after playing could be minutes into the Set.
+
+| Open point | What was done |
+|---|---|
+| 1. "Paired with" after every app unpaired | `GET /apps` as proposed, on both sides; the server is 0.6.0 for it. The device asks it when Live loads it, after every Import and in Self test. With no app left it says "No app paired. Add one in Settings." and stays paired. |
+| 2. A missing `kind` | `Kick: no kind, placed as one-shot`. Values quoted in a warning are cut at 40 characters. |
+| 3. `readInfo` without a limit | It stops after 1000 chunks with `The WAV header is damaged.` The server keeps its worker; its tests now check the quick refusal and the time limit (`wavCheckMs: 1`). |
+| 4. Download errors | The device keeps the first 64 KB of an error answer to a download and shows the server's `error` text. |
+| 5. Docs | `docs/design-notes.md` (next steps, the Proven table) and the test card for 0.2.0. |
+| 6. A Mac | Still open. |
