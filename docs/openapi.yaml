@@ -1,0 +1,791 @@
+openapi: 3.1.0
+info:
+  title: LA2L app API
+  version: 0.7.0
+  summary: Send sounds from an app to Ableton Live, through LA2L.
+  description: |
+    The app side of the App2Live server (la2l-server). An app pairs once with the code that
+    LA2L shows in Ableton Live, then sends packages: a manifest that says what each sound is,
+    and its WAV files. When the user clicks Import in LA2L, every sound becomes a new audio
+    track in Live, named, coloured and warped to the tempo the app gave.
+
+    No API key and no developer account: the code the user types is the consent.
+
+    A send is five steps:
+
+    1. `POST /pair/claim` with the code, once. Keep the `app_token`.
+    2. `POST /packages` with the manifest, with `bytes` and `sha256` of every file.
+    3. One `PUT` per WAV file, to the path the answer gave.
+    4. `POST /packages/{package_id}/commit`. From now on Live sees the package.
+    5. `GET /packages/{package_id}/status` every few seconds, until `imported`, `partial`,
+       `failed` or `expired`.
+
+    Rules for every call:
+
+    - Every answer is JSON, and an error is `{"error": "short plain English"}` of at most 80
+      characters. Show it to the user as it is.
+    - 401 means the app token is unknown or revoked: the computer was unpaired in Live, or this
+      app paired again. Forget the token and show the pair screen. 401 means nothing else.
+    - Every answer has `Access-Control-Allow-Origin: *`, and Content-Length and Retry-After are
+      readable, so a web app on any site can call the API. The token goes in the Authorization
+      header, never in a URL or a cookie.
+    - JSON bodies are objects of at most 1 MB with `Content-Type: application/json`: 413 when
+      larger, 415 for another type, 400 when it is not valid JSON or not an object.
+    - An unknown path is a 404 `Not found.`, a known path with another method a 405 with Allow.
+    - Every token may make 600 calls a minute; then 429 with Retry-After in seconds.
+    - Send `X-LA2L-Client: <sdk>/<version> (<app name>)` with every call, for example
+      `la2l-js/0.1.0 (Web808)`. It is optional; the server logs it, so it is known which
+      versions still run before anything is ever phased out.
+
+    The contract in words: https://github.com/lloydstellar/Lloyds-app2live/blob/main/docs/server-api.md
+  license:
+    name: Apache 2.0
+    identifier: Apache-2.0
+  contact:
+    name: LA2L on GitHub
+    url: https://github.com/lloydstellar/Lloyds-app2live
+servers:
+  - url: https://lloydstellar.nl/la2l/api
+    description: The LA2L server
+tags:
+  - name: Server
+    description: Is the server there?
+  - name: Pairing
+    description: Link the app to the computer with LA2L, and unlink it.
+  - name: Packages
+    description: Send sounds, and follow them until they are in Live.
+security:
+  - appToken: []
+paths:
+  /health:
+    get:
+      tags: [Server]
+      operationId: getHealth
+      summary: Whether the server is up and can take sounds
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Client'
+      responses:
+        '200':
+          description: The server is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, name, version]
+                properties:
+                  ok:
+                    const: true
+                  name:
+                    type: string
+                    examples: [la2l-server]
+                  version:
+                    type: string
+                    examples: [0.7.0]
+        '503':
+          description: The server runs, but cannot store sounds right now.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, error]
+                properties:
+                  ok:
+                    const: false
+                  error:
+                    type: string
+              examples:
+                cannotStore:
+                  value: { ok: false, error: The server cannot store sounds right now. }
+
+  /pair/claim:
+    post:
+      tags: [Pairing]
+      operationId: claimPairing
+      summary: Pair this app with the code that LA2L shows in Live
+      description: |
+        In Live, the user clicks Pair app in LA2L (or Settings > Add app) and reads a code of six
+        characters, such as `K7P 42Q`, valid for 10 minutes and usable once. The app sends it
+        here and keeps the `app_token` for every later call. LA2L then says "Paired with
+        <app_name>". At most 10 tries a minute from one address.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Client'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: As the user typed it. Case, spaces and dashes do not matter.
+                  examples: [K7P 42Q]
+                app_name:
+                  type: string
+                  description: |
+                    Shown in Live: "Paired with Web808". Letters of any language, digits, space
+                    and `_ - ( ) . ' & + # !`; anything else becomes a space. Cut at 40
+                    characters. Default "App".
+                  examples: [Web808]
+                app_id:
+                  type: string
+                  description: |
+                    This installation's own id: a UUID made once and kept. Pairing again with
+                    the same app_id replaces the old token of this installation. Cut at 100
+                    characters.
+                  examples: [8f1c0e2a-5b3d-4c7e-9f1a-2b3c4d5e6f70]
+      responses:
+        '200':
+          description: Paired.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [app_token, device_name]
+                properties:
+                  app_token:
+                    type: string
+                    description: The secret for every later call. Keep it like a password.
+                    examples: [la2la_6Wq0...]
+                  device_name:
+                    type: string
+                    description: The name of the computer, to show as "Paired with ERIK-PC".
+                    examples: [ERIK-PC]
+        '404':
+          description: A wrong, used or expired code. The same answer for all three.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                wrongCode:
+                  value: { error: This code does not work. Check the code in Live. }
+        '400':
+          $ref: '#/components/responses/BadJson'
+        '413':
+          $ref: '#/components/responses/JsonTooLarge'
+        '415':
+          $ref: '#/components/responses/NotJson'
+        '429':
+          description: Too many tries from this address. Wait Retry-After seconds.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tooManyTries:
+                  value: { error: Too many tries. Wait a minute and try again. }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /app/me:
+    get:
+      tags: [Pairing]
+      operationId: getMe
+      summary: Which computer this app is paired with
+      description: Ask it now and then, for example when the app starts. A 401 means the app is no longer paired.
+      parameters:
+        - $ref: '#/components/parameters/Client'
+      responses:
+        '200':
+          description: The pairing of this app.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [device_name, app_name, paired_at]
+                properties:
+                  device_name:
+                    type: string
+                    examples: [ERIK-PC]
+                  app_name:
+                    type: string
+                    examples: [Web808]
+                  paired_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /app/unpair:
+    post:
+      tags: [Pairing]
+      operationId: unpairApp
+      summary: Unpair this app
+      description: Revokes this app token. Packages the app sent still wait for the computer.
+      parameters:
+        - $ref: '#/components/parameters/Client'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadJson'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/JsonTooLarge'
+        '415':
+          $ref: '#/components/responses/NotJson'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /packages:
+    post:
+      tags: [Packages]
+      operationId: createPackage
+      summary: Announce a package with its manifest
+      description: |
+        The server checks the manifest as LA2L in Live does, but stricter: every sound must be
+        valid and must have `bytes` and `sha256`. It gives the package its own `package_id`
+        (one in the manifest is replaced). Upload every file and commit within an hour; after
+        that the package is gone. At most 30 packages an hour per app.
+      parameters:
+        - $ref: '#/components/parameters/Client'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './app2live-1.schema.json'
+            examples:
+              loop:
+                summary: A drum loop and a vocal one-shot
+                value:
+                  schema: app2live/1
+                  title: Treinbeat
+                  source: { app: Web808, app_version: 1.0.0, platform: web }
+                  tempo: { bpm: 92 }
+                  items:
+                    - { id: kick, file: kick.wav, bytes: 1693484, sha256: 0db10f2c2f332cd27cf1407fa16c686337b2b23f46125d6e17740dbfc6df427e, name: Kick, kind: loop, role: drums, length_beats: 16 }
+                    - { id: robot, file: robot.wav, bytes: 420112, sha256: 18d63be10ad544a04a22c944dee01d6d864ec69b797a58edae92e6a44ad8fdbf, name: Robot hallo, kind: oneshot, role: vocal }
+      responses:
+        '201':
+          description: The package exists. Now upload its files.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [package_id, upload, expires_at, warnings]
+                properties:
+                  package_id:
+                    type: string
+                    format: uuid
+                  upload:
+                    type: object
+                    description: |
+                      Per file name the path to PUT it to, after the base address. A name with
+                      a space comes URL-encoded: `my%20kick.wav`.
+                    additionalProperties:
+                      type: string
+                    examples:
+                      - { kick.wav: /packages/7f3c2a9e-1b4d-4c8e-9a51-0d2e6f7b8c90/files/kick.wav }
+                  expires_at:
+                    type: string
+                    format: date-time
+                    description: When the package is deleted, imported or not, 24 hours from now.
+                  warnings:
+                    type: array
+                    description: |
+                      What LA2L takes but ignores, for example `Kick: role "drum" unknown` or
+                      `Hit: bpm and length_beats only apply to a loop`. The package goes ahead;
+                      fix them in the app.
+                    items:
+                      type: string
+        '422':
+          description: LA2L would refuse the package or one of its sounds. The text says why.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                noSounds:
+                  value: { error: The package has no sounds. }
+                tooMany:
+                  value: { error: The package has 33 sounds. LA2L takes 32 at most. }
+                tooLarge:
+                  value: { error: The package is 201 MB. LA2L takes 200 MB at most. }
+                newerSchema:
+                  value: { error: This package uses app2live/2. Update LA2L to import it. }
+                notAPackage:
+                  value: { error: This is not an App2Live package. }
+                badFileName:
+                  value: { error: Kick has no valid file name }
+                sameFile:
+                  value: { error: Kick 2 uses the same file as another sound }
+                noChecksum:
+                  value: { error: Kick needs bytes and sha256. }
+                notValid:
+                  value: { error: The package description is not valid. }
+        '507':
+          description: No room for this package right now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                computerFull:
+                  summary: Over 1 GB would wait for this computer.
+                  value: { error: Too many sounds wait for this computer. Click Import in Live first. }
+                addressFull:
+                  summary: Over 2 GB would wait from this address.
+                  value: { error: Too many sounds wait from this address. Try again later. }
+                serverFull:
+                  value: { error: The server is full. Try again later. }
+        '429':
+          description: Over 30 packages in an hour from this app, or over 600 calls a minute. Wait Retry-After seconds.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                packagesPerHour:
+                  value: { error: Too many packages in an hour. Wait a while. }
+                callsPerMinute:
+                  value: { error: Too many requests. Wait a minute. }
+        '400':
+          $ref: '#/components/responses/BadJson'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/JsonTooLarge'
+        '415':
+          $ref: '#/components/responses/NotJson'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /packages/{package_id}/files/{file}:
+    put:
+      tags: [Packages]
+      operationId: uploadFile
+      summary: Upload one WAV file of the package
+      description: |
+        The bytes of the file, with any Content-Type, up to 200 MB, before the commit. The server
+        checks the size and the sha256 against the manifest, and the WAV header as LA2L does.
+        Sending a file again replaces it; one upload per file at a time. A broken upload cannot
+        be resumed: send the whole file again.
+      parameters:
+        - $ref: '#/components/parameters/PackageId'
+        - $ref: '#/components/parameters/File'
+        - $ref: '#/components/parameters/Client'
+      requestBody:
+        required: true
+        content:
+          audio/wav:
+            schema:
+              type: string
+              contentMediaType: audio/wav
+          application/octet-stream:
+            schema:
+              type: string
+              contentMediaType: application/octet-stream
+      responses:
+        '200':
+          description: The file is there and is a WAV file Live can use.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, file, bytes]
+                properties:
+                  ok:
+                    const: true
+                  file:
+                    type: string
+                    examples: [kick.wav]
+                  bytes:
+                    type: integer
+                    examples: [1693484]
+        '422':
+          description: |
+            Damaged on the way, or not a WAV file Live can use. For a WAV the text is the one
+            LA2L would show; PCM 8, 16, 24 or 32 bit or float 32 or 64 bit, mono or stereo,
+            8 to 192 kHz is what works.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                damaged:
+                  value: { error: The file arrived damaged. Send it again. }
+                compressed:
+                  value: { error: This WAV file is compressed (format 85). Send plain PCM or float WAV. }
+                notWav:
+                  value: { error: This is not a WAV file. }
+                rf64:
+                  value: { error: RF64 files are not supported. Send a normal WAV file. }
+                channels:
+                  value: { error: The WAV file has 3 channels. Live places mono and stereo files only. }
+                bits:
+                  value: { error: 12-bit PCM is not supported. Use 16 or 24 bit. }
+        '413':
+          description: Larger than the manifest said. Comes at once when Content-Length says so.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                larger:
+                  value: { error: The file is larger than the package said. }
+        '404':
+          description: |
+            Not a file of this package, a package that is committed or deleted, or an upload that
+            took longer than an hour. Send the package again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notInPackage:
+                  value: { error: This file is not in the package. }
+                sentAlready:
+                  value: { error: This package is sent already. }
+                tooLong:
+                  value: { error: The upload took too long. Send the package again. }
+                unknown:
+                  value: { error: Unknown package. }
+        '409':
+          description: This file is being uploaded already.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                busy:
+                  value: { error: This file is being sent already. }
+        '507':
+          description: The disk filled up during the upload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                full:
+                  value: { error: The server is full. Try again later. }
+        '400':
+          description: The upload broke off. Send the file again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                brokenOff:
+                  value: { error: The upload was broken off. }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /packages/{package_id}/commit:
+    post:
+      tags: [Packages]
+      operationId: commitPackage
+      summary: Every file is there; let Live see the package
+      parameters:
+        - $ref: '#/components/parameters/PackageId'
+        - $ref: '#/components/parameters/Client'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Committed, or committed before; then the status it has now.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, status]
+                properties:
+                  ok:
+                    const: true
+                  status:
+                    $ref: '#/components/schemas/PackageStatus'
+        '409':
+          description: Not every file is uploaded yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing:
+                  value: { error: 'Not all files are there yet: kick.wav, robot.wav' }
+        '404':
+          description: The upload took longer than an hour, or the package does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tooLong:
+                  value: { error: The upload took too long. Send the package again. }
+                unknown:
+                  value: { error: Unknown package. }
+        '400':
+          $ref: '#/components/responses/BadJson'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/JsonTooLarge'
+        '415':
+          $ref: '#/components/responses/NotJson'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /packages/{package_id}/status:
+    get:
+      tags: [Packages]
+      operationId: getPackageStatus
+      summary: Where the package is now
+      description: |
+        Ask every few seconds while the app is open, until `imported`, `partial`, `failed` or
+        `expired`. Until then show "Waiting for Import in Live". Only for the app that sent the
+        package, for 7 days.
+      parameters:
+        - $ref: '#/components/parameters/PackageId'
+        - $ref: '#/components/parameters/Client'
+      responses:
+        '200':
+          description: The status, and per sound what LA2L said once it imported the package.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, items, updated_at]
+                properties:
+                  status:
+                    $ref: '#/components/schemas/PackageStatus'
+                  items:
+                    type: array
+                    description: Per sound what LA2L said in Live. Empty until the import.
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          enum: [imported, failed]
+                        error:
+                          type: string
+                          description: Why this sound is not in Live.
+                  error:
+                    type: string
+                    description: Why the package as a whole failed, when LA2L said so.
+                  updated_at:
+                    type: string
+                    format: date-time
+              examples:
+                partial:
+                  value:
+                    status: partial
+                    items:
+                      - { id: kick, name: Kick, status: imported }
+                      - { id: robot, name: Robot hallo, status: failed, error: 'is not a usable WAV: This WAV file is compressed (format 85). Send plain PCM or float WAV.' }
+                    updated_at: '2026-10-16T14:31:05.000Z'
+        '404':
+          description: Not a package of this app, or older than 7 days.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unknown:
+                  value: { error: Unknown package. }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /packages/{package_id}:
+    delete:
+      tags: [Packages]
+      operationId: deletePackage
+      summary: Take a package back, until it is in Live
+      parameters:
+        - $ref: '#/components/parameters/PackageId'
+        - $ref: '#/components/parameters/Client'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '409':
+          description: Live imported it already.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                inLive:
+                  value: { error: This package is already in Live. }
+        '404':
+          description: Not a package of this app.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unknown:
+                  value: { error: Unknown package. }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    appToken:
+      type: http
+      scheme: bearer
+      description: 'The `app_token` from `POST /pair/claim`, as `Authorization: Bearer <app_token>`.'
+
+  parameters:
+    PackageId:
+      name: package_id
+      in: path
+      required: true
+      description: The `package_id` from `POST /packages`.
+      schema:
+        type: string
+        format: uuid
+    File:
+      name: file
+      in: path
+      required: true
+      description: The `file` of the sound in the manifest, URL-encoded.
+      schema:
+        type: string
+        pattern: '^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9 ._-]{0,95}\.[Ww][Aa][Vv]$'
+    Client:
+      name: X-LA2L-Client
+      in: header
+      required: false
+      description: Which SDK and app make the call. Logged, and kept per app, cut at 100 characters.
+      schema:
+        type: string
+        examples: [la2l-js/0.1.0 (Web808)]
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before trying again.
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          maxLength: 80
+          description: Short plain English. Show it to the user as it is.
+    PackageStatus:
+      description: |
+        `uploading`: not committed yet. `waiting`: committed, until Import in Live.
+        `imported`: every sound is in Live. `partial`: some are. `failed`: none are; the package
+        stays, so a later Import can still bring it in. `expired`: not imported within 24 hours,
+        or not committed within an hour.
+      enum: [uploading, waiting, imported, partial, failed, expired]
+
+  responses:
+    Ok:
+      description: Done.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok:
+                const: true
+    Unauthorized:
+      description: The app token is unknown or revoked. Forget it and show the pair screen.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unknownToken:
+              value: { error: Unknown token. Pair this app again. }
+    TooManyRequests:
+      description: Over 600 calls a minute with this token. Wait Retry-After seconds.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            tooMany:
+              value: { error: Too many requests. Wait a minute. }
+    BadJson:
+      description: The body is not valid JSON, or not a JSON object.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notJson:
+              value: { error: The request is not valid JSON. }
+            notObject:
+              value: { error: Send a JSON object. }
+    JsonTooLarge:
+      description: The JSON body is larger than 1 MB.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            tooLarge:
+              value: { error: The request is larger than 1 MB. }
+    NotJson:
+      description: The body is not sent as application/json.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            contentType:
+              value: { error: 'Send JSON with Content-Type: application/json.' }
+    ServerError:
+      description: A problem in the server. Try again later.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            problem:
+              value: { error: The server has a problem. Try again later. }

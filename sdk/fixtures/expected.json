@@ -1,0 +1,628 @@
+{
+  "about": "The verdict on every fixture. See README.md. Made by make.js: change it there.",
+  "wav": [
+    {
+      "file": "wav/pcm8-mono.wav",
+      "about": "8-bit PCM, mono",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 8,
+        "frames": 441,
+        "dataBytes": 441
+      }
+    },
+    {
+      "file": "wav/pcm16-mono.wav",
+      "about": "16-bit PCM, mono",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 882
+      }
+    },
+    {
+      "file": "wav/pcm16-stereo.wav",
+      "about": "16-bit PCM, stereo",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 2,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 1764
+      }
+    },
+    {
+      "file": "wav/pcm24-stereo.wav",
+      "about": "24-bit PCM, stereo, 48 kHz",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 2,
+        "sampleRate": 48000,
+        "bitsPerSample": 24,
+        "frames": 480,
+        "dataBytes": 2880
+      }
+    },
+    {
+      "file": "wav/pcm32-mono.wav",
+      "about": "32-bit integer PCM, mono",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 32,
+        "frames": 441,
+        "dataBytes": 1764
+      }
+    },
+    {
+      "file": "wav/float32-stereo.wav",
+      "about": "32-bit float, stereo",
+      "device": {
+        "ok": true,
+        "format": "float",
+        "channels": 2,
+        "sampleRate": 44100,
+        "bitsPerSample": 32,
+        "frames": 441,
+        "dataBytes": 3528
+      }
+    },
+    {
+      "file": "wav/float64-mono.wav",
+      "about": "64-bit float, mono, 96 kHz",
+      "device": {
+        "ok": true,
+        "format": "float",
+        "channels": 1,
+        "sampleRate": 96000,
+        "bitsPerSample": 64,
+        "frames": 960,
+        "dataBytes": 7680
+      }
+    },
+    {
+      "file": "wav/extensible-pcm24.wav",
+      "about": "WAVE_FORMAT_EXTENSIBLE with 24-bit PCM inside, stereo",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 2,
+        "sampleRate": 44100,
+        "bitsPerSample": 24,
+        "frames": 441,
+        "dataBytes": 2646
+      }
+    },
+    {
+      "file": "wav/extensible-float32.wav",
+      "about": "WAVE_FORMAT_EXTENSIBLE with 32-bit float inside, mono",
+      "device": {
+        "ok": true,
+        "format": "float",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 32,
+        "frames": 441,
+        "dataBytes": 1764
+      }
+    },
+    {
+      "file": "wav/list-before-fmt.wav",
+      "about": "a LIST chunk before fmt, as some editors write it",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 882
+      }
+    },
+    {
+      "file": "wav/odd-chunk.wav",
+      "about": "a chunk of 3 bytes, with its pad byte, between fmt and data",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 882
+      }
+    },
+    {
+      "file": "wav/data-size-0.wav",
+      "about": "the data size left at 0 by a recorder that never finished the header",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 882
+      }
+    },
+    {
+      "file": "wav/data-size-ffffffff.wav",
+      "about": "the data size left at 0xFFFFFFFF while recording",
+      "device": {
+        "ok": true,
+        "format": "pcm",
+        "channels": 1,
+        "sampleRate": 44100,
+        "bitsPerSample": 16,
+        "frames": 441,
+        "dataBytes": 882
+      }
+    },
+    {
+      "file": "wav/pcm12.wav",
+      "about": "12-bit PCM",
+      "device": {
+        "ok": false,
+        "error": "12-bit PCM is not supported. Use 16 or 24 bit."
+      }
+    },
+    {
+      "file": "wav/compressed.wav",
+      "about": "a compressed WAV: format 85, MP3 inside",
+      "device": {
+        "ok": false,
+        "error": "This WAV file is compressed (format 85). Send plain PCM or float WAV."
+      }
+    },
+    {
+      "file": "wav/float16.wav",
+      "about": "16-bit float",
+      "device": {
+        "ok": false,
+        "error": "16-bit float is not supported. Use 32-bit float."
+      }
+    },
+    {
+      "file": "wav/rf64.wav",
+      "about": "RF64, the format for files over 4 GB",
+      "device": {
+        "ok": false,
+        "error": "RF64 files are not supported. Send a normal WAV file."
+      }
+    },
+    {
+      "file": "wav/three-channels.wav",
+      "about": "3 channels",
+      "device": {
+        "ok": false,
+        "error": "The WAV file has 3 channels. Live places mono and stereo files only."
+      }
+    },
+    {
+      "file": "wav/rate-4000.wav",
+      "about": "4 kHz",
+      "device": {
+        "ok": false,
+        "error": "The sample rate 4000 Hz is not supported."
+      }
+    },
+    {
+      "file": "wav/no-data.wav",
+      "about": "no data chunk",
+      "device": {
+        "ok": false,
+        "error": "The WAV file has no sound data."
+      }
+    },
+    {
+      "file": "wav/empty-data.wav",
+      "about": "a data chunk of 0 bytes at the end",
+      "device": {
+        "ok": false,
+        "error": "The WAV file is empty."
+      }
+    },
+    {
+      "file": "wav/no-fmt.wav",
+      "about": "no fmt chunk",
+      "device": {
+        "ok": false,
+        "error": "The WAV file has no format block."
+      }
+    },
+    {
+      "file": "wav/short-fmt.wav",
+      "about": "a fmt chunk of 14 bytes",
+      "device": {
+        "ok": false,
+        "error": "The WAV header is damaged."
+      }
+    },
+    {
+      "file": "wav/empty-chunks.wav",
+      "about": "1001 empty chunks and no fmt or data",
+      "device": {
+        "ok": false,
+        "error": "The WAV header is damaged."
+      }
+    },
+    {
+      "file": "wav/text.wav",
+      "about": "a text file named .wav, like an error page saved by a browser",
+      "device": {
+        "ok": false,
+        "error": "This is not a WAV file."
+      }
+    },
+    {
+      "file": "wav/ten-bytes.wav",
+      "about": "a file of 10 bytes",
+      "device": {
+        "ok": false,
+        "error": "The file is too short to be a WAV file."
+      }
+    }
+  ],
+  "manifests": [
+    {
+      "file": "manifests/example.json",
+      "about": "the example of docs/manifest.md",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "Kick",
+            "kind": "loop",
+            "error": null
+          },
+          {
+            "name": "Robot hallo",
+            "kind": "oneshot",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": []
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/minimal.json",
+      "about": "one loop with only what is required, and its kind",
+      "device": {
+        "ok": true,
+        "warnings": [
+          "no title",
+          "no source.app"
+        ],
+        "items": [
+          {
+            "name": "Sound 1",
+            "kind": "loop",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": [
+          "no title",
+          "no source.app"
+        ]
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/no-sounds.json",
+      "about": "no sounds",
+      "device": {
+        "ok": false,
+        "error": "The package has no sounds."
+      },
+      "server": {
+        "status": 422,
+        "error": "The package has no sounds."
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/33-sounds.json",
+      "about": "33 sounds",
+      "device": {
+        "ok": false,
+        "error": "The package has 33 sounds. LA2L takes 32 at most."
+      },
+      "server": {
+        "status": 422,
+        "error": "The package has 33 sounds. LA2L takes 32 at most."
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/201-mb.json",
+      "about": "two sounds of 100.5 MB: 201 MB together",
+      "device": {
+        "ok": false,
+        "error": "The package is 201 MB. LA2L takes 200 MB at most."
+      },
+      "server": {
+        "status": 422,
+        "error": "The package is 201 MB. LA2L takes 200 MB at most."
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/schema-2.json",
+      "about": "a newer format, app2live/2",
+      "device": {
+        "ok": false,
+        "error": "This package uses app2live/2. Update LA2L to import it."
+      },
+      "server": {
+        "status": 422,
+        "error": "This package uses app2live/2. Update LA2L to import it."
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/no-schema.json",
+      "about": "no schema at all",
+      "device": {
+        "ok": false,
+        "error": "This is not an App2Live package."
+      },
+      "server": {
+        "status": 422,
+        "error": "This is not an App2Live package."
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/not-an-object.json",
+      "about": "a list instead of an object",
+      "device": {
+        "ok": false,
+        "error": "The package description is not valid."
+      },
+      "server": {
+        "status": 400,
+        "error": "Send a JSON object."
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/bad-file-name.json",
+      "about": "a sound whose file name leads out of its folder",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "Snare",
+            "kind": "loop",
+            "error": null
+          },
+          {
+            "name": "Kick",
+            "kind": "oneshot",
+            "error": "has no valid file name"
+          }
+        ]
+      },
+      "server": {
+        "status": 422,
+        "error": "Kick has no valid file name"
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/same-file.json",
+      "about": "two sounds with one file",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "Kick",
+            "kind": "loop",
+            "error": null
+          },
+          {
+            "name": "Kick 2",
+            "kind": "oneshot",
+            "error": "uses the same file as another sound"
+          }
+        ]
+      },
+      "server": {
+        "status": 422,
+        "error": "Kick 2 uses the same file as another sound"
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/name-41.json",
+      "about": "a name of 41 characters, cut to 40",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "A name of exactly forty-one characters!!",
+            "kind": "loop",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": []
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/unknown-role.json",
+      "about": "an unknown role",
+      "device": {
+        "ok": true,
+        "warnings": [
+          "Kick: role \"drum\" unknown"
+        ],
+        "items": [
+          {
+            "name": "Kick",
+            "kind": "loop",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": [
+          "Kick: role \"drum\" unknown"
+        ]
+      },
+      "schema": false
+    },
+    {
+      "file": "manifests/no-kind.json",
+      "about": "a sound without kind, which becomes a one-shot",
+      "device": {
+        "ok": true,
+        "warnings": [
+          "Kick: no kind, placed as one-shot"
+        ],
+        "items": [
+          {
+            "name": "Kick",
+            "kind": "oneshot",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": [
+          "Kick: no kind, placed as one-shot"
+        ]
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/oneshot-bpm.json",
+      "about": "a one-shot with a bpm, in a package without loops",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "Hit",
+            "kind": "oneshot",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 201,
+        "warnings": [
+          "Hit: bpm and length_beats only apply to a loop",
+          "tempo.bpm only applies to loops, and this package has none"
+        ]
+      },
+      "schema": true
+    },
+    {
+      "file": "manifests/no-checksum.json",
+      "about": "a sound without bytes and sha256",
+      "device": {
+        "ok": true,
+        "warnings": [],
+        "items": [
+          {
+            "name": "Kick",
+            "kind": "loop",
+            "error": null
+          }
+        ]
+      },
+      "server": {
+        "status": 422,
+        "error": "Kick needs bytes and sha256."
+      },
+      "schema": false
+    }
+  ],
+  "plans": [
+    {
+      "about": "a drum loop with its length: Beats, at the package tempo",
+      "manifest": "manifests/example.json",
+      "item": 0,
+      "duration": 10.4348,
+      "plan": {
+        "warp": true,
+        "looping": true,
+        "warpMode": 0,
+        "bpm": 92,
+        "lengthBeats": 16
+      },
+      "trackName": "Kick (Web808)"
+    },
+    {
+      "about": "a one-shot plays as it is",
+      "manifest": "manifests/example.json",
+      "item": 1,
+      "duration": 1.2,
+      "plan": {
+        "warp": false,
+        "looping": false,
+        "warpMode": null,
+        "bpm": null,
+        "lengthBeats": null
+      },
+      "trackName": "Robot hallo (Web808)"
+    },
+    {
+      "about": "a loop of 2.0004 s at 120 BPM is 4 beats",
+      "manifest": "manifests/unknown-role.json",
+      "item": 0,
+      "duration": 2.0004,
+      "plan": {
+        "warp": true,
+        "looping": true,
+        "warpMode": 4,
+        "bpm": 120,
+        "lengthBeats": 4
+      },
+      "trackName": "Kick (Fixtures)"
+    },
+    {
+      "about": "without a tempo and a length, Live guesses",
+      "manifest": "manifests/minimal.json",
+      "item": 0,
+      "duration": 2,
+      "plan": {
+        "warp": true,
+        "looping": true,
+        "warpMode": 4,
+        "bpm": null,
+        "lengthBeats": null
+      },
+      "trackName": "Sound 1 (App)"
+    }
+  ]
+}

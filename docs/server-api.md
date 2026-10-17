@@ -1,6 +1,8 @@
 # App2Live server API
 
-This is the contract between the LA2L device and the App2Live server. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. Device 0.1.1 uses every device call except `GET /apps`, which came with device 0.2.0 and la2l-server 0.6.0. The second part (the app side) is what apps use; it is final and served by `server/` (la2l-server).
+This is the contract between the LA2L device and the App2Live server. The first part (the device side) is implemented in `src/node/server.js` and simulated in `tests/mock-server.js`; a server that follows it works with the device as it is. Device 0.1.1 uses every device call except `GET /apps`, which came with device 0.2.0 and la2l-server 0.6.0, and `DELETE /apps/{id}`, which came with la2l-server 0.7.0 for a later device. The test receiver (`https://lloydstellar.nl/la2l/receiver`) uses the device side too. The second part (the app side) is what apps use; it is final and served by `server/` (la2l-server).
+
+For machines: the app side is also [openapi.yaml](openapi.yaml) (OpenAPI 3.1), and the manifest [app2live-1.schema.json](app2live-1.schema.json) (JSON Schema). Tests keep both in line with the server.
 
 ## Basics
 
@@ -19,7 +21,7 @@ This is the contract between the LA2L device and the App2Live server. The first 
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.6.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.7.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -35,6 +37,8 @@ Request:
 ```
 
 `device_id` is a random UUID made once per computer. `device_name` is the computer name, to show in the app.
+
+A test receiver, which stands in for Live while a developer tests an app, also sends `"test": true` (la2l-server 0.7.0). The server then marks the computer it makes as a test receiver, and removes it with its apps and packages after 7 days without a call. Only `true` counts, and only when the start makes a new computer; Add app keeps what the computer is.
 
 Answer:
 
@@ -91,7 +95,7 @@ Device 0.2.0 and la2l-server 0.6.0 and newer. The apps that can send to this com
 ```json
 {
   "apps": [
-    { "name": "LA2L Sender", "paired_at": "2026-10-17T10:30:00.000Z", "last_seen_at": "2026-10-17T10:41:12.000Z" }
+    { "id": "3f9c1e0a7b2d4c6e8f1a2b3c4d5e6f70", "name": "LA2L Sender", "paired_at": "2026-10-17T10:30:00.000Z", "last_seen_at": "2026-10-17T10:41:12.000Z" }
   ]
 }
 ```
@@ -100,6 +104,14 @@ Device 0.2.0 and la2l-server 0.6.0 and newer. The apps that can send to this com
 - `last_seen_at`: the last call of that app, at most a minute off; `null` when it made none yet.
 - The device asks this when Live loads it, after every Import and in Self test. From device 0.2.2 it also asks every 15 seconds while an app can send to this computer and no code shows, so Pair app comes back within 15 seconds after the last app unpaired itself: 4 calls a minute per computer. It shows every name once ("Paired with LA2L Sender and Robot Voice."). For an empty list it shows Pair app again instead of Import (device 0.2.1; 0.2.0 kept Import and said "No app paired. Add one in Settings."). It keeps its token then, so Pair app adds an app to the same computer, and packages that still wait come in with the next Import. Self test says `paired with 2 apps` or `no app paired`.
 - A server without this call answers 404. The device then keeps the names it learned when pairing, and Self test says `paired`.
+- `id` (la2l-server 0.7.0): 32 random hex characters, for `DELETE /apps/{id}`. It is not the app's own `app_id` and says nothing about the app. Devices before it ignore it.
+
+### `DELETE /apps/{id}`  (token)
+
+la2l-server 0.7.0, for a later device version. One app of this computer stops: for a token that leaked, or an app nobody wants any more. The server revokes that app token, so the app gets a 401, and deletes that app's packages that still upload or wait, with their files. The computer and its other apps stay paired; an empty `GET /apps` after it is fine.
+
+- `200 {"ok": true}`.
+- An unknown id, an app that is gone already, or an app of another computer: `404 {"error": "Unknown app."}`.
 
 ### `GET /packages/{package_id}/manifest`  (token)
 
@@ -139,7 +151,7 @@ Body `{}`. Revoke the token: no app can send to this computer any more. The serv
 ## Retention and limits
 
 - A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it. la2l-server deletes the files at once after the ack and keeps the result for the app for 7 days. An upload that is not committed within an hour is deleted.
-- la2l-server never removes a paired computer because it is quiet: a computer may not import for months. Unpaired computers and apps are removed 30 days after the unpair.
+- la2l-server never removes a paired computer because it is quiet: a computer may not import for months. Unpaired computers and apps are removed 30 days after the unpair. A test receiver (`"test": true` at `POST /pair/start`) is the exception: after 7 days without a call it is removed with its apps and packages.
 - A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too; la2l-server refuses anything else at upload.
 - Pairing: at most 10 code attempts per minute from one address (an IPv6 address counts by its /64), because a code is short.
 
@@ -148,7 +160,8 @@ Body `{}`. Revoke the token: no app can send to this computer any more. The serv
 For the Android and web apps, and for LA2L Sender, the test page at `https://lloydstellar.nl/la2l/`, which is the reference client (`server/public/sender.js`). Same base address; apps send `Authorization: Bearer <app_token>`.
 
 - **401 means this app token is unknown or revoked**: the computer was unpaired in Live, or the app paired again. Forget the token and show the pair screen.
-- **CORS**: every answer under `/api/` has `Access-Control-Allow-Origin: *`, and an `OPTIONS` preflight gets a 204, so a web app on any site can call the API. The token always goes in the `Authorization` header, never in a cookie.
+- **CORS**: every answer under `/api/` has `Access-Control-Allow-Origin: *`, and an `OPTIONS` preflight gets a 204, so a web app on any site can call the API. A web app can read `Content-Length` and `Retry-After`. The token always goes in the `Authorization` header, never in a cookie or a URL.
+- **`X-LA2L-Client`** (optional, la2l-server 0.7.0): which SDK and app make the call, for example `la2l-js/0.1.0 (Web808)`. The SDKs send it with every call. The server writes it, cut at 100 characters, on the log line of the request and keeps the last one per app, so it is known which versions still run before anything is ever phased out. The preflight allows it.
 - Errors are `{"error": "short plain English"}`, at most 80 characters. Show the text to the user as it is.
 - JSON bodies are objects of at most 1 MB with `Content-Type: application/json`. Otherwise: 413 when larger, 415 for another type, 400 when it is not valid JSON or not an object. A call without a body may send none. An unknown path gets `404 {"error": "Not found."}`, a known path with another method 405 with `Allow`. A 500 (`"The server has a problem. Try again later."`) means a problem in the server; try again later.
 - Every caller with a token may make 600 calls a minute; then 429 with `Retry-After` (in seconds).
@@ -211,7 +224,9 @@ The manifest, see [manifest.md](manifest.md), at most 1 MB. The server gives the
 - `warnings`: what the device takes but ignores, for example `Kick: role "drum" unknown`, or `Hit: bpm and length_beats only apply to a loop` (Live plays a one-shot as it is, without warp). The package goes ahead; fix them in the app.
 - Upload the files and commit within an hour; after that the package is gone. `expires_at` is when the package is deleted: 24 hours after this call, imported or not.
 - `422` with the reason when the device would refuse the package or a sound: `"The package has no sounds."`, `"This package uses app2live/2. Update LA2L to import it."`, `"Kick has no valid file name"`, `"Kick needs bytes and sha256."`, `"The package is 201 MB. LA2L takes 200 MB at most."`.
-- `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when this package would bring what waits for this computer above 1 GB, and `507 {"error": "The server is full. Try again later."}` when the server's disk is nearly full.
+- `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when this package would bring what waits for this computer above 1 GB.
+- `507 {"error": "Too many sounds wait from this address. Try again later."}` when the packages sent from this address (an IPv6 address counts by its /64) would hold more than 2 GB together while they upload or wait, whichever computers they are for. la2l-server keeps a keyed hash of the address with a package only until its files are deleted. The key lives only in the memory of the running server, so a restart forgets who sent what, as it forgets the rate limits.
+- `507 {"error": "The server is full. Try again later."}` when all packages together would pass the server's limit (`MAX_TOTAL_STORAGE_MB`), or its disk is nearly full.
 - At most 30 packages an hour per app, then 429.
 
 ### `PUT /packages/{package_id}/files/{file}`  (app token)

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lloydstellar.nl/la2l/app2live-1.schema.json",
+  "title": "App2Live package manifest, app2live/1",
+  "description": "What an app sends to POST /packages of the LA2L server: one JSON object that describes the WAV files of a package. The app says what each sound is (a loop or a one-shot, drums or vocals); LA2L in Ableton Live picks the Live settings. This schema describes a correct manifest, as la2l-server checks it: every sound valid, with bytes and sha256. The server is more lenient about some things this schema refuses (it cleans names, cuts them at 40 characters, and only warns about unknown kinds, roles and values), and refuses two things a schema cannot check: two sounds with one file, and more than 200 MB in total. LA2L in Live is more lenient still: it imports a package without bytes and sha256, and skips a sound with a problem instead of refusing the package. Full text: https://github.com/lloydstellar/Lloyds-app2live/blob/main/docs/manifest.md",
+  "type": "object",
+  "required": ["schema", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "description": "The format. A newer one, such as app2live/2, is refused: \"This package uses app2live/2. Update LA2L to import it.\"",
+      "const": "app2live/1"
+    },
+    "package_id": {
+      "description": "Leave it out: the server gives every package its own id, and replaces one sent here. Live gets the manifest with that id.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,100}$"
+    },
+    "created_at": {
+      "description": "When the app made the package, in ISO 8601. Only logged.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "title": {
+      "description": "The name of the scene in Session View and of the folder of the files on disk. Default \"Untitled\". Cut at 60 characters.",
+      "type": "string",
+      "maxLength": 60
+    },
+    "source": {
+      "description": "The app that made the package.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "app": {
+          "description": "The app name, added to every track name: \"Kick (Web808)\". Default \"App\".",
+          "type": "string",
+          "maxLength": 40
+        },
+        "app_version": { "description": "Only logged.", "type": "string", "maxLength": 40 },
+        "platform": { "description": "Only logged, for example \"web\" or \"android\".", "type": "string", "maxLength": 40 }
+      }
+    },
+    "tempo": {
+      "description": "The tempo of the package.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bpm": {
+          "description": "The tempo of every loop in the package, unless a sound has its own bpm. A one-shot ignores it.",
+          "type": "number",
+          "minimum": 20,
+          "maximum": 999
+        },
+        "time_signature": {
+          "description": "For example [4, 4]. Read, not used yet.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "items": {
+      "description": "The sounds: one new audio track in Live each. Together at most 200 MB, which a schema cannot check.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/sound" }
+    },
+    "midi": {
+      "description": "Reserved for MIDI parts in a later version. Ignored now, with a warning.",
+      "type": "array"
+    }
+  },
+  "$defs": {
+    "sound": {
+      "type": "object",
+      "required": ["file", "bytes", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "description": "The name of the file on the server, used only to upload and download it. A letter or digit first, then letters, digits, space, '.', '_' or '-', ending in .wav, at most 100 characters, without '..'. Two sounds cannot use the same file, which a schema cannot check. On disk the file gets a name made from name.",
+          "type": "string",
+          "pattern": "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9 ._-]{0,95}\\.[Ww][Aa][Vv]$"
+        },
+        "bytes": {
+          "description": "The size of the file in bytes, exactly. The server refuses an upload of another size.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 209715200
+        },
+        "sha256": {
+          "description": "The SHA-256 of the file in hex. The server refuses an upload with another checksum, and Live checks it after the download.",
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "id": {
+          "description": "Your own id for this sound, sent back in the result per sound. Default: its position, from 1.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "name": {
+          "description": "Track and clip name. Letters of any language, digits, space and _ - ( ) . ' & + # !; anything else becomes a space. Default \"Sound 1\", \"Sound 2\" and so on.",
+          "type": "string",
+          "maxLength": 40
+        },
+        "kind": {
+          "description": "loop: warped to the tempo and looped. oneshot: plays exactly as it is, without warp. Without it, the sound is placed as a one-shot, so always send it for a loop.",
+          "enum": ["loop", "oneshot"]
+        },
+        "role": {
+          "description": "What the sound is. It picks the warp mode of a loop: drums Beats, bass Tones, melodic and vocal Complex Pro, texture Texture, fx (or no role) Complex.",
+          "enum": ["drums", "bass", "melodic", "vocal", "texture", "fx"]
+        },
+        "bpm": {
+          "description": "The tempo of this sound, when it differs from tempo.bpm. Only for a loop.",
+          "type": "number",
+          "minimum": 20,
+          "maximum": 999
+        },
+        "length_beats": {
+          "description": "The loop length in beats. Without it LA2L works it out from the file length and the tempo. Only for a loop.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 4096
+        },
+        "warp_mode": {
+          "description": "Overrides the warp mode the role gives: a name, or Live's number (0 beats, 1 tones, 2 texture, 3 repitch, 4 complex, 6 complex_pro).",
+          "oneOf": [
+            { "enum": ["beats", "tones", "texture", "repitch", "complex", "complex_pro"] },
+            { "enum": [0, 1, 2, 3, 4, 6] }
+          ]
+        },
+        "color": {
+          "description": "The track colour, #RRGGBB. Live picks the nearest colour of its palette. Without it all tracks of a package share one colour.",
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$"
+        },
+        "gain_db": {
+          "description": "Clip gain in dB, kept between -70 and +24.",
+          "type": "number",
+          "minimum": -70,
+          "maximum": 24
+        }
+      }
+    }
+  }
+}

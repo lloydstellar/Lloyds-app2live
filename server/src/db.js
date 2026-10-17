@@ -86,6 +86,20 @@ const MIGRATIONS = [
     PRIMARY KEY (package_id, file)
   );
   `,
+  // 2: the developer kit (sdk/BUILD-PROMPT.md, section 7): test receivers, an id per app that
+  // says nothing, the client header of an app, and who sent a package, for the storage limits.
+  `
+  ALTER TABLE devices ADD COLUMN test INTEGER NOT NULL DEFAULT 0;   -- 1: a test receiver, removed after 7 quiet days
+  ALTER TABLE pairings ADD COLUMN test INTEGER NOT NULL DEFAULT 0;  -- the start asked for a test receiver
+  ALTER TABLE apps ADD COLUMN public_id TEXT;                       -- the id of GET /apps and DELETE /apps/{id}
+  ALTER TABLE apps ADD COLUMN client TEXT NOT NULL DEFAULT '';      -- the last X-LA2L-Client header of the app
+  UPDATE apps SET public_id = lower(hex(randomblob(16)));
+  CREATE UNIQUE INDEX apps_public_id ON apps(public_id);
+  -- A keyed hash of the address the package came from, only while the package has files. The key
+  -- lives in the memory of the running server, so the database alone cannot tell the address.
+  ALTER TABLE packages ADD COLUMN sender TEXT;
+  CREATE INDEX packages_sender ON packages(sender, status);
+  `,
 ];
 
 // Opens (or makes) the database and brings the schema up to date.
@@ -167,12 +181,13 @@ class Store {
 
   createDevice(d, now) {
     return Number(
-      this.sql('INSERT INTO devices (device_id, name, client, platform, token_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      this.sql('INSERT INTO devices (device_id, name, client, platform, token_hash, test, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
         d.deviceId,
         d.name,
         d.client,
         d.platform,
         d.tokenHash,
+        d.test ? 1 : 0,
         now
       ).lastInsertRowid
     );
@@ -221,10 +236,12 @@ class Store {
 
   createApp(a, now) {
     return Number(
-      this.sql('INSERT INTO apps (device_ref, name, app_id, token_hash, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      this.sql('INSERT INTO apps (device_ref, name, app_id, public_id, client, token_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
         a.deviceRef,
         a.name,
         a.appId,
+        a.publicId,
+        a.client,
         a.tokenHash,
         now
       ).lastInsertRowid
@@ -246,9 +263,30 @@ class Store {
     this.sql('UPDATE apps SET last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)').run(now, id, notSince);
   }
 
+  // The X-LA2L-Client header the app sent last, written only when it changed.
+  setAppClient(id, client) {
+    this.sql('UPDATE apps SET client = ? WHERE id = ? AND client <> ?').run(client, id, client);
+  }
+
   // The apps that can send to this computer now, oldest pairing first.
   activeAppsOf(deviceRef) {
-    return this.sql('SELECT name, created_at, last_seen_at FROM apps WHERE device_ref = ? AND revoked_at IS NULL ORDER BY created_at, id').all(deviceRef);
+    return this.sql('SELECT public_id, name, created_at, last_seen_at FROM apps WHERE device_ref = ? AND revoked_at IS NULL ORDER BY created_at, id').all(
+      deviceRef
+    );
+  }
+
+  // An app that can send to this computer now, by the id GET /apps gave.
+  activeAppOf(publicId, deviceRef) {
+    return this.sql('SELECT * FROM apps WHERE public_id = ? AND device_ref = ? AND revoked_at IS NULL').get(publicId, deviceRef);
+  }
+
+  // Revokes one app and deletes its packages that still upload or wait (in the database; the
+  // caller deletes their folders after the transaction). Returns the ids of those packages.
+  removeApp(id, now) {
+    const packageIds = this.sql("SELECT id FROM packages WHERE app_ref = ? AND status IN ('uploading', 'waiting', 'failed')").all(id).map((r) => r.id);
+    for (const packageId of packageIds) this.deletePackage(packageId);
+    this.revokeApp(id, now);
+    return packageIds;
   }
 
   // ---- pairings ----
@@ -268,9 +306,9 @@ class Store {
 
   createPairing(p, now) {
     this.sql(
-      `INSERT INTO pairings (pair_hash, code, status, device_ref, device_id, device_name, client, platform, token_plain, created_at, expires_at)
-       VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(p.pairHash, p.code, p.deviceRef, p.deviceId, p.deviceName, p.client, p.platform, p.tokenPlain, now, p.expiresAt);
+      `INSERT INTO pairings (pair_hash, code, status, device_ref, device_id, device_name, client, platform, token_plain, test, created_at, expires_at)
+       VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(p.pairHash, p.code, p.deviceRef, p.deviceId, p.deviceName, p.client, p.platform, p.tokenPlain, p.test ? 1 : 0, now, p.expiresAt);
   }
 
   pairingByHash(hash) {
@@ -307,13 +345,13 @@ class Store {
 
   // ---- packages ----
 
-  // p: { id, deviceRef, appRef, title, appName, itemCount, totalBytes, manifest, expiresAt }.
+  // p: { id, deviceRef, appRef, title, appName, itemCount, totalBytes, manifest, expiresAt, sender }.
   // files: [{ file, bytes, sha256 }].
   createPackage(p, files, now) {
     this.sql(
-      `INSERT INTO packages (id, device_ref, app_ref, title, app_name, item_count, total_bytes, manifest, status, created_at, expires_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?)`
-    ).run(p.id, p.deviceRef, p.appRef, p.title, p.appName, p.itemCount, p.totalBytes, p.manifest, now, p.expiresAt, now);
+      `INSERT INTO packages (id, device_ref, app_ref, title, app_name, item_count, total_bytes, manifest, status, sender, created_at, expires_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?)`
+    ).run(p.id, p.deviceRef, p.appRef, p.title, p.appName, p.itemCount, p.totalBytes, p.manifest, p.sender, now, p.expiresAt, now);
     const add = this.sql('INSERT INTO files (package_id, file, bytes, sha256) VALUES (?, ?, ?, ?)');
     for (const f of files) add.run(p.id, f.file, f.bytes, f.sha256);
   }
@@ -359,13 +397,19 @@ class Store {
   }
 
   // imported, partial, expired or deleted: the files go, and with them the manifest, which only
-  // the device needed. The row stays for the status call. ack: the new ack JSON, or null to
-  // keep the one there is.
+  // the device needed, and the sender, which only the storage limits needed. The row stays for
+  // the status call. ack: the new ack JSON, or null to keep the one there is.
   markDone(id, status, ack, now) {
     if (ack !== null) {
-      this.sql("UPDATE packages SET status = ?, ack = ?, acked_at = ?, manifest = '', updated_at = ? WHERE id = ?").run(status, ack, now, now, id);
+      this.sql("UPDATE packages SET status = ?, ack = ?, acked_at = ?, manifest = '', sender = NULL, updated_at = ? WHERE id = ?").run(
+        status,
+        ack,
+        now,
+        now,
+        id
+      );
     } else {
-      this.sql("UPDATE packages SET status = ?, manifest = '', updated_at = ? WHERE id = ?").run(status, now, id);
+      this.sql("UPDATE packages SET status = ?, manifest = '', sender = NULL, updated_at = ? WHERE id = ?").run(status, now, id);
     }
     this.sql('DELETE FROM files WHERE package_id = ?').run(id);
   }
@@ -389,6 +433,18 @@ class Store {
     return this.sql(
       "SELECT COALESCE(SUM(total_bytes), 0) AS n FROM packages WHERE device_ref = ? AND status IN ('uploading', 'waiting', 'failed')"
     ).get(deviceRef).n;
+  }
+
+  // The bytes kept for the packages sent from one address, while they have files.
+  bytesFromSender(sender) {
+    return this.sql("SELECT COALESCE(SUM(total_bytes), 0) AS n FROM packages WHERE sender = ? AND status IN ('uploading', 'waiting', 'failed')").get(
+      sender
+    ).n;
+  }
+
+  // The bytes kept for all packages that have, or will soon have, files on disk.
+  bytesStored() {
+    return this.sql("SELECT COALESCE(SUM(total_bytes), 0) AS n FROM packages WHERE status IN ('uploading', 'waiting', 'failed')").get().n;
   }
 
   // The bytes still to come for uploads that have started: disk space that is spoken for.
@@ -435,6 +491,12 @@ class Store {
     return packageIds;
   }
 
+  // Test receivers that made no call since `before`. A real computer is never removed for being
+  // quiet; a test receiver is, because a page or a terminal that was closed never unpairs.
+  quietTestDevices(before) {
+    return this.sql('SELECT id FROM devices WHERE test = 1 AND revoked_at IS NULL AND COALESCE(last_seen_at, created_at) <= ?').all(before).map((r) => r.id);
+  }
+
   // Uploads that were not committed in time.
   staleUploads(createdBefore) {
     return this.sql("SELECT id FROM packages WHERE status = 'uploading' AND created_at <= ?").all(createdBefore).map((r) => r.id);
@@ -473,13 +535,18 @@ class Store {
     return { apps, devices };
   }
 
-  // What the server holds, for the log line at start.
+  // What the server holds, for the log line at start. Test receivers and their apps are counted
+  // apart from the real computers.
   state() {
     const n = (text) => this.sql(text).get().n;
+    const apps = (test) =>
+      n(`SELECT COUNT(*) AS n FROM apps a JOIN devices d ON d.id = a.device_ref WHERE a.revoked_at IS NULL AND d.revoked_at IS NULL AND d.test = ${test}`);
     return {
-      devices: n('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL'),
-      apps: n('SELECT COUNT(*) AS n FROM apps WHERE revoked_at IS NULL'),
+      devices: n('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL AND test = 0'),
+      apps: apps(0),
       waiting: n("SELECT COUNT(*) AS n FROM packages WHERE status IN ('waiting', 'failed')"),
+      testDevices: n('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL AND test = 1'),
+      testApps: apps(1),
     };
   }
 

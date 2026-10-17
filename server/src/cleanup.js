@@ -1,7 +1,8 @@
 'use strict';
 // The cleanup of BUILD-PROMPT.md section 9: one function that removes what has had its time. It
 // runs at start and every minute, and logs one line with the counts when it removed something.
-// Devices that are quiet are never deleted: a computer may not import for months.
+// Devices that are quiet are never deleted: a computer may not import for months. Test receivers
+// are (sdk/BUILD-PROMPT.md section 7.4): a page or a terminal that was closed never unpairs.
 
 const fs = require('fs');
 const path = require('path');
@@ -15,6 +16,7 @@ const KEEP_ENDED_PAIRING_MS = HOUR;
 // A claim the device never picked up: the device stopped asking, so its token is lost.
 const UNDELIVERED_MS = 10 * MINUTE;
 const KEEP_REVOKED_MS = 30 * DAY;
+const QUIET_TEST_RECEIVER_MS = 7 * DAY;
 
 function makeCleanup({ config, store, storage, clock, log }) {
   const iso = (ms) => new Date(ms).toISOString();
@@ -51,6 +53,10 @@ function makeCleanup({ config, store, storage, clock, log }) {
         store.markDone(id, 'expired', null, iso(now));
         folders.push(id);
         count('expired package(s)');
+      }
+      for (const id of store.quietTestDevices(iso(now - QUIET_TEST_RECEIVER_MS))) {
+        folders.push(...store.deleteDevice(id));
+        count('test receiver(s) quiet for 7 days');
       }
       count('old result(s)', store.deleteOldResults(iso(now - config.resultTtlMs)));
       const revoked = store.deleteOldRevoked(iso(now - KEEP_REVOKED_MS));
@@ -154,4 +160,4 @@ function makeCleanup({ config, store, storage, clock, log }) {
   };
 }
 
-module.exports = { makeCleanup, UNDELIVERED_MS, KEEP_REVOKED_MS };
+module.exports = { makeCleanup, UNDELIVERED_MS, KEEP_REVOKED_MS, QUIET_TEST_RECEIVER_MS };

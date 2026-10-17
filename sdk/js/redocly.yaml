@@ -1,0 +1,3 @@
+# The OpenAPI linter of docs/openapi.yaml (npm run lint). The recommended rules, strict.
+extends:
+  - recommended-strict

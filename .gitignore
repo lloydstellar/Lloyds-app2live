@@ -5,3 +5,5 @@ node_modules/
 Thumbs.db
 .env
 server/data/
+# Lock files of Claude Code
+.claude/*.lock

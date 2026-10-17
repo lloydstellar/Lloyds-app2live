@@ -51,7 +51,14 @@ if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
   exit 1
 fi
 volume=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$CONTAINER")
+# The image of the container. With Docker's containerd image store, a rebuild that changes
+# nothing gives the tag a new image and drops the old one, while the container keeps running from
+# it; the container's image id then no longer exists. Then the image it was started as is used,
+# such as la2l-server:local. The check then uses the code of that tag, which is the code the container runs as long as the rebuild changed nothing.
 image=$(docker inspect -f '{{.Image}}' "$CONTAINER")
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+  image=$(docker inspect -f '{{.Config.Image}}' "$CONTAINER")
+fi
 if [ -z "$volume" ]; then
   echo "The container $CONTAINER has no volume at /data." >&2
   exit 1

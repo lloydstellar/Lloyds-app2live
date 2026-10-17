@@ -1,0 +1,278 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "tempo": {
+    "bpm": 120
+  },
+  "items": [
+    {
+      "id": "hit-1",
+      "file": "hit-1.wav",
+      "bytes": 352844,
+      "sha256": "cb4309be81305e0f13508677bc7f7323fd5cfcecc49c98665141578ac0132c59",
+      "name": "Hit 1",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-2",
+      "file": "hit-2.wav",
+      "bytes": 352844,
+      "sha256": "2ed37f4dc614fbc1be81028560fedad9b383cd6e9f61e0ed06b40147e0c54c7e",
+      "name": "Hit 2",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-3",
+      "file": "hit-3.wav",
+      "bytes": 352844,
+      "sha256": "4c771997f5883f0e0091866bf948b2ae249f3e2a2e01c3976c47b5675e04e253",
+      "name": "Hit 3",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-4",
+      "file": "hit-4.wav",
+      "bytes": 352844,
+      "sha256": "c92831209200273d5754deb1e725b90ce4c0e3860ea1de539b0043175d931650",
+      "name": "Hit 4",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-5",
+      "file": "hit-5.wav",
+      "bytes": 352844,
+      "sha256": "5f45dbd41869dff740aa60afde2d55d250eb78d11212d496095feb6f7fdb5067",
+      "name": "Hit 5",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-6",
+      "file": "hit-6.wav",
+      "bytes": 352844,
+      "sha256": "8d23be9d634915560cfdc1a35f657a6c727ee9bd3974462ea502bb809460dda4",
+      "name": "Hit 6",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-7",
+      "file": "hit-7.wav",
+      "bytes": 352844,
+      "sha256": "d95d287b37172561214673f00fb678c78ce6f98f6fd33cc0bec08fc903232b87",
+      "name": "Hit 7",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-8",
+      "file": "hit-8.wav",
+      "bytes": 352844,
+      "sha256": "4f2c1cf6cd1800ab27f8ba9fcd38fb398f4c83dfd31c4fa2abc81e8458d54b19",
+      "name": "Hit 8",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-9",
+      "file": "hit-9.wav",
+      "bytes": 352844,
+      "sha256": "70fe3220d3d048b201182b14c68d6fbd39d8db270f86ffa77f76de34589f5f31",
+      "name": "Hit 9",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-10",
+      "file": "hit-10.wav",
+      "bytes": 352844,
+      "sha256": "59aadbd0663d9e791a48ffd14447fb7d84f407bbbeb8f9799d74912d41694af6",
+      "name": "Hit 10",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-11",
+      "file": "hit-11.wav",
+      "bytes": 352844,
+      "sha256": "a304e4646f2a05e3690319ae827c7c7afa76599fa5629eacbbe1ae072548582e",
+      "name": "Hit 11",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-12",
+      "file": "hit-12.wav",
+      "bytes": 352844,
+      "sha256": "daab30845005fd4e428318aa64c5ed1642fd6e8114bc5d391b93e0bd87d3d0c8",
+      "name": "Hit 12",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-13",
+      "file": "hit-13.wav",
+      "bytes": 352844,
+      "sha256": "09a8c9f9e1ec82b2cb535d9505493eff01580a0c2569eb2da88cf5cdf9298c99",
+      "name": "Hit 13",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-14",
+      "file": "hit-14.wav",
+      "bytes": 352844,
+      "sha256": "adeb8242c2cd6b9e35a6a58eb3fa81791f5588ad256db3ec1dfa7a91110bc98d",
+      "name": "Hit 14",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-15",
+      "file": "hit-15.wav",
+      "bytes": 352844,
+      "sha256": "5f7ec4a6dddbf2904e42c6829cc7a53716cb246ece381edc060d96353664f376",
+      "name": "Hit 15",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-16",
+      "file": "hit-16.wav",
+      "bytes": 352844,
+      "sha256": "22549f03d37f068aac19b5a4a1d8d23199454aa98a2aebc7ac0f443aa5a5a142",
+      "name": "Hit 16",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-17",
+      "file": "hit-17.wav",
+      "bytes": 352844,
+      "sha256": "7b2a3ed6fb1f80abf7488bd6fdc1193e0a627e5241a2b9b25f1c009bcad9e2ea",
+      "name": "Hit 17",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-18",
+      "file": "hit-18.wav",
+      "bytes": 352844,
+      "sha256": "edb0b98732f112ce9e3948985abd68666b4e7c33847f0bd6438a281d6f4c187c",
+      "name": "Hit 18",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-19",
+      "file": "hit-19.wav",
+      "bytes": 352844,
+      "sha256": "3fdced016eefc2398288f39e9c9b541aad92f04985370c869e62a9cf6a87c5d2",
+      "name": "Hit 19",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-20",
+      "file": "hit-20.wav",
+      "bytes": 352844,
+      "sha256": "88e23fa3ea0c768968cf4faf3cf39ce26a60aa42375b0d7a7baa42bd04762775",
+      "name": "Hit 20",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-21",
+      "file": "hit-21.wav",
+      "bytes": 352844,
+      "sha256": "be17e1bc824b23aa465d5ac403917fb9ecceceee0059805f71563a56a66e5fc5",
+      "name": "Hit 21",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-22",
+      "file": "hit-22.wav",
+      "bytes": 352844,
+      "sha256": "829c2c64624e2a460500a676c76e3302e429e5c3000c61e68d495ed050f20202",
+      "name": "Hit 22",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-23",
+      "file": "hit-23.wav",
+      "bytes": 352844,
+      "sha256": "5e41337248038f396d7408e7a52e3bde3a8e1bdba14702430b306dc701219f25",
+      "name": "Hit 23",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-24",
+      "file": "hit-24.wav",
+      "bytes": 352844,
+      "sha256": "c7cb11c3a53afb3ef881b3ebbd3e33aca50f5f0714513b9fd964d346e793ebb4",
+      "name": "Hit 24",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-25",
+      "file": "hit-25.wav",
+      "bytes": 352844,
+      "sha256": "e676344ec762557064a688213a85e03338dd552f4de83c9e1327b5bcc5755a7e",
+      "name": "Hit 25",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-26",
+      "file": "hit-26.wav",
+      "bytes": 352844,
+      "sha256": "51fa091d93a9d42e3ed4f90303b0d2cd569732f88361c75d559f6cd3281478a8",
+      "name": "Hit 26",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-27",
+      "file": "hit-27.wav",
+      "bytes": 352844,
+      "sha256": "2d93538f0661ca42fe0ed82dc76335e405961bab920fc390e904b4cfaf1e982f",
+      "name": "Hit 27",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-28",
+      "file": "hit-28.wav",
+      "bytes": 352844,
+      "sha256": "e17df3c28d6fd37e8fa1a75c32e4a241d93db83464a44d5272ca4c1aa583d148",
+      "name": "Hit 28",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-29",
+      "file": "hit-29.wav",
+      "bytes": 352844,
+      "sha256": "fda83e16ba4f899d848a19f2797d27488be09be638c22569d5c0b474d29bdf54",
+      "name": "Hit 29",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-30",
+      "file": "hit-30.wav",
+      "bytes": 352844,
+      "sha256": "f139aac6f358d8a9b63c726fa5bc424d0bb5e7c551b94b80a4b9475691434f47",
+      "name": "Hit 30",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-31",
+      "file": "hit-31.wav",
+      "bytes": 352844,
+      "sha256": "8f732bc328ad8ea3de8b4d0503dd9b01e05fc65ac6c7fed58c3b8ea5b3870a5a",
+      "name": "Hit 31",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-32",
+      "file": "hit-32.wav",
+      "bytes": 352844,
+      "sha256": "d13788b8d92d930d73f2ecc169452e35605a99d0288e0fc5e3b4fde334134664",
+      "name": "Hit 32",
+      "kind": "oneshot"
+    },
+    {
+      "id": "hit-33",
+      "file": "hit-33.wav",
+      "bytes": 352844,
+      "sha256": "d5a078a518fda0832635456279d36b1c20d98b26bae12e0615ab0f4bca85c31e",
+      "name": "Hit 33",
+      "kind": "oneshot"
+    }
+  ]
+}

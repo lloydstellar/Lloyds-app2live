@@ -39,6 +39,8 @@ function makeAuth({ store, limits, clock }) {
       limits.check('token', `app ${app.id}`);
       const now = clock();
       store.touchApp(app.id, iso(now), iso(now - SEEN_EVERY_MS));
+      // Which SDK version this app runs, so it shows before anything is ever phased out.
+      if (ctx.client && ctx.client !== app.client) store.setAppClient(app.id, ctx.client);
       return app;
     },
   };

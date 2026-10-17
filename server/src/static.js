@@ -1,6 +1,7 @@
 'use strict';
-// Serves the LA2L Sender page from public/, with strict security headers. Only the files listed
-// here exist; every other path is a 404, so no path can reach outside public/.
+// Serves the pages from public/ (LA2L Sender, the test receiver, and the SDK for the browser), with
+// strict security headers. Only the files listed here exist; every other path is a 404, so no path
+// can reach outside public/.
 
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +20,13 @@ const FILES = {
   '/sender.css': ['sender.css', 'text/css; charset=utf-8'],
   '/sender.js': ['sender.js', 'text/javascript; charset=utf-8'],
   '/logo.png': [logoFile(), 'image/png'],
+  '/big.js': ['big.js', 'text/javascript; charset=utf-8'],
+  // The test receiver (sdk/BUILD-PROMPT.md, section 8).
+  '/receiver': ['receiver.html', 'text/html; charset=utf-8'],
+  '/receiver.js': ['receiver.js', 'text/javascript; charset=utf-8'],
+  '/receiver.css': ['receiver.css', 'text/css; charset=utf-8'],
+  // The SDK for the browser, built from sdk/js (npm run build there).
+  '/vendor/la2l.js': ['vendor/la2l.js', 'text/javascript; charset=utf-8'],
 };
 
 const HEADERS = {

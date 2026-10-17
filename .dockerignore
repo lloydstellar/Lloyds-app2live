@@ -2,7 +2,8 @@
 # the build context.
 .git
 .github
-node_modules
+**/node_modules
+sdk
 devices
 docs
 tests
