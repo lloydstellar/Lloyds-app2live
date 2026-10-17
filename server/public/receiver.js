@@ -132,9 +132,13 @@ function stopPairing() {
 
 // A code for an app to type. With the token (Pair another app) the new app joins this receiver.
 // One start at a time: a second one would make the server cancel the code of the first.
-function startPairing() {
+// Resolves to true when a code shows. `message` shows under it then.
+function startPairing(message = '') {
   if (!asking) asking = askCode().finally(() => (asking = null));
-  return asking;
+  return asking.then((shown) => {
+    if (shown && message) pairMessage(message);
+    return shown;
+  });
 }
 
 async function askCode() {
@@ -150,7 +154,8 @@ async function askCode() {
   }
   if (r.status !== 200 || !r.json.code) {
     showView('ended');
-    return pairMessage(r.status === 0 ? 'The server does not answer. Try again later.' : statusText(r.status, serverText(r.json)), true);
+    pairMessage(r.status === 0 ? 'The server does not answer. Try again later.' : statusText(r.status, serverText(r.json)), true);
+    return false;
   }
   const seconds = Math.min(1800, Math.max(30, Number(r.json.expires_in) || 600));
   const p = { pairId: r.json.pair_id, expiresAt: Date.now() + seconds * 1000, pollMs: Math.min(10000, Math.max(500, Number(r.json.poll_ms) || 2000)) };
@@ -164,6 +169,7 @@ async function askCode() {
   tick();
   p.countdown = setInterval(tick, 1000);
   p.timer = setTimeout(() => pollPairing(p), p.pollMs);
+  return true;
 }
 
 async function pollPairing(p) {
@@ -219,9 +225,8 @@ async function refreshApps() {
 function lostPairing() {
   stopWatching();
   saved.set('token', null);
-  pairMessage('This receiver is no longer paired. Here is a new code.');
   $('watch').textContent = 'Pair an app first.';
-  startPairing().catch(onError);
+  startPairing('This receiver is no longer paired. Here is a new code.').catch(onError);
 }
 
 async function stop() {
@@ -235,9 +240,8 @@ async function stop() {
   }
   stopWatching();
   saved.set('token', null);
-  pairMessage('Stopped. The apps can no longer send to this receiver.');
   $('watch').textContent = 'Pair an app first.';
-  await startPairing();
+  await startPairing('Stopped. The apps can no longer send to this receiver. Here is a new code.');
 }
 
 // ---- packages, as Import in the device ----

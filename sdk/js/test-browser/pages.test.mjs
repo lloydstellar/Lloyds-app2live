@@ -69,6 +69,11 @@ test('the test receiver pairs, imports a loop as Live would, and the app sees it
   await page.reload();
   await page.waitForSelector('#paired-box:not([hidden])');
   assert.equal(await page.locator('.report').count(), 1);
+  // Stop: the app can no longer send, and a new code shows with a line that says so.
+  await page.click('#stop');
+  await page.waitForSelector('#code-box:not([hidden])');
+  assert.equal(await page.textContent('#pair-message'), 'Stopped. The apps can no longer send to this receiver. Here is a new code.');
+  assert.equal((await s.request('GET', '/api/app/me', { token })).status, 401);
   assert.deepEqual(page.errors, []);
 });
 
