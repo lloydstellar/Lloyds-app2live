@@ -1,6 +1,6 @@
 # LA2L 0.1.1 test card
 
-One test in Live, about ten minutes. It checks the Live side of the device; pairing and Import need the server, which does not exist yet.
+One test in Live, about fifteen minutes. Steps 1 to 5 check the Live side of the device; step 6 checks pairing and Import through the server at `https://lloydstellar.nl/la2l/`.
 
 **You need:** Live 12.4 or newer with Max for Live, on Windows or a Mac.
 
@@ -8,7 +8,7 @@ One test in Live, about ten minutes. It checks the Live side of the device; pair
 
 - The tempo of a loop is now right when the Set has another tempo. In 0.1.0 a 135 BPM loop in a Set at 120 BPM came out at 150.15 BPM.
 - In Session View the new scene goes to the top instead of the bottom.
-- Self test says "no App2Live server at lloydstellar.nl" instead of "server answered 200" while the server is not built.
+- Self test says "no App2Live server at lloydstellar.nl" instead of "server answered 200" when something other than an App2Live server answers.
 
 ## 1. Load the device
 
@@ -54,9 +54,26 @@ If Start shows a position before 1.1.1 but Seg. BPM is 135.00, LA2L used its sec
 
 Click **Self test**.
 
-**You should see** a line like "Self test: Node v22... / folder OK / Live 12.4.x OK / no App2Live server at lloydstellar.nl / not paired". The server part cannot say OK yet, because the server is not built. That is expected. Pair app gives an error for the same reason.
+**You should see** a line like "Self test: Node v22... / folder OK / Live 12.4.x OK / server OK / not paired". When this computer is paired, it ends with "paired with 0 waiting": the number of packages that wait on the server.
 
-## 6. Send back
+## 6. Pairing and Import
+
+You need a browser, on this computer or on a phone, and the test file saved from `http://lloydstellar.nl/test/test-file-voor-max.wav`.
+
+1. Click **Pair app**. The device shows a code of six characters.
+2. Open `https://lloydstellar.nl/la2l/`, type the code and click **Pair**.
+3. Under **Send sounds**, set BPM to **135** and choose the test file. In its row, set Name to **Snare**, leave Type on **Loop** and set Role to **drums**. Click **Send**.
+4. Click **Import** in the device.
+5. Click **Settings**, then **Unpair**, twice.
+
+**You should see:**
+
+- After step 2: the device says "Paired with LA2L Sender. Send a sound from it and click Import." and the page says "Paired with" and the name of this computer.
+- After step 3: the page says "Waiting for Import in Live."
+- After step 4: a new track **Snare (LA2L Sender)** with Warp on and **Seg. BPM 135.00** in its Clip View. The page says "In Live: 1 of 1 sound."
+- After step 5: the device says "Unpaired. Apps can no longer send sounds to this computer." When you reload the page, it asks for a code again.
+
+## 7. Send back
 
 1. Click **Open folder**. It opens `Documents/Lloyds App2Live`.
 2. Send `la2l.log`, plus a screenshot of the device and one of the Clip View of the new clip from step 2.

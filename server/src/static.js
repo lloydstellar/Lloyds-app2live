@@ -55,22 +55,22 @@ class StaticFiles {
     if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
     // no-cache: the browser keeps the file but asks every time, so a new version shows at once.
     const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: f.etag }, HEADERS);
-    if (req.headers['if-none-match'] === f.etag) {
-      res.writeHead(304, headers);
-      return res.end();
-    }
-    res.writeHead(200, Object.assign({ 'Content-Length': f.body.length }, headers));
-    res.end(f.body);
+    if (req.headers['if-none-match'] === f.etag) return answer(res, 304, headers);
+    answer(res, 200, Object.assign({ 'Content-Length': f.body.length }, headers), f.body);
   }
 
   plain(res, status, text, extra = {}) {
     const body = Buffer.from(text + '\n');
-    res.writeHead(
-      status,
-      Object.assign({ 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store' }, HEADERS, extra)
-    );
-    res.end(body);
+    answer(res, status, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store' }, HEADERS, extra), body);
   }
+}
+
+// The headers go through setHeader, not writeHead: Node only lets the request log read back
+// headers that were set that way, and the log takes the bytes out from Content-Length.
+function answer(res, status, headers, body) {
+  for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);
+  res.writeHead(status);
+  res.end(body);
 }
 
 module.exports = { StaticFiles, HEADERS };

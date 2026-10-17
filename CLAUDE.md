@@ -7,7 +7,7 @@ This repository holds both ends of that chain:
 | Part | Where | Runs on | State |
 |---|---|---|---|
 | The device | the repository root: `src/`, `tests/`, `tools/`, `devices/la2l/` | Erik's computer, inside Live 12.4 or newer (Windows and Mac) | 0.1.1, tested in Live 12.4.6 on Windows |
-| The server, `la2l-server` | `server/` | Erik's Linux VPS, at `https://lloydstellar.nl/la2l/` | To be built: `server/BUILD-PROMPT.md` |
+| The server, `la2l-server` | `server/` | Erik's Linux VPS, at `https://lloydstellar.nl/la2l/` | 0.5.0, running; built from `server/BUILD-PROMPT.md`, run as `server/README.md` says |
 
 The contract between the two is [docs/server-api.md](docs/server-api.md); the package format is [docs/manifest.md](docs/manifest.md). Change them only together with the code on both sides, and keep device 0.1.1 working: it is installed on Erik's computer.
 

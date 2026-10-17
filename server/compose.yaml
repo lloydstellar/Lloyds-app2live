@@ -1,4 +1,5 @@
-# la2l-server on the VPS. Start or update: docker compose up -d --build (in this folder).
+# la2l-server on the VPS. Start or update: bash deploy/update.sh (in this folder), which runs
+# docker compose up -d --build after saving the log and backing up the database.
 # A fixed project name, so the data volume is la2l-server_la2l-data wherever the clone lives.
 name: la2l-server
 

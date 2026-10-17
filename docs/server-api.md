@@ -8,7 +8,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 - Requests and answers are JSON (`Content-Type: application/json`), except the WAV downloads.
 - Calls marked **token** send `Authorization: Bearer <device_token>`.
 - **401 means the token is unknown or revoked.** The device then forgets its pairing and shows Pair app again. Use 401 for nothing else. A 403 (for example from a firewall) does not unpair the device.
-- Errors may carry `{"error": "short text"}`. For 4xx answers other than 401, the device shows that text (letters, digits and simple punctuation, at most 80 characters) after its own message, so keep it short and in plain English.
+- Errors may carry `{"error": "short text"}`. For 4xx answers to JSON calls other than 401, the device shows that text (letters, digits and simple punctuation, at most 80 characters) after its own message, so keep it short and in plain English. For a file download it shows only its own message.
 - Redirects are followed only to the same origin (scheme, host and port), at most 3.
 - Time limits on the device: 15 seconds per JSON call, 10 minutes per file with at most 20 seconds without data. A JSON answer may be 1 MB at most.
 
@@ -19,7 +19,7 @@ This is the contract between the LA2L device and the App2Live server, as version
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.4.1" }
+{ "ok": true, "name": "la2l-server", "version": "0.5.0" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
@@ -66,7 +66,7 @@ No token. The device asks this every `poll_ms` while the code shows.
 
 ### `POST /pair/{pair_id}/cancel`
 
-No token, no body. The code stops working. The answer is ignored.
+No token, no body. The code stops working. The answer is ignored; la2l-server answers `{"ok": true}`, or 404 for an unknown pairing.
 
 ### `GET /inbox`  (token)
 
@@ -82,6 +82,8 @@ The packages that are waiting for this computer.
 
 `package_id` must match `[A-Za-z0-9._-]{1,100}`; other entries are skipped. The device imports the packages oldest first, by `created_at` (ISO 8601, UTC).
 
+la2l-server lists the packages that are committed and wait, and those whose import failed, until they expire. `created_at` is the time of the commit.
+
 ### `GET /packages/{package_id}/manifest`  (token)
 
 The package description, see [manifest.md](manifest.md). la2l-server sends it as the app sent it, with its own `package_id`, and `bytes` and `sha256` on every sound. Only for this computer's packages that wait or failed and have not expired; anything else, also a package of another computer, gets `404 {"error": "Unknown package."}`.
@@ -90,7 +92,7 @@ The package description, see [manifest.md](manifest.md). la2l-server sends it as
 
 The bytes of one WAV file. `{file}` is the `file` field of the sound in the manifest, URL-encoded. Send `Content-Length` when possible: the device refuses a file larger than the `bytes` in the manifest, checks `bytes` and `sha256` after the download, and retries up to 3 times (after 1, 2 and 4 seconds) when the connection breaks, the checksum is wrong, or the server answers 5xx. A 404 is not retried.
 
-la2l-server sends `Content-Type: audio/wav` and the exact `Content-Length`, never compressed; `HEAD` gives the same headers without the file. A file that is missing on the server gets `404 {"error": "The file is gone. Send it again."}`.
+la2l-server sends `Content-Type: audio/wav` and the exact `Content-Length`, never compressed; `HEAD` gives the same headers without the file. A name that is not in the manifest gets `404 {"error": "Unknown file."}`, and a file that is missing on the server `404 {"error": "The file is gone. Send it again."}`.
 
 ### `POST /packages/{package_id}/ack`  (token)
 
@@ -111,7 +113,7 @@ The device says what happened to a package.
 - On `failed`: keep the package until it expires, so the user can try again (for example after updating LA2L).
 - A package the device imported before (because an earlier ack got lost) is confirmed again with `{"status": "imported", "items": [], "note": "imported before"}` and is not placed twice.
 - Network trouble while downloading stops the import without an ack; the package stays and is tried again at the next Import.
-- la2l-server keeps at most 64 sounds of an ack and 200 characters of every text. Another `status` is a 400. A `failed` for a package that is already in Live is ignored.
+- la2l-server answers `{"ok": true}`, and 404 for a package that is not this computer's. It keeps at most 64 sounds of an ack and 200 characters of every text. Another `status` is a 400. A `failed` for a package that is already in Live is ignored.
 
 ### `POST /unpair`  (token)
 
@@ -121,7 +123,7 @@ Body `{}`. Revoke the token: no app can send to this computer any more. The serv
 
 - A package is deleted after an `imported` or `partial` ack, and at the latest **24 hours** after upload, whether it was imported or not. A shorter time (for example 12 hours) is fine; the device does not depend on it. la2l-server deletes the files at once after the ack and keeps the result for the app for 7 days. An upload that is not committed within an hour is deleted.
 - la2l-server never removes a paired computer because it is quiet: a computer may not import for months. Unpaired computers and apps are removed 30 days after the unpair.
-- A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too, but the server should refuse anything larger at upload.
+- A package has at most **32 sounds** and **200 MB** in total. Only WAV (PCM 8/16/24/32-bit or float 32/64-bit, mono or stereo, 8 to 192 kHz). The device checks this too; la2l-server refuses anything else at upload.
 - Pairing: at most 10 code attempts per minute from one address (an IPv6 address counts by its /64), because a code is short.
 
 ## App side
@@ -131,6 +133,7 @@ For the Android and web apps, and for LA2L Sender, the test page at `https://llo
 - **401 means this app token is unknown or revoked**: the computer was unpaired in Live, or the app paired again. Forget the token and show the pair screen.
 - **CORS**: every answer under `/api/` has `Access-Control-Allow-Origin: *`, and an `OPTIONS` preflight gets a 204, so a web app on any site can call the API. The token always goes in the `Authorization` header, never in a cookie.
 - Errors are `{"error": "short plain English"}`, at most 80 characters. Show the text to the user as it is.
+- JSON bodies are objects of at most 1 MB with `Content-Type: application/json`. Otherwise: 413 when larger, 415 for another type, 400 when it is not valid JSON or not an object. A call without a body may send none. An unknown path gets `404 {"error": "Not found."}`, a known path with another method 405 with `Allow`. A 500 (`"The server has a problem. Try again later."`) means a problem in the server; try again later.
 - Every caller with a token may make 600 calls a minute; then 429 with `Retry-After` (in seconds).
 
 ### `POST /pair/claim`
@@ -191,7 +194,7 @@ The manifest, see [manifest.md](manifest.md), at most 1 MB. The server gives the
 - `warnings`: what the device takes but ignores, for example `Kick: role "drum" unknown`, or `Hit: bpm and length_beats only apply to a loop` (Live plays a one-shot as it is, without warp). The package goes ahead; fix them in the app.
 - Upload the files and commit within an hour; after that the package is gone. `expires_at` is when the package is deleted: 24 hours after this call, imported or not.
 - `422` with the reason when the device would refuse the package or a sound: `"The package has no sounds."`, `"This package uses app2live/2. Update LA2L to import it."`, `"Kick has no valid file name"`, `"Kick needs bytes and sha256."`, `"The package is 201 MB. LA2L takes 200 MB at most."`.
-- `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when 1 GB already waits for this computer, and `507 {"error": "The server is full. Try again later."}` when the server's disk is nearly full.
+- `507 {"error": "Too many sounds wait for this computer. Click Import in Live first."}` when this package would bring what waits for this computer above 1 GB, and `507 {"error": "The server is full. Try again later."}` when the server's disk is nearly full.
 - At most 30 packages an hour per app, then 429.
 
 ### `PUT /packages/{package_id}/files/{file}`  (app token)
@@ -201,8 +204,9 @@ The bytes of one WAV file, with any `Content-Type`, up to 200 MB. Only for a fil
 - `200 {"ok": true, "file": "kick.wav", "bytes": 1693484}`.
 - The server checks the size and `sha256` against the manifest, and the WAV header as the device does. Damaged on the way: `422 {"error": "The file arrived damaged. Send it again."}`. Not a WAV Live can use: `422` with the device's text, for example `"This WAV file is compressed (format 85). Send plain PCM or float WAV."`.
 - Larger than the manifest said: `413 {"error": "The file is larger than the package said."}`, at once when `Content-Length` says so.
+- `507 {"error": "The server is full. Try again later."}` when the disk fills up during the upload.
 - Sending a file again replaces it. One upload per file at a time: a second one meanwhile gets 409.
-- 404 for a file that is not in the package, a package that is committed or deleted, and an upload that took longer than an hour (`"The upload took too long. Send the package again."`).
+- 404 for a file that is not in the package, a package that is committed or deleted, and an upload that took longer than an hour: `"The upload took too long. Send the package again."`, or `"Unknown package."` once the cleanup has removed it, within a minute after that hour.
 
 ### `POST /packages/{package_id}/commit`  (app token)
 
@@ -210,6 +214,7 @@ Body `{}` or none. Every file is there: from now on the device sees the package.
 
 - `200 {"ok": true, "status": "waiting"}`. Committing again answers 200 with the status the package has now.
 - Files missing: `409 {"error": "Not all files are there yet: kick.wav, robot.wav"}`.
+- An hour after `POST /packages` the upload is gone: `404 {"error": "The upload took too long. Send the package again."}`, and `404 {"error": "Unknown package."}` once the cleanup has removed it.
 
 ### `GET /packages/{package_id}/status`  (app token)
 
