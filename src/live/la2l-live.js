@@ -18,7 +18,7 @@ autowatch = 0;
 inlets = 1;
 outlets = 2;
 
-var VERSION = '0.2.0';
+var VERSION = '0.2.1';
 
 var ready = false; // true after init
 var waiting = []; // requests that came before init

@@ -48,6 +48,7 @@ function device(o = {}) {
   const mock = new MockLive(o.live);
   const outs = [];
   const opened = [];
+  const copied = [];
   let app = null;
   const ctx = loadLiveScript(mock, (n, args) => {
     if (n === 0) setImmediate(() => app.handle('live', args[1]));
@@ -61,6 +62,7 @@ function device(o = {}) {
     },
     timing: Object.assign({ liveTimeoutMs: 2000, importTimeoutMs: 5000, retryDelayMs: 5, liveRetryMs: 20, unpairConfirmMs: 2000 }, o.timing),
     openFolder: (d) => opened.push(d),
+    copyText: o.copyText || (async (text) => copied.push(text)),
   });
   if (o.liveAnswers !== false) ctx.init();
   const d = {
@@ -68,6 +70,7 @@ function device(o = {}) {
     mock,
     outs,
     opened,
+    copied,
     home,
     last: (name) => {
       for (let i = outs.length - 1; i >= 0; i--) if (outs[i][0] === name) return outs[i].slice(1);
@@ -146,6 +149,27 @@ test('pairing: cancel and expiry go back to the previous view', async () => {
   server.expirePairing();
   await waitFor(() => d.view() === 'unpaired', 'expired');
   assert.match(d.status(), /The code expired/);
+});
+
+test('Copy code puts the code on the clipboard, without the space', async () => {
+  const d = device();
+  d.app.start();
+  await d.app.handle('copycode');
+  assert.deepEqual(d.copied, [], 'no code showing: nothing to copy');
+  await d.app.handle('pair');
+  await d.app.handle('copycode');
+  assert.deepEqual(d.copied, ['K7P42Q']);
+  assert.equal(d.status(), 'Code copied. Paste it in your app.');
+  assert.equal(d.view(), 'pairing', 'the code keeps showing');
+  d.app.handle('cancelpair');
+
+  const broken = device({ copyText: async () => { throw new Error('clip.exe ended with code 1.'); } });
+  broken.app.start();
+  await broken.app.handle('pair');
+  await broken.app.handle('copycode');
+  assert.equal(broken.status(), 'Could not copy the code. Type it in your app.');
+  assert.match(fs.readFileSync(path.join(broken.home, 'la2l.log'), 'utf8'), /Copy code: clip\.exe ended with code 1\./);
+  broken.app.handle('cancelpair');
 });
 
 test('import: nothing waiting', async () => {
@@ -351,10 +375,29 @@ test('an app that unpaired itself drops out of "Paired with" at the next Import 
   assert.equal(d.last('pairedwith').join(' '), 'Paired with Robot Voice.');
   assert.deepEqual(d.stored().pairing.apps, ['Robot Voice']);
   server.removeApp('Robot Voice');
+  await d.app.handle('settings', 1);
   await d.app.handle('selftest');
   assert.match(d.status(), / \/ server OK \/ no app paired \/ 0 waiting$/);
-  assert.equal(d.last('pairedwith').join(' '), 'No app paired. Add one in Settings.');
-  assert.equal(d.view(), 'paired', 'still paired: Import and Add app keep working');
+  assert.equal(d.view(), 'settings', 'Settings stays open');
+  await d.app.handle('settings', 0);
+  assert.equal(d.view(), 'unpaired', 'Pair app instead of Import');
+  const token = d.stored().pairing.token;
+  assert.ok(token, 'the computer keeps its token');
+  // Pair app now adds an app to the same computer, as Add app does.
+  await d.app.handle('pair');
+  await waitFor(() => d.view() === 'pairing', 'the code');
+  server.completePairing('Web808');
+  await waitFor(() => d.view() === 'paired', 'paired again');
+  assert.equal(d.stored().pairing.token, token);
+  assert.equal(d.last('pairedwith').join(' '), 'Paired with Web808.');
+});
+
+test('with no app left, Import says so and the device shows Pair app', async () => {
+  const d = await paired({ appName: 'Web808' });
+  server.removeApp('Web808');
+  await d.app.handle('import');
+  assert.equal(d.status(), 'No app paired. Click Pair app to add one.');
+  assert.equal(d.view(), 'unpaired');
   assert.ok(d.stored().pairing.token);
 });
 
@@ -364,10 +407,18 @@ test('at start the device asks for its apps; a revoked token goes back to Pair a
   server.removeApp('Web808');
   const d = device({ pairing });
   d.app.start();
+  assert.equal(d.view(), 'paired', 'the stored list still has Web808');
   await d.app.startup;
-  assert.equal(d.view(), 'paired');
-  assert.equal(d.last('pairedwith').join(' '), 'No app paired. Add one in Settings.');
-  assert.equal(d.status(), 'Ready. Click Import to get new sounds.');
+  assert.equal(d.view(), 'unpaired');
+  assert.equal(d.status(), 'No app paired. Click Pair app to add one.');
+  assert.deepEqual(d.stored().pairing.apps, []);
+  assert.equal(d.stored().pairing.token, pairing.token);
+  // The next start begins with Pair app at once.
+  const again = device({ pairing: d.stored().pairing });
+  again.app.start();
+  assert.equal(again.view(), 'unpaired');
+  assert.equal(again.status(), 'Ready.');
+  await again.app.startup;
   server.revokeAll();
   const gone = device({ pairing });
   gone.app.start();

@@ -65,7 +65,7 @@ const { writeTestLoop } = require('./testsound');
 const t = require('./text');
 
 // Messages Max sends to Node. tests/patch.test.js checks that the patch sends only these.
-const HANDLED = ['init', 'live', 'pair', 'addapp', 'cancelpair', 'import', 'testimport', 'usetempo', 'selftest', 'openfolder', 'unpair', 'settings', 'placement', 'newtracks'];
+const HANDLED = ['init', 'live', 'pair', 'addapp', 'cancelpair', 'copycode', 'import', 'testimport', 'usetempo', 'selftest', 'openfolder', 'unpair', 'settings', 'placement', 'newtracks'];
 // Messages Node sends to Max. tests/patch.test.js checks that the patch routes all of them.
 const OUT_KEYS = ['view', 'status', 'code', 'countdown', 'pairedwith', 'tempotext', 'tempolabel', 'tempo', 'placement', 'newtracks', 'settingsbutton', 'tolive'];
 
@@ -77,6 +77,8 @@ const BUSY_TEXT = {
   unpair: 'Still unpairing.',
   tempo: 'Still changing the tempo.',
 };
+
+const NO_APP_TEXT = 'No app paired. Click Pair app to add one.';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -139,9 +141,35 @@ function openFolder(dir) {
   child.unref();
 }
 
+// Puts text on the clipboard with the tool the system has for it: clip on Windows, pbcopy on a
+// Mac. Max has no object for the clipboard, and Live runs on nothing else.
+function copyText(text) {
+  const cmd =
+    process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'clip.exe') : process.platform === 'darwin' ? '/usr/bin/pbcopy' : null;
+  if (!cmd) return Promise.reject(new Error('No clipboard tool on this system.'));
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, [], { stdio: ['pipe', 'ignore', 'ignore'], windowsHide: true });
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`${path.basename(cmd)} did not finish.`));
+    }, 5000);
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`${path.basename(cmd)} ended with code ${code}.`));
+    });
+    child.stdin.on('error', () => {}); // the 'error' or 'close' above reports it
+    child.stdin.end(text);
+  });
+}
+
 class App {
   // opts: out(name, ...values) to Max, post(line) to the Max window, home (settings folder),
-  // timing (shorter waits for tests), openFolder (replaced in tests).
+  // timing (shorter waits for tests), openFolder and copyText (replaced in tests).
   constructor(opts = {}) {
     this.out = opts.out || (() => {});
     this.post = opts.post || (() => {});
@@ -154,8 +182,9 @@ class App {
       opts.timing
     );
     this.openFolderFn = opts.openFolder || openFolder;
+    this.copyTextFn = opts.copyText || copyText;
     this.deviceDir = opts.deviceDir || __dirname;
-    this.view = this.store.pairing ? 'paired' : 'unpaired';
+    this.view = this.homeView();
     this.settingsOpen = false;
     this.busy = null;
     this.pairing = null; // { id, code, expiresAt, prevView, pollMs, pollTimer, clockTimer }
@@ -202,7 +231,7 @@ class App {
     this.sendSettings();
     this.showPairedWith();
     this.showView();
-    this.status(this.store.pairing ? 'Ready. Click Import to get new sounds.' : 'Ready.');
+    this.status(this.view === 'paired' ? 'Ready. Click Import to get new sounds.' : 'Ready.');
     this.refreshLive();
     this.startup = this.checkApps();
   }
@@ -215,7 +244,15 @@ class App {
 
   showPairedWith() {
     const apps = this.store.pairing ? this.store.pairing.apps : [];
-    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'No app paired. Add one in Settings.'));
+    this.out('pairedwith', ...t.words(apps.length ? `Paired with ${appList(apps)}.` : 'Paired.'));
+  }
+
+  // Import when an app can send to this computer, Pair app otherwise. When every app unpaired
+  // itself, the computer keeps its token: Pair app then adds an app to it, as Add app does, and
+  // packages that still wait come in with the next Import.
+  homeView() {
+    const p = this.store.pairing;
+    return p && p.apps.length ? 'paired' : 'unpaired';
   }
 
   // The patch shows one view at a time: unpaired, pairing, paired, or the settings on top.
@@ -288,6 +325,7 @@ class App {
       case 'pair':
       case 'addapp': return this.pair();
       case 'cancelpair': return this.cancelPair();
+      case 'copycode': return this.copyCode();
       case 'import': return this.importAll();
       case 'testimport': return this.testImport();
       case 'usetempo': return this.useTempo();
@@ -423,7 +461,7 @@ class App {
     if (!p) return;
     this.stopPairing();
     this.store.load();
-    this.setView(this.store.pairing ? 'paired' : 'unpaired');
+    this.setView(this.homeView());
     this.status(reason === 'expired' ? 'The code expired. Click Pair app for a new code.' : 'Pairing cancelled.');
   }
 
@@ -436,6 +474,19 @@ class App {
       .catch((e) => this.log('Pairing cancel at the server failed: ' + e.message));
   }
 
+  // Puts the code that is showing on the clipboard, for an app on this computer (a web page).
+  async copyCode() {
+    const p = this.pairing;
+    if (!p) return;
+    try {
+      await this.copyTextFn(p.code);
+      if (this.pairing === p) this.status('Code copied. Paste it in your app.');
+    } catch (e) {
+      if (this.pairing === p) this.status('Could not copy the code. Type it in your app.');
+      this.log('Copy code: ' + e.message);
+    }
+  }
+
   forgetPairing() {
     this.store.update((d) => {
       d.pairing = null;
@@ -446,9 +497,10 @@ class App {
   // ---- the apps of this computer ----
 
   // Asks the server which apps can send to this computer now, and shows them ("Paired with ...").
-  // An app that unpaired itself drops out; nothing else tells the device. Resolves to
-  // { count, names }, or to null when the server does not say: a server older than 0.6.0
-  // answers 404, and then the device keeps the names it learned when pairing. A 401 is thrown.
+  // An app that unpaired itself drops out; nothing else tells the device. With no app left the
+  // device shows Pair app instead of Import (see homeView). Resolves to { count, names }, or to
+  // null when the server does not say: a server older than 0.6.0 answers 404, and then the
+  // device keeps the names it learned when pairing. A 401 is thrown.
   async refreshApps(server) {
     const token = this.store.pairing ? this.store.pairing.token : null;
     if (!token) return null;
@@ -476,6 +528,8 @@ class App {
       this.log(`Apps of this computer: ${apps.names.join(', ') || 'none'} (before: ${before.join(', ') || 'none'})`);
     }
     this.showPairedWith();
+    const home = this.homeView();
+    if (!this.pairing && this.view !== home) this.setView(home); // not while a code is showing
     return apps;
   }
 
@@ -484,7 +538,8 @@ class App {
     const token = this.store.pairing ? this.store.pairing.token : null;
     if (!token) return;
     try {
-      await this.refreshApps(this.server());
+      const apps = await this.refreshApps(this.server());
+      if (apps && !apps.count && !this.pairing) this.status(NO_APP_TEXT);
     } catch (e) {
       this.log('App list at start: ' + e.message);
       if (!(e instanceof NetError && e.kind === 'unauthorized')) return;
@@ -535,8 +590,8 @@ class App {
       const packages = readInbox(await server.inbox());
       this.log(`Inbox: ${packages.length} package(s): ${packages.map((p) => p.id).join(' ')}`);
       if (!packages.length) {
-        this.status('Nothing new yet. Send a sound from your app first.');
-        await this.refreshApps(server);
+        const apps = await this.refreshApps(server);
+        this.status(apps && !apps.count ? NO_APP_TEXT : 'Nothing new yet. Send a sound from your app first.');
         return;
       }
       const done = [];
@@ -971,7 +1026,7 @@ __la2l.defs["version"] = function (module, exports, require) {
 // One place for the version and the names. tools/gen-patch.js and the tests read this file too.
 
 module.exports = {
-  VERSION: '0.2.0',
+  VERSION: '0.2.1',
   NAME: "Lloyd's App2Live",
   SHORT: 'LA2L',
   // The manifest format this device understands (see docs/manifest.md).
