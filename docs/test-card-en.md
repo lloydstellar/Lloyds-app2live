@@ -74,9 +74,11 @@ You need a browser, on this computer or on a phone, and the test file saved from
 - After step 3: the device says "Paired with LA2L Sender. Send a sound from it and click Import." and the page says "Paired with" and the name of this computer.
 - After step 4: the page says "Waiting for Import in Live."
 - After step 5: a new track **Snare (LA2L Sender)** with a clip at **1.1.1**, Warp on and **Seg. BPM 135.00** in its Clip View. The page says "In Live: 1 of 1 sound."
-- After step 6: the Self test line ends with "server OK / paired with 1 app / 0 waiting".
+- After step 6: the Self test line ends with "server OK / paired with 1 app / 0 waiting". If it ends with "server OK / paired / 0 waiting", the server is older than 0.6.0: update it before step 7.
 
 ## 7. An app that unpairs itself
+
+This step needs server 0.6.0 or newer. Open `https://lloydstellar.nl/la2l/api/health` first: it must show `"version":"0.6.0"` or higher.
 
 1. On the page, click **Unpair this browser**.
 2. In the device, click **Self test** (Settings is still open), then **Close**.
