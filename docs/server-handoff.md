@@ -110,3 +110,5 @@ Erik asked for the open points above, plus one he found himself: in the Arrangem
 | 6. A Mac | Still open. |
 
 Erik tested 0.2.0 with server 0.6.0 in Live 12.4.6 on Windows, steps 1 to 7 of the test card, and it worked. After step 7 he asked for two changes, which device 0.2.1 makes without a server change: with no app left the device shows Pair app again instead of Import, keeping its token, so Pair app adds the next app to the same computer; and Copy code puts the pairing code on the clipboard.
+
+Device 0.2.2, also without a server change, asks `GET /api/apps` every 15 seconds while an app is paired, so Pair app comes back by itself when the last app unpaired itself (Erik's question after testing 0.2.1). That is 4 calls a minute per computer, far under the token limit, but each is a line in the server log. If the log gets too busy, la2l-server could leave successful `GET /api/apps` lines out, as it does for Docker's own health check.

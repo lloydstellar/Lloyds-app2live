@@ -21,6 +21,9 @@ const DEFAULTS = {
   tracks: 3,
   scenes: 2,
   deviceTrack: 1, // index of the track with LA2L on it; -1 = on the master track
+  // Group tracks: { at, size, folded } makes the track at index `at` a group with the next
+  // `size` tracks in it. A later entry inside an earlier one makes a group within that group.
+  groups: [],
   // The state of a new clip:
   //   'unwarped': not warped, first marker at (0, 0), hidden marker at the Set tempo (Live 12.4.6)
   //   'loopwarp': warped and looped at guessTempo, like Live's "Loop/Warp Short Samples"
@@ -88,6 +91,11 @@ class MockLive {
     this.master = this.reg({ kind: 'master', name: 'Master' });
     for (let s = 0; s < this.o.scenes; s++) this.song.scenes.push(this.reg({ kind: 'scene', name: '' }));
     for (let t = 0; t < this.o.tracks; t++) this.song.tracks.push(this.newTrack(`${t + 1}-Audio`));
+    for (const g of this.o.groups) {
+      const head = this.song.tracks[g.at];
+      Object.assign(head, { name: `${g.at + 1}-Group`, foldable: true, folded: g.folded ? 1 : 0 });
+      for (let k = 1; k <= g.size; k++) this.song.tracks[g.at + k].group = head;
+    }
     this.device = this.reg({ kind: 'device', track: this.o.deviceTrack >= 0 ? this.song.tracks[this.o.deviceTrack] : null });
     const mock = this;
     this.LiveAPI = function LiveAPI(p) {
@@ -179,6 +187,12 @@ class MockLive {
       case 'song.file_path': return [c.filePath];
       case 'track.name': return [c.name];
       case 'track.color': return [c.color];
+      case 'track.group_track': return ['id', c.group ? c.group.id : 0];
+      case 'track.is_grouped': return [c.group ? 1 : 0];
+      case 'track.is_foldable': return [c.foldable ? 1 : 0];
+      case 'track.fold_state':
+        if (!c.foldable) return this.fail('get: fold_state is only available on a group track');
+        return [c.folded];
       case 'track.arrangement_clips':
         if (this.o.arrangementList === 'unreadable') return [{ clips: c.arrangement.length }];
         return c.arrangement.flatMap((x) => ['id', x.id]);
@@ -200,6 +214,10 @@ class MockLive {
       case 'track.name':
       case 'scene.name': obj.name = String(v); return undefined;
       case 'track.color': obj.color = Number(v); return undefined;
+      case 'track.fold_state':
+        if (!obj.foldable) return this.fail('set: fold_state is only available on a group track');
+        obj.folded = Number(v) ? 1 : 0;
+        return undefined;
       case 'view.selected_track':
       case 'view.detail_clip': {
         const id = this.refId(values);
@@ -278,11 +296,17 @@ class MockLive {
 
   // ---- song ----
 
+  // A new track joins the group of the track it pushes down: right after a group's header, or
+  // between two tracks of a group, it lands in that group (a Max forum report on Live). At the
+  // end of the Set, or before a track that is not in a group, it is in no group; that part is a
+  // guess about Live.
   createTrack(index) {
     const n = this.song.tracks.length;
     const at = index === -1 ? n : index;
     if (!(at >= 0 && at <= n)) return this.fail('create_audio_track: index out of range');
-    this.song.tracks.splice(at, 0, this.newTrack(`${n + 1}-Audio`));
+    const track = this.newTrack(`${n + 1}-Audio`);
+    if (at < n && this.song.tracks[at].group) track.group = this.song.tracks[at].group;
+    this.song.tracks.splice(at, 0, track);
     return undefined;
   }
 

@@ -189,6 +189,40 @@ test('new tracks at the end, and at the end when the device is on the master tra
   assert.equal(mock.song.tracks[3].name, 'Y');
 });
 
+test('on a group track, new tracks go to the top of that group, and a folded group is unfolded', () => {
+  // Tracks: 0 1-Audio, 1 the group with LA2L on it, 2 and 3 in the group, 4 4-Audio.
+  for (const folded of [0, 1]) {
+    const { mock, live } = setup({ tracks: 5, deviceTrack: 1, groups: [{ at: 1, size: 2, folded }] });
+    const group = mock.song.tracks[1];
+    const res = live.request(importReq([item({ trackName: 'A' }), item({ index: 1, trackName: 'B' })]));
+    assert.ok(res.ok, JSON.stringify(res));
+    assert.deepEqual(mock.song.tracks.map((t) => t.name), ['1-Audio', '2-Group', 'A', 'B', '3-Audio', '4-Audio', '5-Audio']);
+    assert.equal(mock.song.tracks[2].group, group);
+    assert.equal(mock.song.tracks[3].group, group);
+    assert.equal(group.folded, 0, 'the new tracks can be seen');
+    assert.equal(live.logs().some((l) => /Unfolded group "2-Group"/.test(l)), folded === 1);
+    assert.ok(live.logs().some((l) => /Snare: placed on track 2 in group "2-Group"/.test(l)));
+    assert.ok(live.logs().some((l) => /Device: live_set tracks 1 devices 0/.test(l)));
+  }
+});
+
+test('a group inside a folded group: both are unfolded; on the master, new tracks stay out of groups', () => {
+  // Tracks: 0 the outer group, 1 the inner group with LA2L on it, 2 in the inner group, 3 in the outer one.
+  let { mock, live } = setup({ tracks: 4, deviceTrack: 1, groups: [{ at: 0, size: 3, folded: 1 }, { at: 1, size: 1, folded: 1 }] });
+  live.request(importReq([item({ trackName: 'A' })]));
+  assert.equal(mock.song.tracks[2].name, 'A');
+  assert.equal(mock.song.tracks[2].group, mock.song.tracks[1]);
+  assert.equal(mock.song.tracks[1].folded, 0);
+  assert.equal(mock.song.tracks[0].folded, 0);
+  // LA2L on the master of a Set that ends with a folded group: the new track goes at the end.
+  ({ mock, live } = setup({ tracks: 3, deviceTrack: -1, groups: [{ at: 1, size: 1, folded: 1 }] }));
+  live.request(importReq([item({ trackName: 'Y' })]));
+  assert.equal(mock.song.tracks[3].name, 'Y');
+  assert.equal(mock.song.tracks[3].group, undefined);
+  assert.equal(mock.song.tracks[1].folded, 1, 'a group the new tracks are not in stays folded');
+  assert.ok(live.logs().some((l) => /Device: live_set master_track devices 0/.test(l)));
+});
+
 test('a path with backslashes that Live refuses is retried with forward slashes', () => {
   const { mock, live } = setup({ paths: 'forward' });
   const winStyle = loopFile.replace(/\//g, '\\');

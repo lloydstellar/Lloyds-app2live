@@ -18,7 +18,7 @@ autowatch = 0;
 inlets = 1;
 outlets = 2;
 
-var VERSION = '0.2.1';
+var VERSION = '0.2.2';
 
 var ready = false; // true after init
 var waiting = []; // requests that came before init
@@ -173,7 +173,10 @@ function* importJob(req) {
     // the playhead can be minutes into the Set, and the new sounds then land out of sight.
     position = 0;
   }
-  log('Import "' + req.title + '": ' + items.length + ' sound(s), ' + (session ? 'Session, scene ' + sceneIndex : 'Arrangement at 1.1.1') + ', tracks from ' + (base < 0 ? 'the end' : 'index ' + base));
+  log(
+    'Import "' + req.title + '": ' + items.length + ' sound(s), ' + (session ? 'Session, scene ' + sceneIndex : 'Arrangement at 1.1.1') +
+      ', tracks from ' + (base < 0 ? 'the end' : 'index ' + base) + '. Device: ' + String(api('this_device').unquotedpath || '?')
+  );
 
   var results = [];
   var placed = 0;
@@ -195,7 +198,10 @@ function* importJob(req) {
     reply({ type: 'progress', id: req.id, done: i + 1, total: items.length, name: it.name, ok: !!res.ok });
     yield 10;
   }
-  if (first) select(first.trackId, first.clipId);
+  if (first) {
+    unfoldGroups(first.trackId);
+    select(first.trackId, first.clipId);
+  }
   if (sceneId && !placed) {
     // Nothing went in: remove the new scene again, like the track of a sound that failed.
     deleteScene(song, sceneId);
@@ -236,7 +242,7 @@ function* placeItem(song, it, index, sceneIndex, position) {
       if (arr.ok) clipId = arr.clipId;
       else report.note = 'The clip stayed in the Session slot: ' + arr.error;
     }
-    log(it.name + ': placed on track ' + at + '. ' + JSON.stringify(report));
+    log(it.name + ': placed on track ' + at + inGroup(track) + '. ' + JSON.stringify(report));
     return { index: it.index, ok: true, trackIndex: at, trackId: trackId, clipId: clipId, report: report };
   } catch (e) {
     deleteTrack(song, trackId);
@@ -597,6 +603,45 @@ function select(trackId, clipId) {
     } catch (e) {
       log('Showing the clip failed: ' + errText(e));
     }
+  }
+}
+
+// With LA2L on a group track, the new tracks go right after its header, and Live puts a track
+// there into the group (the Live API cannot move a track out of a group again). A folded group
+// would hide them, so every group the new tracks are in is unfolded.
+function unfoldGroups(trackId) {
+  try {
+    var group = groupOf(api('id ' + trackId));
+    for (var depth = 0; group && depth < 32; depth++) {
+      if (num(group.get('fold_state'))) {
+        trySet(group, 'fold_state', 0);
+        log('Unfolded group "' + str(group.get('name')) + '" to show the new tracks');
+      }
+      group = groupOf(group);
+    }
+  } catch (e) {
+    log('Unfolding the group failed: ' + errText(e));
+  }
+}
+
+// The group track a track is in, or null. Live answers ["id", n], with id 0 for none.
+function groupOf(track) {
+  try {
+    var id = refId(track.get('group_track'));
+    return id ? api('id ' + id) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ' in group "Drums"' for the log when the track is in a group, '' when it is not. Never throws:
+// a sound that is in place must not fail over a log line.
+function inGroup(track) {
+  try {
+    var group = groupOf(track);
+    return group ? ' in group "' + str(group.get('name')) + '"' : '';
+  } catch (e) {
+    return '';
   }
 }
 

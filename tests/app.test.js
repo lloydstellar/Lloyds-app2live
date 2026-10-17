@@ -60,7 +60,8 @@ function device(o = {}) {
       outs.push([name, ...args]);
       if (name === 'tolive' && o.liveAnswers !== false) setImmediate(() => ctx.request(args[1]));
     },
-    timing: Object.assign({ liveTimeoutMs: 2000, importTimeoutMs: 5000, retryDelayMs: 5, liveRetryMs: 20, unpairConfirmMs: 2000 }, o.timing),
+    // appsCheckMs: the background check of the app list only runs in the tests that ask for it.
+    timing: Object.assign({ liveTimeoutMs: 2000, importTimeoutMs: 5000, retryDelayMs: 5, liveRetryMs: 20, unpairConfirmMs: 2000, appsCheckMs: 600000 }, o.timing),
     openFolder: (d) => opened.push(d),
     copyText: o.copyText || (async (text) => copied.push(text)),
   });
@@ -428,11 +429,65 @@ test('at start the device asks for its apps; a revoked token goes back to Pair a
   assert.equal(gone.stored().pairing, null);
 });
 
+test('while Import shows, the app list is checked in the background: Pair app comes back by itself', async () => {
+  const d = await paired({ appName: 'Web808', timing: { appsCheckMs: 30 } });
+  await d.app.startup;
+  try {
+    await sleep(120);
+    assert.equal(d.view(), 'paired', 'nothing changes while the app is paired');
+    // No check while a code shows: Add app, then the first app unpairs itself.
+    await d.app.handle('addapp');
+    await waitFor(() => d.view() === 'pairing', 'the code');
+    server.removeApp('Web808');
+    await sleep(120);
+    assert.equal(d.view(), 'pairing');
+    server.completePairing('Robot Voice');
+    await waitFor(() => d.last('pairedwith').join(' ') === 'Paired with Robot Voice.', 'the list from the server');
+    assert.equal(d.view(), 'paired');
+    // "Unpair this browser" in the last app: Pair app comes back without a click.
+    server.removeApp('Robot Voice');
+    await waitFor(() => d.view() === 'unpaired', 'Pair app');
+    assert.equal(d.status(), 'No app paired. Click Pair app to add one.');
+    assert.ok(d.stored().pairing.token, 'the computer keeps its token');
+    // With no app left the device stops asking.
+    const asked = server.log.filter((l) => l === 'GET /api/apps').length;
+    await sleep(120);
+    assert.equal(server.log.filter((l) => l === 'GET /api/apps').length, asked);
+  } finally {
+    d.app.stop();
+  }
+});
+
+test('the background check logs a server that does not answer once; a revoked token goes back to Pair app', async () => {
+  const d = await paired({ appName: 'Web808', timing: { appsCheckMs: 20 } });
+  await d.app.startup;
+  const appLines = () => (fs.readFileSync(path.join(d.home, 'la2l.log'), 'utf8').match(/App list: /g) || []).length;
+  try {
+    server.failNext(/^\/api\/apps$/, 503, 1000);
+    await sleep(200);
+    server.failures = [];
+    assert.equal(appLines(), 1, 'logged once, not at every check');
+    assert.equal(d.view(), 'paired');
+    server.revokeAll();
+    await waitFor(() => d.view() === 'unpaired', 'Pair app');
+    assert.equal(d.status(), 'This computer is no longer paired. Click Pair app to pair again.');
+    assert.equal(d.stored().pairing, null);
+  } finally {
+    server.failures = [];
+    d.app.stop();
+  }
+});
+
 test('a server without the app list (older than 0.6.0): the device keeps the names it knows', async () => {
   server.appList = false;
   try {
-    const d = await paired({ appName: 'Web808' });
-    await d.app.startup;
+    const d = await paired({ appName: 'Web808', timing: { appsCheckMs: 20 } });
+    // After the first 404, the background check does not ask again.
+    await waitFor(() => d.app.noAppList, 'the first background check');
+    const asked = server.log.filter((l) => l === 'GET /api/apps').length;
+    await sleep(100);
+    assert.equal(server.log.filter((l) => l === 'GET /api/apps').length, asked);
+    d.app.stop();
     await d.app.handle('selftest');
     assert.match(d.status(), / \/ server OK \/ paired \/ 0 waiting$/);
     await d.app.handle('import');

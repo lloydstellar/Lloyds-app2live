@@ -132,7 +132,7 @@ class App {
     this.logger = new Log(this.home);
     this.bridge = new LiveBridge((...v) => this.out(...v), (line) => this.log(line));
     this.timing = Object.assign(
-      { pairPollMs: 2000, unpairConfirmMs: 5000, liveTimeoutMs: 5000, importTimeoutMs: 30000, retryDelayMs: 1000, liveRetryMs: 1000 },
+      { pairPollMs: 2000, unpairConfirmMs: 5000, liveTimeoutMs: 5000, importTimeoutMs: 30000, retryDelayMs: 1000, liveRetryMs: 1000, appsCheckMs: 15000 },
       opts.timing
     );
     this.openFolderFn = opts.openFolder || openFolder;
@@ -148,6 +148,10 @@ class App {
     this.refreshing = false;
     this.appsSerial = 0; // goes up with every pairing, so an app list asked before it is not used
     this.startup = null; // the app list asked at start, a promise (tests wait for it)
+    this.appsTimer = null; // the next background check of the app list
+    this.stopped = false; // stop() was called
+    this.appsNote = null; // the last problem with the app list, logged once while it lasts
+    this.noAppList = false; // the server has no GET /apps (older than 0.6.0)
   }
 
   // ---- log, status and errors ----
@@ -188,6 +192,14 @@ class App {
     this.status(this.view === 'paired' ? 'Ready. Click Import to get new sounds.' : 'Ready.');
     this.refreshLive();
     this.startup = this.checkApps();
+    this.scheduleAppsCheck();
+  }
+
+  // Ends the background check of the app list (for tests; in Live, Node ends with the device).
+  stop() {
+    clearTimeout(this.appsTimer);
+    this.appsTimer = null;
+    this.stopped = true;
   }
 
   sendSettings() {
@@ -256,7 +268,7 @@ class App {
           const info = await this.liveInfo();
           this.log(
             `Live ${versionText(info)}${liveOk(info) ? '' : ' (older than 12.4)'}. Set: ${info.set.path || 'not saved'}. ` +
-              `Tempo ${info.set.tempo}. Device on track ${info.device ? info.device.trackIndex : '?'}.`
+              `Tempo ${info.set.tempo}. Device: ${(info.device && info.device.path) || '?'}.`
           );
           return info;
         } catch (e) {
@@ -455,7 +467,7 @@ class App {
   // device shows Pair app instead of Import (see homeView). Resolves to { count, names }, or to
   // null when the server does not say: a server older than 0.6.0 answers 404, and then the
   // device keeps the names it learned when pairing. A 401 is thrown.
-  async refreshApps(server) {
+  async refreshApps(server, quiet = false) {
     const token = this.store.pairing ? this.store.pairing.token : null;
     if (!token) return null;
     const serial = this.appsSerial;
@@ -464,13 +476,17 @@ class App {
       apps = readApps(await server.apps());
     } catch (e) {
       if (e instanceof NetError && e.kind === 'unauthorized') throw e;
-      this.log(`App list: ${e instanceof NetError && e.status === 404 ? 'this server does not give one (older than 0.6.0)' : e.message}`);
+      const old = e instanceof NetError && e.status === 404;
+      if (old) this.noAppList = true;
+      this.appsProblem(`App list: ${old ? 'this server does not give one (older than 0.6.0)' : e.message}`, quiet);
       return null;
     }
     if (!apps) {
-      this.log('App list: the server sent no list.');
+      this.appsProblem('App list: the server sent no list.', quiet);
       return null;
     }
+    this.appsNote = null;
+    this.noAppList = false;
     this.store.load();
     // A pairing that finished while we asked knows more than this answer.
     if (!this.store.pairing || this.store.pairing.token !== token || this.appsSerial !== serial) return apps;
@@ -487,15 +503,24 @@ class App {
     return apps;
   }
 
-  // At start, in the background: the apps of this computer, or that it is no longer paired.
-  async checkApps() {
+  // A problem with the app list. The background check would repeat it every few seconds, so
+  // there it is logged only when it is new.
+  appsProblem(text, quiet) {
+    if (!quiet || text !== this.appsNote) this.log(text);
+    this.appsNote = text;
+  }
+
+  // In the background, at start and every appsCheckMs: the apps of this computer, or that it is
+  // no longer paired.
+  async checkApps(quiet = false) {
     const token = this.store.pairing ? this.store.pairing.token : null;
     if (!token) return;
     try {
-      const apps = await this.refreshApps(this.server());
-      if (apps && !apps.count && !this.pairing) this.status(NO_APP_TEXT);
+      const apps = await this.refreshApps(this.server(), quiet);
+      const same = this.store.pairing && this.store.pairing.token === token;
+      if (apps && !apps.count && same && !this.pairing) this.status(NO_APP_TEXT);
     } catch (e) {
-      this.log('App list at start: ' + e.message);
+      this.appsProblem('App list: ' + e.message, quiet);
       if (!(e instanceof NetError && e.kind === 'unauthorized')) return;
       this.store.load();
       if (!this.store.pairing || this.store.pairing.token !== token) return; // paired again meanwhile
@@ -504,6 +529,22 @@ class App {
       this.setView('unpaired');
       this.status('This computer is no longer paired. Click Pair app to pair again.');
     }
+  }
+
+  // While Import shows, the device asks the server every appsCheckMs which apps are still paired,
+  // so Pair app comes back by itself when the last one unpaired itself. Nothing else would tell
+  // it: the server cannot reach the device, it only answers it. A code that shows asks the
+  // server itself, and an Import or Self test asks the list when it ends.
+  scheduleAppsCheck() {
+    clearTimeout(this.appsTimer);
+    if (this.stopped) return;
+    this.appsTimer = setTimeout(() => {
+      const due = this.view === 'paired' && !this.pairing && !this.busy && !this.noAppList;
+      (due ? this.checkApps(true) : Promise.resolve())
+        .catch((e) => this.log('App check failed: ' + ((e && e.stack) || e)))
+        .then(() => this.scheduleAppsCheck());
+    }, this.timing.appsCheckMs);
+    if (this.appsTimer.unref) this.appsTimer.unref(); // it never keeps Node running on its own
   }
 
   // A 401 from the server means the token is gone (unpaired in the app, or revoked).

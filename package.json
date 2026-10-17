@@ -1,6 +1,6 @@
 {
   "name": "lloyds-app2live",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Lloyd's App2Live (LA2L): a Max for Live device that brings sounds from your apps into Ableton Live.",
   "private": true,
   "license": "Apache-2.0",

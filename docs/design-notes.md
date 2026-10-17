@@ -24,7 +24,7 @@ Live applies some clip changes a moment later (switching warp on, for example). 
 
 ## Placing a sound
 
-1. A new audio track right after the device's track (or at the end), in the order of the package.
+1. A new audio track right after the device's track (or at the end), in the order of the package. With the device on a group track that is the top of the group: Live puts a track created right after a group's header into the group, and the Live API cannot move a track out of a group again. Every folded group the new tracks are in is unfolded, so they are in sight (from 0.2.2, Erik's choice). On the Main track or a return track the new tracks go at the end; in a rack the device counts as being on the rack's track.
 2. Name and colour on the track.
 3. `ClipSlot.create_audio_clip(path)` in a Session slot: in Session mode the slot in a new scene at the top of the Session (`Song.create_scene(0)`), in Arrangement mode slot 0 of the new track. The native path is tried first, then the same path with forward slashes, and the log says which form worked.
 4. Warp, warp mode, tempo and loop (below), then clip gain.
@@ -71,7 +71,7 @@ After every step it reads the markers back. The report per sound says `exact` (L
 
 ## Which apps are paired
 
-The device learns the name of an app from the `paired` answer when that app pairs. Nothing tells it when an app unpairs itself, so from 0.2.0 it asks the server (`GET /apps`) when Live loads the device, after every Import and in Self test, and shows what the server says. A server without that call (404) leaves the names as they were. An answer that comes back after a pairing finished is not used, so it cannot drop the app that just paired.
+The device learns the name of an app from the `paired` answer when that app pairs. Nothing tells it when an app unpairs itself, so from 0.2.0 it asks the server (`GET /apps`) when Live loads the device, after every Import and in Self test, and shows what the server says. The server cannot reach the device, it only answers, so from 0.2.2 the device also asks every 15 seconds while Import shows (not while a code shows or an Import runs): Pair app then comes back by itself after the last app unpaired itself. A problem with that background call is logged once while it lasts, and a server without the call is not asked again until an Import or Self test gets a list. A server without that call (404) leaves the names as they were. An answer that comes back after a pairing finished is not used, so it cannot drop the app that just paired.
 
 With no apps left, the device shows Pair app again instead of Import (from 0.2.1, Erik's choice after testing 0.2.0), but it keeps its token. Pair app then sends that token with `POST /pair/start`, as Add app does, so the new app joins the same computer, and packages that an app sent before it unpaired itself (the server keeps them until they expire) come in with the next Import. Only Unpair in Settings gives up the token.
 
@@ -100,11 +100,12 @@ The simulated Live follows the Live Object Model documentation and what Live 12.
 | Whether `add_warp_marker` keeps `beat_time` when `sample_time` is given too | Yes, on Windows: in the 0.1.1 test a 135 BPM loop in a 120 BPM Set showed BPM 135.00 and Start 1.1.1, so the end marker did it | `"tempo":"exact (end marker)"` means yes, `"exact (first marker)"` means no |
 | Whether `Song.create_scene(0)` puts the new scene at the top | Yes, on Windows (0.1.1 test) | The Session View itself |
 | Whether `Song.file_path` gives the Set's path | Yes, on Windows | `Set: <path>` in the `Live 12.x.x` line |
+| Where `create_audio_track` puts a track next to a group | A [Max forum report](https://cycling74.com/forums/is-it-possible-to-create-grouped-tracks-with-lom): right after a group's header, inside the group. Not tested by us yet. The simulated Live assumes that a track at the end of the Set is in no group | `placed on track N in group "..."` and `Unfolded group` |
 | Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)); device 0.2.0 with la2l-server 0.6.0 for the app list, Import at 1.1.1 and an app that unpaired itself | `Inbox:`, `Paired with` and `Apps of this computer` |
 
 ## Next steps
 
-1. Test 0.2.1 in Live: steps 1, 6 and 7 of [test-card-en.md](test-card-en.md) on Windows, all steps on a Mac. Fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
+1. Test 0.2.2 in Live: steps 1, 7 and 8 of [test-card-en.md](test-card-en.md) on Windows, all steps on a Mac. Fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
 2. The Android share target and the web app side, against the app side of [server-api.md](server-api.md). The server runs (`server/`).
 3. Freeze for release: the bundled `la2l-node.js`, `la2l-live.js` and the logos must all be listed in the Max console when freezing.
 4. MIDI parts (`midi` in the manifest): a MIDI track with a Simpler per drum sound.
