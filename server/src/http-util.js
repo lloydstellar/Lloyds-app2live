@@ -53,8 +53,8 @@ function sendError(res, status, message, headers = {}) {
 
 const isJson = (type) => /^application\/json\s*(;.*)?$/i.test(String(type || '').trim());
 
-// The JSON body of a request: {} when it is empty. Larger than 1 MB: 413; another Content-Type:
-// 415; not valid JSON: 400.
+// The JSON body of a request, always an object: {} when it is empty. Larger than 1 MB: 413;
+// another Content-Type: 415; not valid JSON, or JSON that is not an object: 400.
 // A body that is too large gets its 413 at once, but what still comes is read and thrown away, so
 // the client can read the answer: closing a socket with unread data resets the connection, and
 // the client may lose the answer with it. A client that keeps sending far more is cut off.
@@ -89,11 +89,14 @@ function readJson(req, limit = MAX_JSON_BYTES) {
     req.on('end', () => {
       if (size === 0) return finish(null, {});
       if (!isJson(req.headers['content-type'])) return finish(new HttpError(415, 'Send JSON with Content-Type: application/json.'));
+      let value;
       try {
-        finish(null, JSON.parse(Buffer.concat(chunks).toString('utf8')));
+        value = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       } catch (e) {
-        finish(new HttpError(400, 'The request is not valid JSON.'));
+        return finish(new HttpError(400, 'The request is not valid JSON.'));
       }
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return finish(new HttpError(400, 'Send a JSON object.'));
+      finish(null, value);
     });
     req.on('error', (e) => finish(e));
     req.on('close', () => finish(new Error('The client went away during the request.')));

@@ -38,9 +38,91 @@
 
   <section class="card" id="send" aria-labelledby="send-title">
     <h2 id="send-title"><span class="step">2</span> Send sounds</h2>
-    <p class="wait">Sending comes to this page in the next version.</p>
+    <p id="send-locked" class="wait">Pair this browser first. Then you can send sounds from it.</p>
+    <form id="send-form" hidden novalidate>
+      <fieldset id="send-fields">
+        <div class="fields">
+          <label class="field wide"><span class="label">Title</span>
+            <input id="title" maxlength="60" value="Sender test" autocomplete="off">
+          </label>
+          <label class="field"><span class="label">BPM <span class="hint">optional, for loops</span></span>
+            <input id="bpm" inputmode="decimal" autocomplete="off" placeholder="120">
+          </label>
+        </div>
+        <label class="choose">
+          <input type="file" id="files" accept=".wav,audio/wav,audio/x-wav" multiple>
+          <span>Choose WAV files</span>
+        </label>
+        <p class="hint">One track per file. Up to 32 files, 200 MB together. A loop is warped to its BPM; a one-shot plays as it is.</p>
+        <ol id="sounds" class="sounds"></ol>
+        <button type="submit" id="send-button">Send</button>
+      </fieldset>
+      <p id="send-message" class="message" role="status" aria-live="polite"></p>
+    </form>
+    <div id="sent" hidden>
+      <p id="sent-status" class="sent-status" role="status" aria-live="polite"></p>
+      <ul id="sent-items" class="items"></ul>
+      <button type="button" id="send-more" class="secondary">Send more</button>
+    </div>
+  </section>
+
+  <section class="card" id="recent-card" aria-labelledby="recent-title" hidden>
+    <h2 id="recent-title">Recent</h2>
+    <ul id="recent" class="recent"></ul>
   </section>
 </main>
+<template id="sound-template">
+  <li class="sound">
+    <div class="sound-head">
+      <span class="file-name"></span>
+      <button type="button" class="remove secondary">Remove</button>
+    </div>
+    <div class="fields">
+      <label class="field wide"><span class="label">Name</span>
+        <input class="name" maxlength="40" autocomplete="off">
+      </label>
+      <label class="field"><span class="label">Type</span>
+        <select class="kind">
+          <option value="loop">Loop</option>
+          <option value="oneshot">One-shot</option>
+        </select>
+      </label>
+      <label class="field"><span class="label">Role</span>
+        <select class="role">
+          <option value="">None</option>
+          <option value="drums">Drums</option>
+          <option value="bass">Bass</option>
+          <option value="melodic">Melodic</option>
+          <option value="vocal">Vocal</option>
+          <option value="texture">Texture</option>
+          <option value="fx">FX</option>
+        </select>
+      </label>
+      <label class="field"><span class="label">BPM <span class="hint">optional</span></span>
+        <input class="item-bpm" inputmode="decimal" autocomplete="off" placeholder="package">
+      </label>
+      <label class="field"><span class="label">Length in beats <span class="hint">optional</span></span>
+        <input class="beats" inputmode="decimal" autocomplete="off" placeholder="auto">
+      </label>
+      <label class="field"><span class="label">Colour</span>
+        <select class="color">
+          <option value="">Auto</option>
+          <option value="#E5484D">Red</option>
+          <option value="#FFA529">Orange</option>
+          <option value="#F7F47C">Yellow</option>
+          <option value="#1AFF2F">Green</option>
+          <option value="#5CFFE8">Cyan</option>
+          <option value="#5480E4">Blue</option>
+          <option value="#D86CE4">Purple</option>
+          <option value="#FF94A6">Pink</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint oneshot-hint" hidden>A one-shot plays as it is: no warp, no tempo.</p>
+    <progress class="progress" max="1" value="0" hidden></progress>
+    <p class="sound-message message" role="status"></p>
+  </li>
+</template>
 <footer class="foot">
   <p id="server" class="wait">Asking the server...</p>
 </footer>

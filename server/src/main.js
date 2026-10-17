@@ -14,6 +14,7 @@ const { RateLimits } = require('./ratelimit');
 const { makeAuth } = require('./auth');
 const { deviceRoutes } = require('./routes/device');
 const { appRoutes } = require('./routes/app');
+const { packageRoutes } = require('./routes/packages');
 
 const isLoopback = (ip) => ip === '127.0.0.1' || ip === '::1';
 
@@ -35,6 +36,7 @@ async function start(config, opts = {}) {
   const router = new Router();
   deviceRoutes(router, deps);
   appRoutes(router, deps);
+  packageRoutes(router, deps);
   const pages = new StaticFiles();
   const sweeper = setInterval(() => limits.sweep(), 5 * 60000);
   sweeper.unref();

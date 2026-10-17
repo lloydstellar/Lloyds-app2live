@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { startServer } = require('./helpers');
+const { startServer, sendPackage, loopWav, shotWav } = require('./helpers');
 const { App } = require('../../src/node/app');
 const { MockLive, loadLiveScript } = require('../../tests/mock-live');
 
@@ -118,6 +118,70 @@ test('Pair app, Self test, Add app, Unpair: as in Live', async () => {
   assert.equal(d.status(), 'Unpaired. Apps can no longer send sounds to this computer.');
   assert.equal(d.stored().pairing, null);
   for (const t of [first.app_token, second.app_token]) assert.equal((await s.request('GET', '/api/app/me', { token: t })).status, 401);
+});
+
+test('Import: a loop and a one-shot sent through the app API become two tracks, at the tempo the app gave', async () => {
+  const d = device();
+  d.app.start();
+  await d.app.handle('pair');
+  const { app_token: appToken } = await claim(d, 'LA2L Sender', 'browser-import');
+  await waitFor(() => d.view() === 'paired', 'paired');
+
+  const { packageId } = await sendPackage(
+    s,
+    appToken,
+    [
+      { id: 'snare', file: 'test-file-voor-max.wav', data: loopWav(135, 4), name: 'Snare', kind: 'loop', role: 'drums' },
+      { id: 'hit', file: 'hit.wav', data: shotWav(11025), name: 'Hit', kind: 'oneshot' },
+    ],
+    { title: 'Sender test', tempo: { bpm: 135 } }
+  );
+  await d.app.handle('import');
+  assert.equal(d.status(), 'Sender test: 2 tracks imported.');
+  assert.deepEqual(d.mock.song.tracks.map((t) => t.name).slice(2, 4), ['Snare (LA2L Sender)', 'Hit (LA2L Sender)']);
+  const snare = d.mock.track(2).arrangement[0];
+  assert.equal(snare.warping, 1);
+  assert.equal(snare.warpMode, 0, 'Beats, for drums');
+  assert.ok(Math.abs(d.mock.clipTempo(snare) - 135) < 0.05, `plays at ${d.mock.clipTempo(snare)} BPM`);
+  assert.equal(d.mock.track(3).arrangement[0].warping, 0, 'the one-shot plays as it is');
+
+  // The app reads the result; the files are gone from the server.
+  const status = await s.request('GET', `/api/packages/${packageId}/status`, { token: appToken });
+  assert.equal(status.json.status, 'imported');
+  assert.deepEqual(status.json.items.map((it) => [it.id, it.status]), [['snare', 'imported'], ['hit', 'imported']]);
+  assert.equal(fs.existsSync(path.join(s.dataDir, 'packages', packageId)), false);
+
+  // A second Import finds nothing new.
+  await d.app.handle('import');
+  assert.equal(d.status(), 'Nothing new yet. Send a sound from your app first.');
+
+  // Unpair (twice): the app token stops working.
+  d.app.handle('settings', 1);
+  await d.app.handle('unpair');
+  await d.app.handle('unpair');
+  assert.equal((await s.request('GET', '/api/app/me', { token: appToken })).status, 401);
+});
+
+test('Import: a package Live cannot use is confirmed as failed and stays for a later try', async () => {
+  const d = device();
+  d.app.start();
+  await d.app.handle('pair');
+  const { app_token: appToken } = await claim(d, 'LA2L Sender', 'browser-failed');
+  await waitFor(() => d.view() === 'paired', 'paired');
+  // A schema the device does not know yet. The server takes it only as app2live/1, so the
+  // stored manifest is changed afterwards, as a newer server or app might have it.
+  const { packageId } = await sendPackage(s, appToken, [{ file: 'a.wav', data: shotWav(), name: 'A' }], { title: 'Future' });
+  const row = s.store.db.prepare('SELECT manifest FROM packages WHERE id = ?').get(packageId);
+  const future = Object.assign(JSON.parse(row.manifest), { schema: 'app2live/2' });
+  s.store.db.prepare('UPDATE packages SET manifest = ? WHERE id = ?').run(JSON.stringify(future), packageId);
+
+  await d.app.handle('import');
+  assert.match(d.status(), /^Future was not imported\. This package uses app2live\/2\. Update LA2L to import it\.$/);
+  const status = (await s.request('GET', `/api/packages/${packageId}/status`, { token: appToken })).json;
+  assert.equal(status.status, 'failed');
+  assert.equal(status.error, 'This package uses app2live/2. Update LA2L to import it.');
+  const inbox = (await s.request('GET', '/api/inbox', { token: d.stored().pairing.token })).json.packages;
+  assert.deepEqual(inbox.map((p) => p.package_id), [packageId]);
 });
 
 test('Cancel in the device makes the code stop working', async () => {

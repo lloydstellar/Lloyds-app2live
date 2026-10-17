@@ -34,5 +34,6 @@ See [server/CLAUDE.md](server/CLAUDE.md). In short: Node.js in Docker on the VPS
 ## Git
 
 - `main` is what Erik runs. Work on a branch and open a pull request, unless Erik says otherwise.
+- Erik does not merge on GitHub himself. When he has tested a pull request and says it works, merge it with a merge commit (so a branch stacked on it keeps working), delete the branch, and tell him.
 - LA2L is open source under the Apache License 2.0 ([LICENSE](LICENSE)). The repository is private for now; write every file and commit as if it were public: no secrets, keys, tokens, real logs or private server configuration.
 - Never commit secrets, `.env` files, the server's data folder or uploaded sounds.

@@ -48,6 +48,11 @@ test('JSON bodies: invalid JSON 400, another type 415, larger than 1 MB 413', as
   const bad = await s.request('POST', '/api/pair/start', { headers: { 'Content-Type': 'application/json' }, body: '{"device_id": ' });
   assert.equal(bad.status, 400);
   assert.deepEqual(bad.json, { error: 'The request is not valid JSON.' });
+  for (const notAnObject of ['null', '[1, 2]', '"text"', '42']) {
+    const r = await s.request('POST', '/api/pair/start', { headers: { 'Content-Type': 'application/json' }, body: notAnObject });
+    assert.equal(r.status, 400, notAnObject);
+    assert.deepEqual(r.json, { error: 'Send a JSON object.' });
+  }
   const type = await s.request('POST', '/api/pair/start', { headers: { 'Content-Type': 'text/plain' }, body: '{"device_id":"x"}' });
   assert.equal(type.status, 415);
   const charset = await s.request('POST', '/api/pair/start', { headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: '{"device_id":"x"}' });
