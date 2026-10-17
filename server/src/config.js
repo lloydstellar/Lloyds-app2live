@@ -77,6 +77,8 @@ function loadConfig(env = process.env) {
     maxDeviceStorageBytes: int('MAX_DEVICE_STORAGE_MB', 1, 1000000) * MB,
     minFreeDiskBytes: int('MIN_FREE_DISK_MB', 0, 1000000) * MB,
     rateLimits: choice('RATE_LIMITS', { on: true, off: false }),
+    // Not a setting: how long the WAV check of an upload may take (tests make it short).
+    wavCheckMs: 10000,
   };
 }
 

@@ -212,6 +212,13 @@ class Store {
     ).get(hash);
   }
 
+  // Whether an app and its computer are still paired.
+  isActiveApp(id) {
+    return !!this.sql(
+      'SELECT 1 AS x FROM apps a JOIN devices d ON d.id = a.device_ref WHERE a.id = ? AND a.revoked_at IS NULL AND d.revoked_at IS NULL'
+    ).get(id);
+  }
+
   createApp(a, now) {
     return Number(
       this.sql('INSERT INTO apps (device_ref, name, app_id, token_hash, created_at) VALUES (?, ?, ?, ?, ?)').run(
@@ -371,6 +378,91 @@ class Store {
 
   deletePackage(id) {
     this.sql('DELETE FROM packages WHERE id = ?').run(id);
+  }
+
+  // ---- cleanup (BUILD-PROMPT.md section 9) ----
+
+  // Pairings that are done with: waiting ones some time past their end, cancelled ones some time
+  // after the cancel, paired ones some time after the device got its token.
+  deleteOldPairings(expiredBefore, cancelledBefore, deliveredBefore) {
+    return Number(
+      this.sql(
+        `DELETE FROM pairings WHERE (status = 'waiting' AND expires_at <= ?)
+           OR (status = 'cancelled' AND cancelled_at <= ?)
+           OR (status = 'paired' AND delivered_at IS NOT NULL AND delivered_at <= ?)`
+      ).run(expiredBefore, cancelledBefore, deliveredBefore).changes
+    );
+  }
+
+  // Claims whose device never came for its token.
+  undeliveredClaims(claimedBefore) {
+    return this.sql("SELECT id, device_ref, new_device FROM pairings WHERE status = 'paired' AND delivered_at IS NULL AND claimed_at <= ?").all(
+      claimedBefore
+    );
+  }
+
+  // A device row with everything that hangs on it: its packages, pairings and apps. Returns the
+  // ids of the packages, whose folders the caller deletes after the transaction.
+  deleteDevice(id) {
+    const packageIds = this.sql('SELECT id FROM packages WHERE device_ref = ?').all(id).map((r) => r.id);
+    this.sql('DELETE FROM packages WHERE device_ref = ?').run(id);
+    this.sql('DELETE FROM pairings WHERE device_ref = ? OR app_ref IN (SELECT id FROM apps WHERE device_ref = ?)').run(id, id);
+    this.sql('DELETE FROM apps WHERE device_ref = ?').run(id);
+    this.sql('DELETE FROM devices WHERE id = ?').run(id);
+    return packageIds;
+  }
+
+  // Uploads that were not committed in time.
+  staleUploads(createdBefore) {
+    return this.sql("SELECT id FROM packages WHERE status = 'uploading' AND created_at <= ?").all(createdBefore).map((r) => r.id);
+  }
+
+  // Waiting and failed packages past their end.
+  expiredPackages(now) {
+    return this.sql("SELECT id FROM packages WHERE status IN ('waiting', 'failed') AND expires_at <= ?").all(now).map((r) => r.id);
+  }
+
+  // Results the app has had long enough to read.
+  deleteOldResults(updatedBefore) {
+    return Number(
+      this.sql("DELETE FROM packages WHERE status IN ('imported', 'partial', 'expired', 'deleted') AND updated_at <= ?").run(updatedBefore).changes
+    );
+  }
+
+  // Revoked apps and devices some time after the revoke, once nothing refers to them any more.
+  // Apps go first, so a device whose apps went in this run can go too.
+  deleteOldRevoked(revokedBefore) {
+    const apps = Number(
+      this.sql(
+        `DELETE FROM apps WHERE revoked_at IS NOT NULL AND revoked_at <= ?
+           AND NOT EXISTS (SELECT 1 FROM packages WHERE app_ref = apps.id)
+           AND NOT EXISTS (SELECT 1 FROM pairings WHERE app_ref = apps.id)`
+      ).run(revokedBefore).changes
+    );
+    const devices = Number(
+      this.sql(
+        `DELETE FROM devices WHERE revoked_at IS NOT NULL AND revoked_at <= ?
+           AND NOT EXISTS (SELECT 1 FROM packages WHERE device_ref = devices.id)
+           AND NOT EXISTS (SELECT 1 FROM apps WHERE device_ref = devices.id)
+           AND NOT EXISTS (SELECT 1 FROM pairings WHERE device_ref = devices.id)`
+      ).run(revokedBefore).changes
+    );
+    return { apps, devices };
+  }
+
+  // What the server holds, for the log line at start.
+  state() {
+    const n = (text) => this.sql(text).get().n;
+    return {
+      devices: n('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL'),
+      apps: n('SELECT COUNT(*) AS n FROM apps WHERE revoked_at IS NULL'),
+      waiting: n("SELECT COUNT(*) AS n FROM packages WHERE status IN ('waiting', 'failed')"),
+    };
+  }
+
+  // The packages that have a folder on disk.
+  packagesWithFiles() {
+    return this.sql("SELECT id FROM packages WHERE status IN ('uploading', 'waiting', 'failed')").all().map((r) => r.id);
   }
 }
 

@@ -196,6 +196,109 @@ test('PUT without Content-Length: cut off one byte past the declared size; one u
   assert.deepEqual((await slow.answer).json, { ok: true, file: 'loop.wav', bytes: LOOP.length });
 });
 
+// "RIFF....WAVE" and then only empty chunks: every 8 bytes one more chunk for wav.readInfo to walk.
+function emptyChunks(megabytes) {
+  const b = Buffer.alloc(megabytes * 1048576);
+  b.write('RIFF', 0, 'latin1');
+  b.writeUInt32LE(b.length - 8, 4);
+  b.write('WAVE', 8, 'latin1');
+  return b;
+}
+
+test('PUT: the WAV check of a file built to be slow does not hold up other requests', async () => {
+  const p = await pair();
+  const slow = emptyChunks(8);
+  const created = await s.request('POST', '/api/packages', { token: p.appToken, body: packageManifest([{ file: 'slow.wav', data: slow }]) });
+  const order = [];
+  let settled = false;
+  const put = s.request('PUT', `/api/packages/${created.json.package_id}/files/slow.wav`, { token: p.appToken, body: slow }).then((r) => {
+    order.push('put');
+    settled = true;
+    return r;
+  });
+  // The server runs in this process. Once the whole file is on disk the check starts; a check on
+  // the main thread would keep this loop and the health check below waiting until it is done.
+  const part = path.join(packageDir(s, created.json.package_id), 'slow.wav.part');
+  const arrived = () => fs.existsSync(part) && fs.statSync(part).size === slow.length;
+  while (!settled && !arrived()) await new Promise((r) => setTimeout(r, 5));
+  const health = await s.request('GET', '/api/health');
+  order.push('health');
+  assert.equal(health.status, 200);
+  const r = await put;
+  assert.equal(r.status, 422);
+  assert.deepEqual(r.json, { error: 'The WAV file has no format block.' });
+  assert.deepEqual(order, ['health', 'put'], 'the health check did not wait for the WAV check');
+});
+
+test('PUT: a WAV check that takes too long refuses the file', async () => {
+  // Long enough for a thread to start and check a normal file, far too short for this one.
+  const t = await startServer({}, { wavCheckMs: 1000 });
+  try {
+    const p = await pairDevice(t);
+    const slow = emptyChunks(32);
+    const created = await t.request('POST', '/api/packages', { token: p.appToken, body: packageManifest([{ file: 'slow.wav', data: slow }]) });
+    const r = await t.request('PUT', `/api/packages/${created.json.package_id}/files/slow.wav`, { token: p.appToken, body: slow });
+    assert.equal(r.status, 422);
+    assert.deepEqual(r.json, { error: 'The WAV header is damaged.' });
+    assert.deepEqual(fs.readdirSync(packageDir(t, created.json.package_id)), []);
+    // A normal file still goes through on that server.
+    const ok = await sendPackage(t, p.appToken, [{ file: 'a.wav', data: SHOT }]);
+    assert.ok(ok.packageId);
+  } finally {
+    await t.stop();
+  }
+});
+
+test('POST /packages: a value no app would send, such as an object as a name, is a 422', async () => {
+  const p = await pair();
+  const odd = { toString: 0 };
+  for (const body of [
+    packageManifest([{ file: 'a.wav', data: SHOT }], { title: odd }),
+    packageManifest([{ file: 'a.wav', data: SHOT }], { source: { app: odd } }),
+    packageManifest([{ file: 'a.wav', data: SHOT, name: odd }]),
+    packageManifest([{ file: 'a.wav', data: SHOT, kind: odd }]),
+  ]) {
+    const r = await s.request('POST', '/api/packages', { token: p.appToken, body });
+    assert.equal(r.status, 422, r.body.toString());
+    assert.deepEqual(r.json, { error: 'The package description is not valid.' });
+  }
+  assert.ok(!s.lines.some((l) => l.includes('ERROR')), 'no ERROR in the log');
+});
+
+test('POST /packages: an app unpaired while its manifest was still coming in gets a 401, not a 500', async () => {
+  const clock = fakeClock(Date.now());
+  const t = await startServer({}, {}, { clock });
+  try {
+    // A claim the computer never picks up: the cleanup removes the computer and the app.
+    const start = await helpers.pairStart(t, 'dev-race');
+    const claim = await t.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: 'Race' } });
+    const json = JSON.stringify(packageManifest([{ file: 'a.wav', data: SHOT }]));
+    let req;
+    const answer = new Promise((resolve, reject) => {
+      req = http.request(
+        { host: '127.0.0.1', port: t.port, method: 'POST', path: '/api/packages', agent: false, headers: { Authorization: 'Bearer ' + claim.json.app_token, 'Content-Type': 'application/json' } },
+        (res) => {
+          const chunks = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(Buffer.concat(chunks).toString()) }));
+        }
+      );
+      req.on('error', reject);
+      req.write(json.slice(0, 20));
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    clock.add(11 * 60000);
+    assert.equal(t.cleanup()['computer(s) that never got their token'], 1);
+    req.end(json.slice(20));
+    const r = await answer;
+    assert.equal(r.status, 401);
+    assert.deepEqual(r.json, { error: 'Unknown token. Pair this app again.' });
+    assert.ok(!t.lines.some((l) => l.includes('ERROR')));
+  } finally {
+    await t.stop();
+  }
+});
+
 test('commit: only with every file, then the device sees it; committing again is fine', async () => {
   const p = await pair();
   const created = await s.request('POST', '/api/packages', {
@@ -543,6 +646,7 @@ test('restart: a waiting package and its files are still there', async () => {
   await t.stop({ keepData: true });
   const again = await startServer({}, {}, { dataDir: t.dataDir });
   try {
+    assert.ok(again.lines.some((l) => / state: 1 computer\(s\) and 1 app\(s\) paired, 1 package\(s\) waiting$/.test(l)), again.lines.join('\n'));
     assert.deepEqual((await again.request('GET', '/api/inbox', { token: p.deviceToken })).json.packages.map((x) => x.package_id), [id]);
     assert.ok((await again.request('GET', `/api/packages/${id}/files/a.wav`, { token: p.deviceToken })).body.equals(LOOP));
   } finally {

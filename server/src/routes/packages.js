@@ -8,6 +8,8 @@ const { HttpError, sendJson, readJson, MAX_JSON_BYTES } = require('../http-util'
 const { PACKAGE_ID, isFileName } = require('../storage');
 const { receiveFile, FULL } = require('../upload');
 const { statusAt } = require('../packages');
+const { checkWav } = require('../wav-check');
+const { APP_401 } = require('../auth');
 const manifest = require('../../../src/node/manifest');
 const wav = require('../../../src/node/wav');
 
@@ -41,8 +43,9 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
     try {
       checked = manifest.validate(raw);
     } catch (e) {
-      if (e instanceof manifest.ManifestError) throw new HttpError(422, e.message);
-      throw e;
+      // A ManifestError says what is wrong. Anything else comes from a value no app would send,
+      // such as an object where a name belongs.
+      throw new HttpError(422, e instanceof manifest.ManifestError ? e.message : 'The package description is not valid.');
     }
     // Stricter than the device: every sound must be right, with its size and checksum.
     const { pkg, warnings } = checked;
@@ -63,6 +66,8 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
     const expiresAt = iso(nowMs + config.packageTtlMs);
 
     store.tx(() => {
+      // The body took a while: the app may have been unpaired or cleaned up since the token check.
+      if (!store.isActiveApp(app.id)) throw new HttpError(401, APP_401);
       if (store.bytesFor(app.device_ref) + totalBytes > config.maxDeviceStorageBytes) {
         throw new HttpError(507, 'Too many sounds wait for this computer. Click Import in Live first.');
       }
@@ -112,16 +117,21 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
           if (e.code === 'ENOENT') throw new HttpError(404, UNKNOWN_PACKAGE);
           throw e;
         }
-        // From here on nothing waits, so no other request can change the package in between.
         try {
-          uploadingPackage(p.id, app);
           if (got.bytes !== f.bytes || got.sha256 !== f.sha256) throw new HttpError(422, 'The file arrived damaged. Send it again.');
+          let unusable = null;
           try {
-            wav.readInfo(part);
+            await checkWav(part, config.wavCheckMs);
           } catch (e) {
-            if (e instanceof wav.WavError) throw new HttpError(422, e.message);
-            throw e;
+            if (!(e instanceof wav.WavError)) {
+              uploadingPackage(p.id, app); // deleted meanwhile: a 404, not a 500
+              throw e;
+            }
+            unusable = e.message;
           }
+          // From here on nothing waits, so no other request can change the package in between.
+          uploadingPackage(p.id, app);
+          if (unusable) throw new HttpError(422, unusable);
           fs.renameSync(part, storage.filePath(p.id, f.file)); // replaces a file sent before
           store.markReceived(p.id, f.file);
         } catch (e) {

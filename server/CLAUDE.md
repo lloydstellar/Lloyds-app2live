@@ -30,8 +30,9 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 | `npm test` | `server/` | Server tests, with an end-to-end test that runs the real device code (pairing and Import) against this server |
 | `docker run --rm --user 1000:1000 -e HOME=/tmp -v "$PWD/..:/repo" -w /repo/server node:24-bookworm-slim npm test` | `server/` | The same on Node 24, on the VPS |
 | `npm test` | repository root | Device tests; run them after any change to `src/node/manifest.js`, `src/node/wav.js` or the API |
-| `docker compose up -d --build` | `server/` | Build and start, or update after `git pull` |
-| `docker compose logs -f --tail=200` | `server/` | Follow the log |
+| `bash deploy/update.sh` | `server/` | Build and start what is checked out, after `git pull`. Saves the log of the old container to `~/la2l-server-logs` first (Docker drops it with the container), then waits for the health check |
+| `docker compose logs -f --tail=200` | `server/` | Follow the log of the running container |
+| `docker compose restart` | `server/` | Restart without a rebuild; the log stays |
 | `curl -s https://lloydstellar.nl/la2l/api/health` | anywhere | Must answer `{"ok":true,...}` |
 | `bash deploy/install-nginx.sh --check` | `server/` | Shows what the nginx install would change; no sudo needed |
 | `sudo bash deploy/install-nginx.sh` | `server/` | Puts `deploy/nginx-la2l.conf` into nginx, or updates it after a change; `--remove` takes it out. Erik runs it: sudo needs his password |
@@ -54,7 +55,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 - nginx: `deploy/nginx-la2l.conf` is installed as `/etc/nginx/snippets/la2l.conf` and included in the 443 server block of lloydstellar.nl by `deploy/install-nginx.sh`, which backs up the site file, tests with `nginx -t` and puts everything back when the test fails. After a change to the snippet, run the script again.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
 - Data (the SQLite database and the package files) lives in a Docker volume, mounted at `/data`.
-- Update: `git pull && docker compose up -d --build` in `server/`.
+- Update: `git pull && bash deploy/update.sh` in `server/`. A plain `docker compose up -d --build` works too, but loses the log of the old container.
 - GitHub: the clone on the VPS pushes and opens pull requests through the `gh` login of lloydstellar (https). No deploy key: Erik decided that on 2026-10-16, see section 13.1 of the build brief.
 - The website on lloydstellar.nl must keep working, including `http://lloydstellar.nl/test/test-file-voor-max.wav`, which the device's Test import downloads.
 - Ask Erik first before installing system packages, changing the web server, the firewall or another site, or deleting anything outside this repository and the server's volume.

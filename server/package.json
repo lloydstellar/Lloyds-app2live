@@ -1,6 +1,6 @@
 {
   "name": "la2l-server",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "description": "The App2Live server: pairs apps with the LA2L device in Ableton Live and hands their sounds over.",
   "private": true,
   "license": "Apache-2.0",
