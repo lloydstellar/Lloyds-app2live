@@ -1,0 +1,32 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "tempo": {
+    "bpm": 120
+  },
+  "items": [
+    {
+      "id": "snare",
+      "file": "snare.wav",
+      "bytes": 352844,
+      "sha256": "2374a7cc1179d7eebedddc2bc751a3459bd31bba42d781d5b91dc92ecb75a15b",
+      "name": "Snare",
+      "kind": "loop",
+      "role": "drums"
+    },
+    {
+      "id": "kick",
+      "file": "../kick.wav",
+      "bytes": 352844,
+      "sha256": "37ca3cfb5d8522c2e1abecd50bc7e484c47aa288dcb4b51b466a68264966b1f9",
+      "name": "Kick",
+      "kind": "loop",
+      "role": "drums"
+    }
+  ]
+}

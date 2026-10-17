@@ -3,7 +3,7 @@
 // shows, and the calls an app makes with its app token.
 
 const { HttpError, sendJson, readJson, cleanText } = require('../http-util');
-const { newDeviceToken, newAppToken, sha256, normalizeCode } = require('../tokens');
+const { newDeviceToken, newAppToken, newPublicId, sha256, normalizeCode } = require('../tokens');
 const { ipKey } = require('../ratelimit');
 const { cleanName } = require('../../../src/node/text');
 
@@ -44,7 +44,7 @@ function appRoutes(router, { store, storage, auth, limits, clock, log }) {
         }
         deviceToken = newDeviceToken();
         const id = store.createDevice(
-          { deviceId: p.device_id, name: p.device_name, client: p.client, platform: p.platform, tokenHash: sha256(deviceToken) },
+          { deviceId: p.device_id, name: p.device_name, client: p.client, platform: p.platform, tokenHash: sha256(deviceToken), test: p.test === 1 },
           now
         );
         device = { id };
@@ -53,7 +53,7 @@ function appRoutes(router, { store, storage, auth, limits, clock, log }) {
       // Pairing again from the same installation replaces its old token.
       const revokedApps = appId ? store.revokeAppsWithAppId(device.id, appId, now) : 0;
       const appToken = newAppToken();
-      const appRef = store.createApp({ deviceRef: device.id, name: appName, appId, tokenHash: sha256(appToken) }, now);
+      const appRef = store.createApp({ deviceRef: device.id, name: appName, appId, publicId: newPublicId(), client: ctx.client, tokenHash: sha256(appToken) }, now);
       store.markPaired(p.id, { deviceRef: device.id, newDevice, appRef, appName, tokenPlain: deviceToken }, now);
       return { appToken, appRef, deviceRef: device.id, deviceName: p.device_name, newDevice, replaced, dropped, revokedApps };
     });

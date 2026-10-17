@@ -112,3 +112,12 @@ Erik asked for the open points above, plus one he found himself: in the Arrangem
 Erik tested 0.2.0 with server 0.6.0 in Live 12.4.6 on Windows, steps 1 to 7 of the test card, and it worked. After step 7 he asked for two changes, which device 0.2.1 makes without a server change: with no app left the device shows Pair app again instead of Import, keeping its token, so Pair app adds the next app to the same computer; and Copy code puts the pairing code on the clipboard.
 
 Device 0.2.2, also without a server change, asks `GET /api/apps` every 15 seconds while an app is paired, so Pair app comes back by itself when the last app unpaired itself (Erik's question after testing 0.2.1). That is 4 calls a minute per computer, far under the token limit, but each is a line in the server log. If the log gets too busy, la2l-server could leave successful `GET /api/apps` lines out, as it does for Docker's own health check. Erik tested 0.2.2 in Live 12.4.6 on Windows on 2026-10-17: after Unpair this browser, Pair app came back by itself without a click in Live.
+
+## Server 0.7.0: what the developer kit adds for the device (2026-10-17)
+
+The developer kit of `sdk/BUILD-PROMPT.md` is being built on the VPS. Its phase 1 adds to the device side of the API without changing any call the device makes, so devices 0.1.1 and 0.2.x work as before:
+
+- `GET /apps` gives every app an `id` of 32 hex characters. Devices 0.2.x ignore it.
+- `DELETE /apps/{id}` with the device token removes one app, with its packages that still upload or wait. The brief plans a button for it in Settings in a later device version; check with Erik before you build it. `docs/server-api.md` describes the call.
+- `POST /pair/start` takes `"test": true` from the test receiver at `https://lloydstellar.nl/la2l/receiver`, a page that stands in for Live while a developer tests an app. The server removes a test receiver after 7 days without a call.
+- `sdk/fixtures/` holds WAV files and manifests with the device's verdict on each, and `tests/fixtures.test.js` runs them in `npm test`. The checks of `src/node/manifest.js`, `src/node/wav.js` and `src/node/text.js` are ported to TypeScript in `sdk/js/src` for the npm package `la2l`, with the same texts. So a change to a check or a text there now also needs `sdk/fixtures/make.js` and the port changed in the same branch; `sdk/js/test/parity.test.mjs` compares the port with the device code on thousands of random inputs.

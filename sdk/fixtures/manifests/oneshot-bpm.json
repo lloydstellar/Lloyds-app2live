@@ -1,0 +1,23 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "tempo": {
+    "bpm": 120
+  },
+  "items": [
+    {
+      "id": "hit",
+      "file": "hit.wav",
+      "bytes": 352844,
+      "sha256": "8a043f55ef38458453a5d90a4a8528f6aeef45cbf281fdaf0413fb7cbf9f3058",
+      "name": "Hit",
+      "kind": "oneshot",
+      "bpm": 120
+    }
+  ]
+}

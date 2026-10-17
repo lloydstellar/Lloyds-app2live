@@ -1,0 +1,23 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "tempo": {
+    "bpm": 120
+  },
+  "items": [
+    {
+      "id": "a-name-of-exactly-forty-one-characters-x",
+      "file": "a-name-of-exactly-forty-one-characters-x.wav",
+      "bytes": 352844,
+      "sha256": "47de5a81cb1f3ea66febfeb3c663ec6a0c315a5f6c592fec74984fca40ee81e9",
+      "name": "A name of exactly forty-one characters!!x",
+      "kind": "loop",
+      "role": "drums"
+    }
+  ]
+}

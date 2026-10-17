@@ -10,6 +10,7 @@ const { receiveFile, FULL } = require('../upload');
 const { statusAt } = require('../packages');
 const { checkWav } = require('../wav-check');
 const { APP_401 } = require('../auth');
+const { ipKey } = require('../ratelimit');
 const manifest = require('../../../src/node/manifest');
 const wav = require('../../../src/node/wav');
 
@@ -18,8 +19,11 @@ const PACKAGE_OPTS = { params: { id: PACKAGE_ID }, notFound: UNKNOWN_PACKAGE };
 const FILE_OPTS = { params: { id: PACKAGE_ID, file: { test: isFileName } }, notFound: 'This file is not in the package.' };
 const MAX_WARNINGS = 50;
 
-function packageRoutes(router, { config, store, storage, auth, limits, clock, log }) {
+function packageRoutes(router, { config, store, storage, auth, limits, clock, log, senderKey }) {
   const iso = (ms) => new Date(ms).toISOString();
+  // Who sent a package, for the limit per address: the address as the rate limits count it (an
+  // IPv6 address by its /64), as a hash with a key that only this running server knows.
+  const senderOf = (ip) => crypto.createHmac('sha256', senderKey).update(ipKey(ip)).digest('hex').slice(0, 32);
   // Uploads in progress, "<package>/<file>": one at a time per file.
   const writing = new Set();
 
@@ -65,12 +69,20 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
     const nowMs = clock();
     const expiresAt = iso(nowMs + config.packageTtlMs);
 
+    const sender = senderOf(ctx.ip);
+
     store.tx(() => {
       // The body took a while: the app may have been unpaired or cleaned up since the token check.
       if (!store.isActiveApp(app.id)) throw new HttpError(401, APP_401);
       if (store.bytesFor(app.device_ref) + totalBytes > config.maxDeviceStorageBytes) {
         throw new HttpError(507, 'Too many sounds wait for this computer. Click Import in Live first.');
       }
+      // One address could pair many computers with itself and fill each of them.
+      if (store.bytesFromSender(sender) + totalBytes > config.maxAddressStorageBytes) {
+        throw new HttpError(507, 'Too many sounds wait from this address. Try again later.');
+      }
+      // The whole server stops long before the disk is full; the free space is the last line.
+      if (store.bytesStored() + totalBytes > config.maxTotalStorageBytes) throw new HttpError(507, FULL);
       if (storage.freeBytes() - store.bytesComing() - totalBytes < config.minFreeDiskBytes) throw new HttpError(507, FULL);
       store.createPackage(
         {
@@ -83,6 +95,7 @@ function packageRoutes(router, { config, store, storage, auth, limits, clock, lo
           totalBytes,
           manifest: text,
           expiresAt,
+          sender,
         },
         pkg.items.map((item) => ({ file: item.file, bytes: item.bytes, sha256: item.sha256 })),
         iso(nowMs)

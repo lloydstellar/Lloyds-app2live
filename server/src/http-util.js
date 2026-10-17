@@ -15,15 +15,16 @@ class HttpError extends Error {
 }
 
 // Browser apps call the API from other sites. The API uses bearer tokens, never cookies, so any
-// origin may call it.
+// origin may call it. A web app may read Retry-After, so it knows how long to wait after a 429.
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Expose-Headers': 'Content-Length',
+  'Access-Control-Expose-Headers': 'Content-Length, Retry-After',
 };
 
+// X-LA2L-Client: which SDK and app make the call, for example "la2l-js/0.1.0 (Web808)".
 const PREFLIGHT = {
   'Access-Control-Allow-Methods': 'GET, HEAD, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-LA2L-Client',
   'Access-Control-Max-Age': '600',
 };
 
@@ -115,6 +116,12 @@ function cleanText(value, max) {
   return Array.from(s).slice(0, max).join('').trim();
 }
 
+// The X-LA2L-Client header of a request, cleaned for the log and the database: at most 100
+// characters, no double quotes, because the log line puts it between them. '' when there is none.
+function clientName(header) {
+  return cleanText(header, 100).replace(/"/g, "'");
+}
+
 // The path of the request exactly as sent, without the query. Routes match this raw path, so
 // "/api/../x" or "%2F" never turn into another route.
 function rawPath(url) {
@@ -133,4 +140,4 @@ function clientIp(req, trustProxy) {
   return String((req.socket && req.socket.remoteAddress) || '-').replace(/^::ffff:(?=\d+\.)/, '');
 }
 
-module.exports = { HttpError, CORS, PREFLIGHT, MAX_JSON_BYTES, sendJson, sendError, errorText, readJson, cleanText, rawPath, clientIp };
+module.exports = { HttpError, CORS, PREFLIGHT, MAX_JSON_BYTES, sendJson, sendError, errorText, readJson, cleanText, clientName, rawPath, clientIp };

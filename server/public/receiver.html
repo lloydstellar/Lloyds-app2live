@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>LA2L Test receiver</title>
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="sender.css">
+<link rel="stylesheet" href="receiver.css">
+<script type="module" src="receiver.js"></script>
+</head>
+<body>
+<header class="top">
+  <img src="logo.png" alt="" width="60" height="60">
+  <div>
+    <h1>LA2L Test receiver</h1>
+    <p>Stands in for LA2L in Ableton Live. Pair your app with the code below and send sounds: this page shows what Live would do with them.</p>
+  </div>
+</header>
+<main>
+  <section class="card" id="pairing" aria-labelledby="pairing-title">
+    <h2 id="pairing-title"><span class="step">1</span> Pair your app</h2>
+    <p id="pair-wait" class="wait">Asking for a code...</p>
+    <div id="code-box" hidden>
+      <p>In your app, type this code, as you would type the code LA2L shows in Live.</p>
+      <p class="code" id="code" aria-live="polite"></p>
+      <p class="hint" id="countdown"></p>
+    </div>
+    <div id="paired-box" hidden>
+      <p class="paired" id="paired-with"></p>
+      <div class="row-buttons">
+        <button type="button" id="add-app" class="secondary">Pair another app</button>
+        <button type="button" id="stop" class="secondary">Stop this receiver</button>
+      </div>
+    </div>
+    <button type="button" id="new-code" hidden>Get a new code</button>
+    <p id="pair-message" class="message" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card" id="packages" aria-labelledby="packages-title">
+    <h2 id="packages-title"><span class="step">2</span> Sounds</h2>
+    <p id="watch" class="wait">Pair an app first. Then this page looks for new sounds every 3 seconds, as Import in Live would.</p>
+    <ol id="reports" class="reports"></ol>
+    <button type="button" id="clear" class="secondary small" hidden>Clear this list</button>
+  </section>
+</main>
+<template id="report-template">
+  <li class="report">
+    <div class="report-head">
+      <strong class="report-title"></strong>
+      <span class="hint report-when"></span>
+    </div>
+    <p class="report-status"></p>
+    <ul class="report-warnings hint"></ul>
+    <ol class="report-sounds"></ol>
+  </li>
+</template>
+<footer class="foot">
+  <p id="server" class="wait">Asking the server...</p>
+  <p class="hint">A test receiver that makes no call for 7 days is removed from the server. The list of sounds is kept in this browser only.</p>
+</footer>
+</body>
+</html>

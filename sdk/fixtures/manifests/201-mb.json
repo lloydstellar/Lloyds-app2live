@@ -1,0 +1,32 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "tempo": {
+    "bpm": 120
+  },
+  "items": [
+    {
+      "id": "left",
+      "file": "left.wav",
+      "bytes": 105381888,
+      "sha256": "58eb9032e3bb83f0e39d644ebc87ca254117b95bf458483bec7379bea0b419d0",
+      "name": "Left",
+      "kind": "loop",
+      "role": "drums"
+    },
+    {
+      "id": "right",
+      "file": "right.wav",
+      "bytes": 105381888,
+      "sha256": "883361d5d682a1574410961ce51450b6e036a779c9f098dec71e28aec832bfa6",
+      "name": "Right",
+      "kind": "loop",
+      "role": "drums"
+    }
+  ]
+}

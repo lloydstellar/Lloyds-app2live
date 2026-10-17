@@ -7,6 +7,7 @@
 <title>LA2L Sender</title>
 <link rel="icon" href="logo.png">
 <link rel="stylesheet" href="sender.css">
+<script src="big.js" defer></script>
 <script src="sender.js" defer></script>
 </head>
 <body>
@@ -64,6 +65,14 @@
       <ul id="sent-items" class="items"></ul>
       <button type="button" id="send-more" class="secondary">Send more</button>
     </div>
+  </section>
+
+  <section class="card" id="big" aria-labelledby="big-title" hidden>
+    <h2 id="big-title">Big test</h2>
+    <p>Sends a WAV file of 150 MB that this page makes itself: a quiet tone of 14 minutes 52 seconds, as a one-shot named Big test. For a long upload over a phone network.</p>
+    <button type="button" id="big-button">Send 150 MB</button>
+    <progress id="big-progress" class="progress" max="1" value="0" hidden></progress>
+    <p id="big-message" class="message" role="status" aria-live="polite"></p>
   </section>
 
   <section class="card" id="recent-card" aria-labelledby="recent-title" hidden>

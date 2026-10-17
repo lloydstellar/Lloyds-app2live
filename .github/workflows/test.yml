@@ -1,4 +1,4 @@
-# Both test suites, the server's Docker image and its deploy scripts, on every push and pull
+# Every test suite, the server's Docker image and its deploy scripts, on every push and pull
 # request, so a broken test, Dockerfile or script shows up before it reaches the VPS.
 name: Tests
 
@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # Both run the shared fixtures of sdk/fixtures; the device tests also check that the
+      # fixtures are what sdk/fixtures/make.js makes.
       - name: Device tests
         run: npm test
       - name: Server tests
@@ -27,3 +29,39 @@ jobs:
       - name: Deploy scripts
         run: docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh
         working-directory: server
+
+  # la2l on npm, on every Node.js version that still gets security fixes. Its tests also hold
+  # docs/openapi.yaml and docs/app2live-1.schema.json to the real server and the fixtures.
+  sdk-js:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    defaults:
+      run:
+        working-directory: sdk/js
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install the pinned dev tools
+        run: npm ci
+      - name: The committed server/public/vendor/la2l.js is a fresh build
+        run: npm run check:vendor
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: npm test
+      - name: Lint docs/openapi.yaml
+        run: npm run lint
+        env:
+          REDOCLY_TELEMETRY: 'off'
+          REDOCLY_SUPPRESS_UPDATE_NOTICE: 'true'
+      # The test receiver and LA2L Sender in headless Chromium, once.
+      - name: Browser tests
+        if: matrix.node == 24
+        run: |
+          npx playwright-core install --with-deps chromium
+          npm run test:browser

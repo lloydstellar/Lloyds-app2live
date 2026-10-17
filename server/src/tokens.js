@@ -15,6 +15,8 @@ const random = () => crypto.randomBytes(32).toString('base64url');
 const newDeviceToken = () => 'la2ld_' + random();
 const newAppToken = () => 'la2la_' + random();
 const newPairId = () => random();
+// The id of an app in GET /apps: 16 random bytes in hex. Not a secret, but it says nothing.
+const newPublicId = () => crypto.randomBytes(16).toString('hex');
 
 function newCode() {
   let code = '';
@@ -38,4 +40,4 @@ function normalizeCode(text) {
   return CODE_RE.test(code) ? code : null;
 }
 
-module.exports = { CODE_ALPHABET, newDeviceToken, newAppToken, newPairId, newCode, sha256, bearer, normalizeCode };
+module.exports = { CODE_ALPHABET, newDeviceToken, newAppToken, newPairId, newPublicId, newCode, sha256, bearer, normalizeCode };

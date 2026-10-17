@@ -1,0 +1,56 @@
+{
+  "name": "la2l",
+  "version": "0.1.0",
+  "description": "Send sounds from your app to Ableton Live with LA2L (Lloyd's App2Live).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/",
+    "docs/",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lloydstellar/Lloyds-app2live.git",
+    "directory": "sdk/js"
+  },
+  "homepage": "https://lloydstellar.nl/la2l/",
+  "keywords": [
+    "ableton",
+    "ableton-live",
+    "la2l",
+    "wav",
+    "web-audio",
+    "music"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:vendor": "node scripts/build.mjs --check",
+    "test": "node --test \"test/*.test.mjs\"",
+    "test:browser": "node --test --test-concurrency=1 \"test-browser/*.test.mjs\"",
+    "lint": "redocly lint --config redocly.yaml ../../docs/openapi.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.64.1",
+    "@types/node": "26.6.5",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.1",
+    "typescript": "7.0.2",
+    "yaml": "2.9.1"
+  }
+}

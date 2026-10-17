@@ -1,0 +1,19 @@
+{
+  "schema": "app2live/1",
+  "title": "Fixture",
+  "source": {
+    "app": "Fixtures",
+    "app_version": "1.0.0",
+    "platform": "test"
+  },
+  "items": [
+    {
+      "id": "kick",
+      "file": "kick.wav",
+      "bytes": 352844,
+      "sha256": "37ca3cfb5d8522c2e1abecd50bc7e484c47aa288dcb4b51b466a68264966b1f9",
+      "name": "Kick",
+      "role": "drums"
+    }
+  ]
+}

@@ -225,10 +225,14 @@ test('unpair: the device token and every app token of that computer stop working
 
 test('GET /apps: the apps that can send to this computer now, oldest first', async () => {
   const at = () => new Date(clock()).toISOString();
+  // Every app has an id of 32 hex characters (server 0.7.0); the test after this one is about it.
   const list = async (token) => {
     const r = await s.request('GET', '/api/apps', { token });
     assert.equal(r.status, 200);
-    return r.json.apps;
+    return r.json.apps.map(({ id, ...app }) => {
+      assert.match(id, /^[0-9a-f]{32}$/);
+      return app;
+    });
   };
   const addApp = async (deviceToken, appName, appId) => {
     const start = await pairStart(s, 'dev-apps', deviceToken);

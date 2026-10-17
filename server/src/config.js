@@ -18,6 +18,9 @@ const DEFAULTS = {
   UPLOAD_TTL_MINUTES: '60',
   RESULT_TTL_DAYS: '7',
   MAX_DEVICE_STORAGE_MB: '1024',
+  MAX_ADDRESS_STORAGE_MB: '2048',
+  MAX_TOTAL_STORAGE_MB: '10240',
+  STORAGE_WARN_PERCENT: '80',
   MIN_FREE_DISK_MB: '2048',
   RATE_LIMITS: 'on',
 };
@@ -75,6 +78,9 @@ function loadConfig(env = process.env) {
     uploadTtlMs: positive('UPLOAD_TTL_MINUTES', 1440) * 60000,
     resultTtlMs: positive('RESULT_TTL_DAYS', 365) * 86400000,
     maxDeviceStorageBytes: int('MAX_DEVICE_STORAGE_MB', 1, 1000000) * MB,
+    maxAddressStorageBytes: int('MAX_ADDRESS_STORAGE_MB', 1, 1000000) * MB,
+    maxTotalStorageBytes: int('MAX_TOTAL_STORAGE_MB', 1, 10000000) * MB,
+    storageWarnPercent: int('STORAGE_WARN_PERCENT', 1, 100),
     minFreeDiskBytes: int('MIN_FREE_DISK_MB', 0, 1000000) * MB,
     rateLimits: choice('RATE_LIMITS', { on: true, off: false }),
     // Not a setting: how long the WAV check of an upload may take (tests make it short).

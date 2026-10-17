@@ -1,0 +1,83 @@
+/* LA2L Test receiver: what it adds to sender.css. No inline styles: the Content-Security-Policy
+   allows only these files. */
+
+p.code {
+  margin: 8px 0 4px;
+  font-size: 2.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+}
+
+.row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#new-code {
+  margin-top: 12px;
+}
+
+.reports {
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report {
+  margin: 0 0 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.report-title {
+  overflow-wrap: anywhere;
+}
+
+.report-status {
+  margin: 6px 0 8px;
+}
+
+.report-warnings {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.report-warnings:empty {
+  display: none;
+}
+
+.report-sounds {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-sounds li {
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+
+.report-sounds li:first-child {
+  margin-top: 0;
+}
+
+.track {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.report-sounds p {
+  margin: 2px 0 0;
+}

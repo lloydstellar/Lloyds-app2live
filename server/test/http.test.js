@@ -25,7 +25,7 @@ test('health: ok, name and version, as exact JSON that is never cached', async (
   assert.equal(Number(r.headers['content-length']), r.body.length);
   assert.equal(r.headers['cache-control'], 'no-store');
   assert.equal(r.headers['access-control-allow-origin'], '*');
-  assert.equal(r.headers['access-control-expose-headers'], 'Content-Length');
+  assert.equal(r.headers['access-control-expose-headers'], 'Content-Length, Retry-After');
   assert.equal(r.headers['content-encoding'], undefined);
 });
 
@@ -79,7 +79,7 @@ test('CORS preflight on any API path: 204', async () => {
     assert.equal(r.status, 204, p);
     assert.equal(r.headers['access-control-allow-origin'], '*');
     assert.equal(r.headers['access-control-allow-methods'], 'GET, HEAD, POST, PUT, DELETE, OPTIONS');
-    assert.equal(r.headers['access-control-allow-headers'], 'Authorization, Content-Type');
+    assert.equal(r.headers['access-control-allow-headers'], 'Authorization, Content-Type, X-LA2L-Client');
     assert.equal(r.headers['access-control-max-age'], '600');
     assert.equal(r.body.length, 0);
   }
@@ -101,6 +101,29 @@ test('Sender page: the four files, with the security headers', async () => {
   assert.match(page, /<h1>LA2L Sender<\/h1>/);
   assert.doesNotMatch(page, /style=|<style|<script>/, 'nothing inline: the CSP would block it');
   assert.equal((await s.request('GET', '/logo.png')).body.subarray(1, 4).toString(), 'PNG');
+});
+
+test('the test receiver, the big test and the SDK for the browser: served like the Sender page', async () => {
+  const files = {
+    '/receiver': 'text/html; charset=utf-8',
+    '/receiver.js': 'text/javascript; charset=utf-8',
+    '/receiver.css': 'text/css; charset=utf-8',
+    '/big.js': 'text/javascript; charset=utf-8',
+    '/vendor/la2l.js': 'text/javascript; charset=utf-8',
+  };
+  for (const [p, type] of Object.entries(files)) {
+    const r = await s.request('GET', p);
+    assert.equal(r.status, 200, p);
+    assert.equal(r.headers['content-type'], type, p);
+    assert.equal(r.headers['content-security-policy'], CSP, p);
+    assert.equal(r.headers['x-content-type-options'], 'nosniff', p);
+  }
+  const page = (await s.request('GET', '/receiver')).body.toString();
+  assert.match(page, /<h1>LA2L Test receiver<\/h1>/);
+  assert.doesNotMatch(page, /style=|<style|<script>/, 'nothing inline: the CSP would block it');
+  const sdk = (await s.request('GET', '/vendor/la2l.js')).body.toString();
+  assert.match(sdk.split('\n')[0], /^\/\/ la2l \d+\.\d+\.\d+ for the browser/);
+  for (const p of ['/vendor/', '/vendor', '/vendor/../sender.js', '/receiver/', '/receiver.html']) assert.equal((await s.request('GET', p)).status, 404, p);
 });
 
 test('Sender page: a known version comes back as 304', async () => {

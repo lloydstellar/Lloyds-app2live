@@ -490,6 +490,61 @@ function showRecent(fetchNow) {
   }
 }
 
+// ---- the big test (?big) ----
+
+// A WAV file of 150 MB made by big.js, sent as a one-shot, with the time the upload took. For a
+// long upload over a phone network, without a large file on the phone.
+const bigMessage = (text, bad) => say($('big-message'), text, bad);
+const minutes = (ms) => {
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+async function sendBig() {
+  if (!saved.get('token')) return bigMessage('Pair this browser first.', true);
+  const button = $('big-button');
+  const bar = $('big-progress');
+  button.disabled = true;
+  bar.value = 0;
+  bar.hidden = false;
+  let tick = null;
+  try {
+    bigMessage('Making the file...');
+    const blob = BIG_TEST.blob();
+    const manifest = {
+      schema: 'app2live/1',
+      created_at: new Date().toISOString(),
+      title: BIG_TEST.name,
+      source: { app: APP_NAME, app_version: serverVersion, platform: 'web' },
+      items: [{ id: 'big', file: BIG_TEST.file, bytes: BIG_TEST.bytes, sha256: BIG_TEST.sha256, name: BIG_TEST.name, kind: 'oneshot' }],
+    };
+    const created = await api('POST', 'packages', manifest);
+    if (created.status !== 201) return bigMessage(problem(created), true);
+    const id = created.json.package_id;
+    const started = Date.now();
+    tick = setInterval(() => bigMessage(`Sending: ${Math.round(bar.value * 100)}% after ${minutes(Date.now() - started)}.`), 1000);
+    const put = await putFile(created.json.upload[BIG_TEST.file], blob, bar);
+    clearInterval(tick);
+    const took = Date.now() - started;
+    if (put.status !== 200) {
+      api('DELETE', 'packages/' + id); // it would only wait for an hour
+      return bigMessage(`The upload stopped after ${minutes(took)}, at ${Math.round(bar.value * 100)}%. ${problem(put)}`, true);
+    }
+    const commit = await api('POST', `packages/${id}/commit`, {});
+    if (commit.status !== 200) return bigMessage(problem(commit), true);
+    const mbit = (BIG_TEST.bytes * 8) / (took / 1000) / 1e6;
+    bigMessage(`Sent 150 MB in ${minutes(took)} (${mbit.toFixed(1)} Mbit/s). Click Import in Live: it brings in Big test.`);
+    const entry = { id, title: BIG_TEST.name, count: 1, sentAt: new Date().toISOString(), status: 'waiting', text: statusText({ status: 'waiting' }, 1) };
+    remember(entry);
+    follow(entry);
+  } catch (e) {
+    bigMessage(`Something went wrong in this browser: ${e.message}`, true);
+  } finally {
+    clearInterval(tick);
+    button.disabled = false;
+  }
+}
+
 // ---- the server ----
 
 async function showServer() {
@@ -510,5 +565,9 @@ $('unpair-button').addEventListener('click', unpair);
 $('files').addEventListener('change', addFiles);
 $('send-form').addEventListener('submit', send);
 $('send-more').addEventListener('click', sendMore);
+if (new URLSearchParams(location.search).has('big')) {
+  $('big').hidden = false;
+  $('big-button').addEventListener('click', sendBig);
+}
 checkPairing();
 showServer();

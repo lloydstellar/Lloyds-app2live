@@ -1,0 +1,11 @@
+{
+  "schema": "app2live/1",
+  "items": [
+    {
+      "file": "loop.wav",
+      "bytes": 1000,
+      "sha256": "254637f72efcddb6a545bccbd0c3bb84e6393647deb5fd344de6584ccc1e743c",
+      "kind": "loop"
+    }
+  ]
+}

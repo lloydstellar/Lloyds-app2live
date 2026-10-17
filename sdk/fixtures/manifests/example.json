@@ -1,0 +1,41 @@
+{
+  "schema": "app2live/1",
+  "package_id": "7f3c2a9e-1b4d-4c8e-9a51-0d2e6f7b8c90",
+  "created_at": "2026-10-16T14:30:00Z",
+  "title": "Treinbeat",
+  "source": {
+    "app": "Web808",
+    "app_version": "1.0.0",
+    "platform": "web"
+  },
+  "tempo": {
+    "bpm": 92,
+    "time_signature": [
+      4,
+      4
+    ]
+  },
+  "items": [
+    {
+      "id": "kick",
+      "file": "kick.wav",
+      "sha256": "0db10f2c2f332cd27cf1407fa16c686337b2b23f46125d6e17740dbfc6df427e",
+      "bytes": 1693484,
+      "name": "Kick",
+      "kind": "loop",
+      "role": "drums",
+      "length_beats": 16,
+      "color": "#E5484D"
+    },
+    {
+      "id": "robot",
+      "file": "robot.wav",
+      "sha256": "18d63be10ad544a04a22c944dee01d6d864ec69b797a58edae92e6a44ad8fdbf",
+      "bytes": 420112,
+      "name": "Robot hallo",
+      "kind": "oneshot",
+      "role": "vocal"
+    }
+  ],
+  "midi": []
+}

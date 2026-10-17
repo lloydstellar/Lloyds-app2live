@@ -3,7 +3,9 @@
 The server of Lloyd's App2Live. Apps pair with the LA2L device in Ableton Live through it and send it their sounds; the device picks them up when you click **Import**.
 
 - API: `https://lloydstellar.nl/la2l/api`, described in [docs/server-api.md](../docs/server-api.md). The package format is [docs/manifest.md](../docs/manifest.md).
-- LA2L Sender, a page that pairs and sends WAV files from a browser: `https://lloydstellar.nl/la2l/`. It is also the reference client for apps (`public/sender.js`).
+- LA2L Sender, a page that pairs and sends WAV files from a browser: `https://lloydstellar.nl/la2l/`. It is also the reference client for apps (`public/sender.js`). With `?big` it also sends a file of 150 MB that it makes itself, to test a long upload from a phone.
+- The test receiver, a page that stands in for LA2L in Live, so a developer can test an app without Ableton: `https://lloydstellar.nl/la2l/receiver`.
+- The checks of the device for the browser, `https://lloydstellar.nl/la2l/vendor/la2l.js`, built from `sdk/js` (the npm package `la2l`).
 
 It is Node.js 24 with no npm packages, in one Docker container on the VPS behind nginx, which does TLS. The container listens on `127.0.0.1:8787` only. Everything it keeps is in the Docker volume `la2l-server_la2l-data`: the SQLite database `la2l.db` and the WAV files of packages that wait for Live.
 
@@ -57,7 +59,7 @@ bash deploy/update.sh
 git checkout main                      # later, to follow main again
 ```
 
-The database has a schema version. A server that is older than its database refuses to start with `The database is from a newer la2l-server (schema 2, this one knows 1). Update the server.` Then either go forward again, or restore the backup that `update.sh` made just before the update that changed the schema (see [Restore](#restore); it also works while the server keeps restarting).
+The database has a schema version. A server that is older than its database refuses to start with `The database is from a newer la2l-server (schema 2, this one knows 1). Update the server.` Then either go forward again, or restore the backup that `update.sh` made just before the update that changed the schema (see [Restore](#restore); it also works while the server keeps restarting). Server 0.7.0 brought schema 2, so going back from 0.7.0 to 0.6.0 or older takes that backup, and loses what changed since.
 
 ## Run it on your own computer
 
@@ -115,17 +117,18 @@ Every line starts with the time in UTC. Only a server that cannot start writes a
 
 ```
 2026-10-17T14:31:05.120Z GET /api/packages/:id/files/:file 200 18.4ms in=0 out=1693484 device=7 203.0.113.7
+2026-10-17T14:31:09.481Z POST /api/packages 201 12.0ms in=532 out=247 app=8 203.0.113.9 client="la2l-js/0.1.0 (Web808)"
 ```
 
-That is the method and the route, the status (`aborted` added when the client went away before the end), how long it took, the bytes that came in and went out, who called (`device=7` and `app=8` are the row numbers in the database, `-` is no token), and the client's address. The route is the pattern, never the real path, so pair ids and file names stay out of the log. The health check Docker itself runs every 30 seconds is not logged.
+That is the method and the route, the status (`aborted` added when the client went away before the end), how long it took, the bytes that came in and went out, who called (`device=7` and `app=8` are the row numbers in the database, `-` is no token), and the client's address. A call with an `X-LA2L-Client` header ends with it, cleaned and cut at 100 characters: which SDK and which version the app runs. The route is the pattern, never the real path, so pair ids and file names stay out of the log. The health check Docker itself runs every 30 seconds is not logged.
 
 Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.6.0 listening on ...` | The server started. |
-| `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. |
-| `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. |
+| `la2l-server 0.7.0 listening on ...` | The server started. |
+| `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. With `; test receivers: 3 with 4 app(s)` when there are test receivers, which are not counted as computers. |
+| `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. `new test receiver`: a test receiver, such as the page `/la2l/receiver`. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |
 | `pairing delivered to device 7` | The device got its token: Live says "Paired with ...". |
 | `package <id> created by app 8 for device 7: 3 sound(s), 4123456 bytes` | An app started a send. |
@@ -133,7 +136,9 @@ Between the requests are the events:
 | `package <id> acked by device 7: imported` | Live has them (`partial`: some, `failed`: none). |
 | `device 7 unpaired: 1 app(s) revoked, 0 package(s) deleted` | Unpair in Live. |
 | `app 8 unpaired` | An app unpaired itself, for example Unpair this browser on the Sender page. |
-| `cleanup: 2 expired package(s), 1 old result(s)` | The cleanup that runs every minute removed something. |
+| `app 8 removed by device 7: 1 package(s) deleted` | The computer removed one of its apps (`DELETE /api/apps/{id}`), with what that app still had waiting. |
+| `cleanup: 2 expired package(s), 1 old result(s)` | The cleanup that runs every minute removed something. `test receiver(s) quiet for 7 days`: test receivers that made no call for 7 days, removed with their apps and packages. |
+| `WARNING storage: packages take 8.2 GB of 10.0 GB (82%). ...` | The packages together passed `STORAGE_WARN_PERCENT` of `MAX_TOTAL_STORAGE_MB`. At most once an hour while it lasts. Above the limit itself new packages are refused: see who sends so much, and the disk. |
 | `ERROR ...` | Something went wrong in the server. The line says what. |
 
 Tokens, pair ids, codes, `Authorization` headers and request bodies are never logged. The addresses are, so the logs stay on the VPS.
@@ -145,7 +150,7 @@ docker exec -i la2l-server node - <<'JS'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('/data/la2l.db', { readOnly: true });
 console.table(db.prepare(`
-  SELECT d.id AS computer, d.name, d.client, d.last_seen_at, a.id AS app, a.name AS app_name, a.last_seen_at AS app_seen
+  SELECT d.id AS computer, d.name, d.client, d.test, d.last_seen_at, a.id AS app, a.name AS app_name, a.client AS app_client, a.last_seen_at AS app_seen
   FROM devices d LEFT JOIN apps a ON a.device_ref = d.id AND a.revoked_at IS NULL
   WHERE d.revoked_at IS NULL ORDER BY d.id, a.id`).all());
 console.table(db.prepare(`
@@ -154,7 +159,7 @@ console.table(db.prepare(`
 JS
 ```
 
-The first table lists the paired computers with their apps, the second the packages that wait for Live. The database is opened read-only, so this changes nothing.
+The first table lists the paired computers with their apps (`test` is 1 for a test receiver, `app_client` is the last `X-LA2L-Client` of the app), the second the packages that wait for Live. The database is opened read-only, so this changes nothing.
 
 ## Troubleshooting
 
@@ -165,8 +170,9 @@ The first table lists the paired computers with their apps, the second the packa
 | `docker compose ps` says `restarting` or `unhealthy`, or shows no container | `docker compose logs --tail=50`: a wrong setting or a database from a newer server says so in its last lines. Fix that, then `bash deploy/update.sh`. |
 | Self test says `server offline` or `server no answer` | The VPS or nginx does not answer at all: `systemctl status nginx`. |
 | `/api/health` answers 503 `The server cannot store sounds right now.` | The data folder is not writable or the database does not answer: `docker compose logs --tail=50`. |
-| Apps get `The server is full. Try again later.` | Less than `MIN_FREE_DISK_MB` (2 GB) would be free after the upload. Free up disk space. |
+| Apps get `The server is full. Try again later.` | The packages together would pass `MAX_TOTAL_STORAGE_MB` (10 GB), or less than `MIN_FREE_DISK_MB` (2 GB) would be free on the disk after the upload. The log had `WARNING storage` lines before; [Who is paired](#who-is-paired) shows who has packages waiting. Free up disk space, or raise the limit in `.env` when the disk has room. |
 | Apps get `Too many sounds wait for this computer. Click Import in Live first.` | With this package, more than 1 GB would wait for one computer (`MAX_DEVICE_STORAGE_MB`). Import in Live; packages also go 24 hours after their upload. |
+| Apps get `Too many sounds wait from this address. Try again later.` | The packages sent from one address (an IPv6 address by its /64) would pass 2 GB (`MAX_ADDRESS_STORAGE_MB`), whichever computers they are for. It frees up as they are imported or expire, and a restart of the server forgets it. |
 | An app gets 429 `Too many ...` | A rate limit (see [docs/server-api.md](../docs/server-api.md)). They live in memory; `docker compose restart` clears them. |
 | Live says `This computer is no longer paired. Click Pair app to pair again.` | Its token is unknown to the server: it was unpaired, the computer paired again (that replaces the old pairing), or a backup from before the pairing was restored. Click Pair app. |
 | The Sender page asks for a code again | Same reasons, for the app token: pair again. |
@@ -189,11 +195,12 @@ docker volume rm la2l-server_la2l-data        # deletes every pairing and sound 
 | `src/config.js` | The settings from the environment, with their checks. |
 | `src/routes/device.js`, `src/routes/app.js`, `src/routes/packages.js` | The API: what the device calls, pairing for apps, and packages. |
 | `src/db.js` | The database: schema, migrations, queries. |
-| `src/cleanup.js` | What goes when: pairings, uploads, packages, results, revoked tokens. |
+| `src/cleanup.js` | What goes when: pairings, uploads, packages, results, revoked tokens, quiet test receivers. |
+| `src/storage-watch.js` | The storage warning in the log. |
 | `src/upload.js`, `src/wav-check.js`, `src/storage.js` | Uploads to disk with their checksum, the WAV check, the package folders. |
 | `src/auth.js`, `src/tokens.js`, `src/ratelimit.js` | Tokens and codes, who is calling, rate limits. |
 | `src/router.js`, `src/http-util.js`, `src/static.js` | Routes, JSON in and out, CORS, the Sender page files. |
-| `public/` | LA2L Sender. |
+| `public/` | LA2L Sender (`index.html`, `sender.js`, `big.js` for `?big`), the test receiver (`receiver.html`, `receiver.js`), and `vendor/la2l.js`, built from `../sdk/js`: never edit it by hand. |
 | `test/` | The tests, with an end-to-end test that runs the real device code against this server. |
 | `deploy/` | `update.sh`; `backup.sh` and `restore.sh`, with `copy-db.js` and `check-db.js`, which they run in a short-lived container of the server's image; and nginx: `nginx-la2l.conf` with `install-nginx.sh`. |
 

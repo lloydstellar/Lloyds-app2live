@@ -1,7 +1,8 @@
 'use strict';
 // The device side of the API (docs/server-api.md, "Device side"): what LA2L 0.1.1 uses, plus
-// GET /apps, which came with 0.2.0. The 0.1.1 calls are fixed: that version is installed and must
-// keep working unchanged.
+// GET /apps, which came with 0.2.0, and DELETE /apps/{id} and test receivers, which came with the
+// developer kit (server 0.7.0). The 0.1.1 calls are fixed: that version is installed and must keep
+// working unchanged.
 
 const fs = require('fs');
 const { pipeline } = require('stream');
@@ -17,6 +18,8 @@ const PAIR_OPTS = { params: { id: PAIR_ID }, notFound: 'Unknown pairing.' };
 const UNKNOWN_PACKAGE = 'Unknown package.';
 const PACKAGE_OPTS = { params: { id: PACKAGE_ID }, notFound: UNKNOWN_PACKAGE };
 const FILE_OPTS = { params: { id: PACKAGE_ID, file: { test: isFileName } }, notFound: 'Unknown file.' };
+// The id GET /apps gives an app: random, so it says nothing about the app or the database.
+const APP_OPTS = { params: { id: /^[0-9a-f]{32}$/ }, notFound: 'Unknown app.' };
 // After the device got its token, the paired answer is given again for this long, in case that
 // answer was lost on the way. Then the pairing is gone and the status call answers 404.
 const DELIVERY_GRACE_MS = 60000;
@@ -66,13 +69,16 @@ function deviceRoutes(router, { config, store, storage, auth, limits, clock, log
           client: cleanText(body.client, 40),
           platform: cleanText(body.platform, 20),
           tokenPlain: device ? token : null, // the paired answer must hand back this same token
+          // A test receiver (sdk/BUILD-PROMPT.md section 8) stands in for Live. It is removed
+          // after 7 days without a call. Add app keeps what the computer already is.
+          test: !device && body.test === true,
           expiresAt,
         },
         iso(now)
       );
       return c;
     });
-    log(device ? `pairing started: Add app for device ${device.id}` : 'pairing started: new computer');
+    log(device ? `pairing started: Add app for device ${device.id}` : body.test === true ? 'pairing started: new test receiver' : 'pairing started: new computer');
     sendJson(ctx.res, 200, { pair_id: pairId, code, expires_in: config.pairTtlSeconds, expires_at: expiresAt, poll_ms: config.pollMs });
   });
 
@@ -132,12 +138,35 @@ function deviceRoutes(router, { config, store, storage, auth, limits, clock, log
 
   // Device 0.2.0 and newer: the apps that can send to this computer now, so the device stops
   // saying "Paired with ..." for an app that unpaired itself. Asked at start, after Import and in
-  // Self test.
+  // Self test. The id is for DELETE /apps/{id}; older devices ignore it.
   router.add('GET', '/api/apps', (ctx) => {
     const device = auth.device(ctx);
-    const apps = store.activeAppsOf(device.id).map((a) => ({ name: a.name, paired_at: a.created_at, last_seen_at: a.last_seen_at }));
+    const apps = store
+      .activeAppsOf(device.id)
+      .map((a) => ({ id: a.public_id, name: a.name, paired_at: a.created_at, last_seen_at: a.last_seen_at }));
     sendJson(ctx.res, 200, { apps });
   });
+
+  // One app of this computer stops: for a token that leaked, or an app nobody wants any more.
+  // Its token is revoked and its packages that still upload or wait are deleted. The other apps
+  // and the computer stay paired.
+  router.add(
+    'DELETE',
+    '/api/apps/:id',
+    (ctx) => {
+      const device = auth.device(ctx);
+      const removed = store.tx(() => {
+        const app = store.activeAppOf(ctx.params.id, device.id);
+        if (!app) return null;
+        return { appRef: app.id, packageIds: store.removeApp(app.id, iso(clock())) };
+      });
+      if (!removed) throw new HttpError(404, 'Unknown app.');
+      for (const id of removed.packageIds) storage.removePackage(id);
+      log(`app ${removed.appRef} removed by device ${device.id}: ${removed.packageIds.length} package(s) deleted`);
+      sendJson(ctx.res, 200, { ok: true });
+    },
+    APP_OPTS
+  );
 
   // A package the device may import: its own, waiting or failed, not expired.
   function openPackage(ctx, device) {
