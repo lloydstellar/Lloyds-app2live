@@ -71,7 +71,11 @@ After every step it reads the markers back. The report per sound says `exact` (L
 
 ## Which apps are paired
 
-The device learns the name of an app from the `paired` answer when that app pairs. Nothing tells it when an app unpairs itself, so from 0.2.0 it asks the server (`GET /apps`) when Live loads the device, after every Import and in Self test, and shows what the server says. With no apps left the computer stays paired: its token still works, packages that wait can still be imported, and Add app pairs a new app with the same token. A server without that call (404) leaves the names as they were. An answer that comes back after a pairing finished is not used, so it cannot drop the app that just paired.
+The device learns the name of an app from the `paired` answer when that app pairs. Nothing tells it when an app unpairs itself, so from 0.2.0 it asks the server (`GET /apps`) when Live loads the device, after every Import and in Self test, and shows what the server says. A server without that call (404) leaves the names as they were. An answer that comes back after a pairing finished is not used, so it cannot drop the app that just paired.
+
+With no apps left, the device shows Pair app again instead of Import (from 0.2.1, Erik's choice after testing 0.2.0), but it keeps its token. Pair app then sends that token with `POST /pair/start`, as Add app does, so the new app joins the same computer, and packages that an app sent before it unpaired itself (the server keeps them until they expire) come in with the next Import. Only Unpair in Settings gives up the token.
+
+While a code shows, Copy code puts it on the clipboard for an app on the same computer, such as LA2L Sender in a browser. Max has no object for the clipboard, so Node runs the system's own tool: `clip.exe` on Windows, `pbcopy` on a Mac, the way Open folder runs Explorer or Finder.
 
 ## The patch
 
@@ -96,11 +100,11 @@ The simulated Live follows the Live Object Model documentation and what Live 12.
 | Whether `add_warp_marker` keeps `beat_time` when `sample_time` is given too | Yes, on Windows: in the 0.1.1 test a 135 BPM loop in a 120 BPM Set showed BPM 135.00 and Start 1.1.1, so the end marker did it | `"tempo":"exact (end marker)"` means yes, `"exact (first marker)"` means no |
 | Whether `Song.create_scene(0)` puts the new scene at the top | Yes, on Windows (0.1.1 test) | The Session View itself |
 | Whether `Song.file_path` gives the Set's path | Yes, on Windows | `Set: <path>` in the `Live 12.x.x` line |
-| Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)) | `Inbox:` and `Paired with` |
+| Whether the whole chain works with the real server | Yes, on Windows: device 0.1.1 with la2l-server 0.5.0, for pairing, Add app, Import, Unpair and a server restart ([server-handoff.md](server-handoff.md)); device 0.2.0 with la2l-server 0.6.0 for the app list, Import at 1.1.1 and an app that unpaired itself | `Inbox:`, `Paired with` and `Apps of this computer` |
 
 ## Next steps
 
-1. Test 0.2.0 in Live on Windows and on a Mac (see [test-card-en.md](test-card-en.md)), and fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
+1. Test 0.2.1 in Live: steps 1, 6 and 7 of [test-card-en.md](test-card-en.md) on Windows, all steps on a Mac. Fix what the log shows. Nothing has been tested on a Mac yet, neither the device on its own nor with the server.
 2. The Android share target and the web app side, against the app side of [server-api.md](server-api.md). The server runs (`server/`).
 3. Freeze for release: the bundled `la2l-node.js`, `la2l-live.js` and the logos must all be listed in the Max console when freezing.
 4. MIDI parts (`midi` in the manifest): a MIDI track with a Simpler per drum sound.

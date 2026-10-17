@@ -138,12 +138,21 @@ test('An app that unpairs itself drops out of "Paired with" in Live', async () =
   assert.match(d.status(), / \/ server OK \/ paired with 1 app \/ 0 waiting$/);
   assert.equal(d.last('pairedwith').join(' '), 'Paired with Robot Voice.');
 
-  // The last app goes too, then Import: the computer stays paired, without apps.
+  // The last app goes too, then Import: Pair app comes back, and the computer keeps its token.
   assert.equal((await s.request('POST', '/api/app/unpair', { token: robot.app_token })).status, 200);
   await d.app.handle('import');
-  assert.equal(d.status(), 'Nothing new yet. Send a sound from your app first.');
-  assert.equal(d.last('pairedwith').join(' '), 'No app paired. Add one in Settings.');
-  assert.equal(d.view(), 'paired');
+  assert.equal(d.status(), 'No app paired. Click Pair app to add one.');
+  assert.equal(d.view(), 'unpaired');
+  const token = d.stored().pairing.token;
+  assert.ok(token);
+
+  // Pair app adds the page to the same computer again.
+  await d.app.handle('pair');
+  await claim(d, 'LA2L Sender', 'browser-apps');
+  await waitFor(() => d.view() === 'paired', 'paired again');
+  assert.equal(d.stored().pairing.token, token);
+  await d.app.handle('selftest');
+  assert.match(d.status(), / \/ server OK \/ paired with 1 app \/ 0 waiting$/);
 });
 
 test('Import: a loop and a one-shot sent through the app API become two tracks, at the tempo the app gave', async () => {

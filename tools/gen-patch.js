@@ -287,6 +287,11 @@ function buildPatch() {
   const count = inGroup('pairing', p.comment('', [6, 100, 260, 16], { size: 9.5, color: DIM }), 'p_count');
   display('countdown', count);
   inGroup('pairing', action('Cancel', 'CancelPair', [6, 118, 80, 20], 'cancelpair', { info: 'Stop pairing. The code stops working.' }), 'p_cancel');
+  inGroup(
+    'pairing',
+    action('Copy code', 'CopyCode', [92, 118, 80, 20], 'copycode', { info: 'Puts the code on the clipboard, so you can paste it in an app on this computer.' }),
+    'p_copy'
+  );
 
   // ---- paired ----
   const pairedWith = inGroup('paired', p.comment('Paired.', [6, 46, 330, 18], { size: 11 }), 'd_title');

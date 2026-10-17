@@ -98,7 +98,7 @@ Device 0.2.0 and la2l-server 0.6.0 and newer. The apps that can send to this com
 
 - An app that unpaired itself (`POST /app/unpair`), or that paired again with the same `app_id` (which replaces its old token), is not in the list. One name can be in it twice: the same app in two browsers.
 - `last_seen_at`: the last call of that app, at most a minute off; `null` when it made none yet.
-- The device asks this when Live loads it, after every Import and in Self test. It shows every name once ("Paired with LA2L Sender and Robot Voice."), or "No app paired. Add one in Settings." for an empty list. The computer stays paired then, so Import and Add app keep working. Self test says `paired with 2 apps` or `no app paired`.
+- The device asks this when Live loads it, after every Import and in Self test. It shows every name once ("Paired with LA2L Sender and Robot Voice."). For an empty list it shows Pair app again instead of Import (device 0.2.1; 0.2.0 kept Import and said "No app paired. Add one in Settings."). It keeps its token then, so Pair app adds an app to the same computer, and packages that still wait come in with the next Import. Self test says `paired with 2 apps` or `no app paired`.
 - A server without this call answers 404. The device then keeps the names it learned when pairing, and Self test says `paired`.
 
 ### `GET /packages/{package_id}/manifest`  (token)

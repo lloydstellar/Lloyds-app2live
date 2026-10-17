@@ -108,3 +108,5 @@ Erik asked for the open points above, plus one he found himself: in the Arrangem
 | 4. Download errors | The device keeps the first 64 KB of an error answer to a download and shows the server's `error` text. |
 | 5. Docs | `docs/design-notes.md` (next steps, the Proven table) and the test card for 0.2.0. |
 | 6. A Mac | Still open. |
+
+Erik tested 0.2.0 with server 0.6.0 in Live 12.4.6 on Windows, steps 1 to 7 of the test card, and it worked. After step 7 he asked for two changes, which device 0.2.1 makes without a server change: with no app left the device shows Pair app again instead of Import, keeping its token, so Pair app adds the next app to the same computer; and Copy code puts the pairing code on the clipboard.
