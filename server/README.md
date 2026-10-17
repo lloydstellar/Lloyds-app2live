@@ -5,7 +5,8 @@ The server of Lloyd's App2Live. Apps pair with the LA2L device in Ableton Live t
 - API: `https://lloydstellar.nl/la2l/api`, described in [docs/server-api.md](../docs/server-api.md). The package format is [docs/manifest.md](../docs/manifest.md).
 - LA2L Sender, a page that pairs and sends WAV files from a browser: `https://lloydstellar.nl/la2l/`. It is also the reference client for apps (`public/sender.js`). With `?big` it also sends a file of 150 MB that it makes itself, to test a long upload from a phone.
 - The test receiver, a page that stands in for LA2L in Live, so a developer can test an app without Ableton: `https://lloydstellar.nl/la2l/receiver`.
-- The checks of the device for the browser, `https://lloydstellar.nl/la2l/vendor/la2l.js`, built from `sdk/js` (the npm package `la2l`).
+- The SDK for the browser, built from `sdk/js` (the npm package `la2l`): `https://lloydstellar.nl/la2l/vendor/la2l.js`, the Send to Live button in `vendor/la2l-button.js`, and the test receiver of the page in `vendor/la2l-receiver.js`. LA2L Sender itself runs on it.
+- Web808, the drum machine example of the SDK, from `../examples/web-drum-machine`: `https://lloydstellar.nl/la2l/examples/drum-machine/`.
 
 It is Node.js 24 with no npm packages, in one Docker container on the VPS behind nginx, which does TLS. The container listens on `127.0.0.1:8787` only. Everything it keeps is in the Docker volume `la2l-server_la2l-data`: the SQLite database `la2l.db` and the WAV files of packages that wait for Live.
 
@@ -126,7 +127,7 @@ Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.7.0 listening on ...` | The server started. |
+| `la2l-server 0.8.0 listening on ...` | The server started. |
 | `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. With `; test receivers: 3 with 4 app(s)` when there are test receivers, which are not counted as computers. |
 | `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. `new test receiver`: a test receiver, such as the page `/la2l/receiver`. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |
@@ -200,7 +201,7 @@ docker volume rm la2l-server_la2l-data        # deletes every pairing and sound 
 | `src/upload.js`, `src/wav-check.js`, `src/storage.js` | Uploads to disk with their checksum, the WAV check, the package folders. |
 | `src/auth.js`, `src/tokens.js`, `src/ratelimit.js` | Tokens and codes, who is calling, rate limits. |
 | `src/router.js`, `src/http-util.js`, `src/static.js` | Routes, JSON in and out, CORS, the Sender page files. |
-| `public/` | LA2L Sender (`index.html`, `sender.js`, `big.js` for `?big`), the test receiver (`receiver.html`, `receiver.js`), and `vendor/la2l.js`, built from `../sdk/js`: never edit it by hand. |
+| `public/` | LA2L Sender (`index.html`, `sender.js`, `big.js` for `?big`), the test receiver (`receiver.html`, `receiver.js`), and `vendor/`, built from `../sdk/js`: never edit it by hand. The image also gets `../examples/web-drum-machine`, served under `/examples/drum-machine/`. |
 | `test/` | The tests, with an end-to-end test that runs the real device code against this server. |
 | `deploy/` | `update.sh`; `backup.sh` and `restore.sh`, with `copy-db.js` and `check-db.js`, which they run in a short-lived container of the server's image; and nginx: `nginx-la2l.conf` with `install-nginx.sh`. |
 

@@ -8,6 +8,7 @@ COPY src/ui/la2l-logo-big.png ./server/public/logo.png
 COPY server/package.json ./server/
 COPY server/src ./server/src
 COPY server/public ./server/public
+COPY examples/web-drum-machine ./examples/web-drum-machine
 WORKDIR /app/server
 RUN mkdir -p /data && chown node:node /data
 USER node

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Web808: a drum machine that sends to Live</title>
+<link rel="stylesheet" href="drum-machine.css">
+<!-- The Send to Live button of LA2L. This page is served by the LA2L server itself, so it loads
+     the button from there. In your own page, load it from jsDelivr instead:
+     <script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"></script>
+     or, with a bundler: npm install la2l, then import 'la2l/button'. -->
+<script type="module" src="drum-machine.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Web808</h1>
+    <p>Make a beat, then send it to Ableton Live: the loop, and each sound as a one-shot.</p>
+  </header>
+
+  <section class="controls" aria-label="Tempo and playback">
+    <label>BPM <input id="bpm" type="number" min="60" max="200" step="1" value="120"></label>
+    <button type="button" id="play" aria-pressed="false">Play</button>
+    <!-- server: where the LA2L server is. Leave it out in your own app; it is set here because
+         this page is served by the LA2L server. -->
+    <la2l-send-button id="send" app-name="Web808" server="../../api"></la2l-send-button>
+  </section>
+
+  <section class="grid" id="grid" aria-label="The pattern: four sounds, sixteen steps"></section>
+
+  <p class="hint">No Ableton Live at hand? Test with the <a href="../../receiver">test receiver</a>: it shows what Live would do with what you send.</p>
+</main>
+</body>
+</html>

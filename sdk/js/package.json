@@ -9,16 +9,30 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./button": {
+      "types": "./dist/button.d.ts",
+      "default": "./dist/button.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
+  "bin": {
+    "la2l": "dist/cli/main.js"
+  },
   "files": [
     "dist/",
     "docs/",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/button.js",
+    "./dist/button.min.js"
+  ],
   "engines": {
     "node": ">=22.12"
   },

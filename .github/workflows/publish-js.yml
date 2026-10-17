@@ -1,0 +1,39 @@
+# Publishes la2l to npm, from a tag js-v<version> only. npm trusted publishing (OIDC): no npm
+# token is stored, and the package gets provenance. Before the first run, the package must exist
+# on npm and have this repository and this workflow as its trusted publisher (sdk/BUILD-PROMPT.md,
+# section 13). Provenance needs a public repository.
+name: Publish la2l
+
+on:
+  push:
+    tags:
+      - 'js-v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/js
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install the pinned dev tools
+        run: npm ci
+      - name: The tag is the version in package.json
+        run: test "js-v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: The committed vendor files and docs are a fresh build
+        run: npm run check:vendor
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: npm test
+      - name: Publish
+        run: npm publish --provenance --access public

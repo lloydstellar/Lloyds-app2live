@@ -122,8 +122,34 @@ test('the test receiver, the big test and the SDK for the browser: served like t
   assert.match(page, /<h1>LA2L Test receiver<\/h1>/);
   assert.doesNotMatch(page, /style=|<style|<script>/, 'nothing inline: the CSP would block it');
   const sdk = (await s.request('GET', '/vendor/la2l.js')).body.toString();
-  assert.match(sdk.split('\n')[0], /^\/\/ la2l \d+\.\d+\.\d+ for the browser/);
+  assert.match(sdk.split('\n')[0], /^\/\/ la2l \d+\.\d+\.\d+: for the browser/);
   for (const p of ['/vendor/', '/vendor', '/vendor/../sender.js', '/receiver/', '/receiver.html']) assert.equal((await s.request('GET', p)).status, 404, p);
+});
+
+test('the drum machine example and the vendor files of the SDK: served with the same headers', async () => {
+  const files = {
+    '/examples/drum-machine/': 'text/html; charset=utf-8',
+    '/examples/drum-machine/drum-machine.js': 'text/javascript; charset=utf-8',
+    '/examples/drum-machine/drum-machine.css': 'text/css; charset=utf-8',
+    '/vendor/la2l-button.js': 'text/javascript; charset=utf-8',
+    '/vendor/la2l-receiver.js': 'text/javascript; charset=utf-8',
+  };
+  for (const [p, type] of Object.entries(files)) {
+    const r = await s.request('GET', p);
+    assert.equal(r.status, 200, p);
+    assert.equal(r.headers['content-type'], type, p);
+    assert.equal(r.headers['content-security-policy'], CSP, p);
+  }
+  // The folder without its "/" goes to the folder, so the page's relative addresses work.
+  const bare = await s.request('GET', '/examples/drum-machine');
+  assert.equal(bare.status, 301);
+  assert.equal(bare.headers.location, 'drum-machine/');
+  // Only the listed files: no README, nothing outside the folder.
+  for (const p of ['/examples/drum-machine/README.md', '/examples/drum-machine/index.html', '/examples/drum-machine/../../package.json', '/examples/', '/examples']) {
+    assert.equal((await s.request('GET', p)).status, 404, p);
+  }
+  const page = (await s.request('GET', '/examples/drum-machine/')).body.toString();
+  assert.doesNotMatch(page.replace(/<!--[\s\S]*?-->/g, ''), /style=|<style|<script>/, 'nothing inline: the CSP would block it');
 });
 
 test('Sender page: a known version comes back as 304', async () => {

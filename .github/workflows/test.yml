@@ -65,3 +65,25 @@ jobs:
         run: |
           npx playwright-core install --with-deps chromium
           npm run test:browser
+
+  # The README says la2l works in Deno and Bun: a send through the local test receiver in both.
+  sdk-js-runtimes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/js
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build
+        run: npm ci && npm run build
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno
+        run: deno run -A test-runtimes/smoke.mjs
+      - uses: oven-sh/setup-bun@v2
+      - name: Bun
+        run: bun test-runtimes/smoke.mjs

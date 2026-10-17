@@ -184,3 +184,171 @@ test('LA2L Sender with ?big sends 150 MB that the server takes as it is', async 
   assert.equal(await page.isVisible('#big'), false);
   assert.deepEqual(page.errors, []);
 });
+
+// A computer for the pages to send to: the test receiver of the SDK, in this process, against the
+// same server. Resolves to { receiver, code, reports }.
+async function computer() {
+  const { TestReceiver } = await import('../dist/testing/index.js');
+  const reports = [];
+  const receiver = new TestReceiver({ server: s.base, pollMs: 300, appsMs: 0, onReport: (r) => reports.push(r) });
+  const code = await receiver.pair();
+  return { receiver, code, reports };
+}
+
+test('the drum machine: Send to Live asks the code once, sends the loop and the one-shots, and says In Live', async () => {
+  const c = await computer();
+  try {
+    const page = await open('/examples/drum-machine/');
+    await page.waitForSelector('la2l-send-button');
+    assert.equal(await page.locator('.step[aria-pressed="true"]').count(), 15);
+    await page.click('la2l-send-button >> button.send');
+    await page.waitForSelector('la2l-send-button >> dialog[open]');
+    await page.fill('la2l-send-button >> input', c.code.toLowerCase());
+    await page.click('la2l-send-button >> button[type=submit]');
+    await page.waitForFunction(() => document.querySelector('la2l-send-button').shadowRoot.querySelector('.status').textContent === 'In Live', null, { timeout: 30000 });
+    const report = c.reports[0];
+    assert.equal(report.status, 'imported');
+    assert.deepEqual(report.sounds.map((x) => x.plan.trackName), ['Beat (Web808)', 'Kick (Web808)', 'Snare (Web808)', 'Hat (Web808)', 'Clap (Web808)']);
+    const beat = report.sounds[0];
+    assert.deepEqual([beat.plan.warp, beat.plan.warpModeName, beat.plan.bpm, beat.plan.lengthBeats], [true, 'Beats', 120, 4]);
+    assert.deepEqual([beat.info.rate, beat.info.channels], [48000, 2]);
+    assert.equal(report.sounds[1].plan.warp, false);
+    // A second send needs no code: the page keeps the token.
+    await page.fill('#bpm', '92');
+    await page.dispatchEvent('#bpm', 'change');
+    await page.click('la2l-send-button >> button.send');
+    for (let i = 0; i < 100 && c.reports.length < 2; i++) await page.waitForTimeout(200);
+    await page.waitForFunction(() => document.querySelector('la2l-send-button').shadowRoot.querySelector('.status').textContent === 'In Live', null, { timeout: 30000 });
+    assert.equal(c.reports[1].sounds[0].plan.bpm, 92);
+    assert.equal(await page.locator('la2l-send-button >> dialog[open]').count(), 0);
+    assert.deepEqual(page.errors, []);
+  } finally {
+    c.receiver.close();
+  }
+});
+
+test('LA2L Sender on the SDK: pairs, refuses what Live cannot use, sends two files, and follows them into Live', async () => {
+  const c = await computer();
+  try {
+    const page = await open('/');
+    await page.waitForSelector('#pair-form:not([hidden])');
+    await page.fill('#code', c.code);
+    await page.click('#pair-button');
+    await page.waitForSelector('#paired:not([hidden])');
+    assert.equal(await page.textContent('#device-name'), 'Test receiver');
+    // The keys of the page before the SDK, so paired browsers stay paired.
+    const keys = await page.evaluate(() => Object.keys(localStorage).sort());
+    assert.deepEqual(keys, ['la2l.appId', 'la2l.deviceName', 'la2l.token']);
+    const FIX = path.join(ROOT, 'sdk', 'fixtures', 'wav');
+    await page.setInputFiles('#files', [path.join(FIX, 'pcm24-stereo.wav'), path.join(FIX, 'compressed.wav'), path.join(FIX, 'float32-stereo.wav')]);
+    await page.waitForSelector('.sound');
+    assert.equal(await page.locator('.sound').count(), 2);
+    assert.equal(await page.textContent('#send-message'), 'compressed.wav: This WAV file is compressed (format 85). Send plain PCM or float WAV.');
+    await page.fill('#bpm', '120');
+    await page.click('#send-button');
+    await page.waitForFunction(() => /^In Live: 2 of 2 sounds\.$/.test(document.querySelector('#sent-status').textContent), null, { timeout: 30000 });
+    assert.deepEqual(c.reports[0].sounds.map((x) => x.plan.trackName), ['pcm24-stereo (LA2L Sender)', 'float32-stereo (LA2L Sender)']);
+    assert.equal(await page.locator('#recent li').count(), 1);
+    // A reload: still paired, and the recent list remembers.
+    await page.reload();
+    await page.waitForSelector('#paired:not([hidden])');
+    assert.match(await page.textContent('#recent'), /In Live: 2 of 2 sounds\./);
+    // Unpair: the page asks for a code again.
+    await page.click('#unpair-button');
+    await page.waitForSelector('#pair-form:not([hidden])');
+    assert.equal(await page.textContent('#pair-message'), 'This browser is unpaired.');
+    assert.deepEqual(page.errors, []);
+  } finally {
+    c.receiver.close();
+  }
+});
+
+test('a browser paired before the SDK stays paired: the old keys still work', async () => {
+  const p = await helpers.pairDevice(s, { deviceId: 'old-browser', appName: 'LA2L Sender', appId: 'old-app-id' });
+  const context = await browser.newContext();
+  await context.addInitScript(([token]) => {
+    if (!localStorage.getItem('la2l.token')) {
+      localStorage.setItem('la2l.token', token);
+      localStorage.setItem('la2l.deviceName', 'ERIK-PC');
+      localStorage.setItem('la2l.appId', 'old-app-id');
+    }
+  }, [p.appToken]);
+  const page = await context.newPage();
+  await page.goto(s.origin + '/');
+  await page.waitForSelector('#paired:not([hidden])');
+  assert.equal(await page.textContent('#device-name'), 'ERIK-PC');
+  assert.equal(await page.evaluate(() => localStorage.getItem('la2l.appId')), 'old-app-id');
+});
+
+test('the button: properties set before it loads, its own texts, focus back after the dialog', async () => {
+  const c = await computer();
+  try {
+    // A page of the server that does not load the button: it comes later, as a framework would.
+    const page = await open('/receiver');
+    await page.evaluate(() => {
+      const b = document.createElement('la2l-send-button');
+      b.setAttribute('app-name', 'Late');
+      b.setAttribute('server', 'api');
+      b.texts = { send: 'Naar Live', errorBadCode: 'Die code werkt niet.' };
+      b.sounds = async () => {
+        const { wavFromSamples } = await import('./vendor/la2l-button.js');
+        return { bpm: 120, sounds: [{ name: 'Late', audio: wavFromSamples(new Float32Array(48000).fill(0.1), 48000), kind: 'loop' }] };
+      };
+      document.body.prepend(b);
+    });
+    await page.evaluate(() => import('./vendor/la2l-button.js'));
+    const shadowText = (sel) => page.evaluate((s) => document.querySelector('la2l-send-button').shadowRoot.querySelector(s).textContent, sel);
+    assert.equal(await shadowText('button.send'), 'Naar Live');
+    // A wrong code: the page's own text. Escape: the focus is back on the button.
+    await page.click('la2l-send-button >> button.send');
+    await page.waitForSelector('la2l-send-button >> dialog[open]');
+    await page.fill('la2l-send-button >> input', 'AAAAAA');
+    await page.click('la2l-send-button >> button[type=submit]');
+    await page.waitForFunction(() => document.querySelector('la2l-send-button').shadowRoot.querySelector('.problem').textContent !== '');
+    assert.equal(await shadowText('.problem'), 'Die code werkt niet.');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('la2l-send-button >> dialog:not([open])', { state: 'attached' });
+    assert.equal(await page.evaluate(() => document.querySelector('la2l-send-button').shadowRoot.activeElement?.className), 'send');
+    // The texts can change later too.
+    await page.evaluate(() => (document.querySelector('la2l-send-button').texts = { send: 'Envoyer' }));
+    assert.equal(await shadowText('button.send'), 'Envoyer');
+    // And the sounds set before it loaded are the ones it sends.
+    await page.click('la2l-send-button >> button.send');
+    await page.fill('la2l-send-button >> input', c.code);
+    await page.click('la2l-send-button >> button[type=submit]');
+    await page.waitForFunction(() => document.querySelector('la2l-send-button').shadowRoot.querySelector('.status').textContent === 'In Live', null, { timeout: 30000 });
+    assert.equal(c.reports[0].sounds[0].plan.trackName, 'Late (Late)');
+    assert.deepEqual(page.errors, []);
+  } finally {
+    c.receiver.close();
+  }
+});
+
+test('a full localStorage: the button pairs and sends anyway, without asking for the code again', async () => {
+  const c = await computer();
+  try {
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      };
+    });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(s.origin + '/examples/drum-machine/');
+    await page.waitForSelector('la2l-send-button');
+    await page.click('la2l-send-button >> button.send');
+    await page.fill('la2l-send-button >> input', c.code);
+    await page.click('la2l-send-button >> button[type=submit]');
+    await page.waitForFunction(() => document.querySelector('la2l-send-button').shadowRoot.querySelector('.status').textContent === 'In Live', null, { timeout: 30000 });
+    // A second send in the same page needs no code: the token lives in memory.
+    await page.click('la2l-send-button >> button.send');
+    for (let i = 0; i < 100 && c.reports.length < 2; i++) await page.waitForTimeout(200);
+    assert.equal(c.reports.length, 2);
+    assert.equal(await page.locator('la2l-send-button >> dialog[open]').count(), 0);
+    assert.deepEqual(errors, []);
+  } finally {
+    c.receiver.close();
+  }
+});

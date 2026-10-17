@@ -25,9 +25,27 @@ const FILES = {
   '/receiver': ['receiver.html', 'text/html; charset=utf-8'],
   '/receiver.js': ['receiver.js', 'text/javascript; charset=utf-8'],
   '/receiver.css': ['receiver.css', 'text/css; charset=utf-8'],
-  // The SDK for the browser, built from sdk/js (npm run build there).
+  // The SDK for the browser, built from sdk/js (npm run build there): the SDK, the Send to Live
+  // button, and the test receiver of the page above.
   '/vendor/la2l.js': ['vendor/la2l.js', 'text/javascript; charset=utf-8'],
+  '/vendor/la2l-button.js': ['vendor/la2l-button.js', 'text/javascript; charset=utf-8'],
+  '/vendor/la2l-receiver.js': ['vendor/la2l-receiver.js', 'text/javascript; charset=utf-8'],
 };
+
+// Examples of the developer kit, from a folder of the repository (in the image: /app/examples).
+// The list of their files is read once at start; a URL path never becomes a file path.
+const EXAMPLES = {
+  '/examples/drum-machine/': path.join(__dirname, '..', '..', 'examples', 'web-drum-machine'),
+};
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+};
+// A folder without its "/" goes to the folder, so the relative addresses in its page work.
+const REDIRECTS = { '/examples/drum-machine': 'drum-machine/' };
 
 const HEADERS = {
   'Content-Security-Policy':
@@ -39,10 +57,18 @@ const HEADERS = {
 // Reads the files once. They are small, and a missing one should stop the server at start.
 function loadFiles() {
   const files = new Map();
-  for (const [urlPath, [file, type]] of Object.entries(FILES)) {
-    const body = fs.readFileSync(path.resolve(PUBLIC, file));
+  const add = (urlPath, file, type) => {
+    const body = fs.readFileSync(file);
     const etag = `"${crypto.createHash('sha256').update(body).digest('base64url').slice(0, 22)}"`;
     files.set(urlPath, { body, type, etag });
+  };
+  for (const [urlPath, [file, type]] of Object.entries(FILES)) add(urlPath, path.resolve(PUBLIC, file), type);
+  for (const [prefix, dir] of Object.entries(EXAMPLES)) {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const type = TYPES[path.extname(name).toLowerCase()];
+      if (!type || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) continue;
+      add(prefix + (name === 'index.html' ? '' : name), path.join(dir, name), type);
+    }
   }
   return files;
 }
@@ -54,10 +80,14 @@ class StaticFiles {
 
   // The route name for the log: the file path when it is one of ours.
   routeName(method, urlPath) {
-    return `${method} ${this.files.has(urlPath) ? urlPath : '(unknown page)'}`;
+    const known = this.files.has(urlPath) || Object.prototype.hasOwnProperty.call(REDIRECTS, urlPath);
+    return `${method} ${known ? urlPath : '(unknown page)'}`;
   }
 
   serve(req, res, urlPath) {
+    if (Object.prototype.hasOwnProperty.call(REDIRECTS, urlPath)) {
+      return this.plain(res, 301, 'Moved.', { Location: REDIRECTS[urlPath] });
+    }
     const f = this.files.get(urlPath);
     if (!f) return this.plain(res, 404, 'Not found.');
     if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
