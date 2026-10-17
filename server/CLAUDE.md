@@ -5,6 +5,7 @@ The server between the apps and the LA2L device in Ableton Live. It runs on Erik
 - API: `https://lloydstellar.nl/la2l/api` (the device's default `serverUrl`)
 - LA2L Sender, a test page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`
 - The test receiver, a page that stands in for Live for app developers: `https://lloydstellar.nl/la2l/receiver` (the developer kit, `../sdk/CLAUDE.md`)
+- Web808, the drum machine example of the SDK: `https://lloydstellar.nl/la2l/examples/drum-machine/`, from `../examples/web-drum-machine`
 - Code: the `server/` folder of [lloydstellar/Lloyds-app2live](https://github.com/lloydstellar/Lloyds-app2live), the same repository as the device, because the server reuses the device's checks. On the VPS the repository is cloned at `~/la2l-server`, so this folder is `~/la2l-server/server`.
 
 The server was built from [BUILD-PROMPT.md](BUILD-PROMPT.md) in phases 0 to 5, finished on 2026-10-17; the brief stays as the record of what was decided and why. The developer kit ([../sdk/BUILD-PROMPT.md](../sdk/BUILD-PROMPT.md), section 7) adds to it from 0.7.0: storage limits per address and for the whole server, `DELETE /apps/{id}`, test receivers, the `X-LA2L-Client` header, and the pages of the kit. [README.md](README.md) says how to install, update, back up and troubleshoot it, and where the code is. Keep this file up to date when commands, layout or decisions change; the next Claude starts from it.
@@ -53,7 +54,8 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 - **The manifest the device downloads** carries the server's `package_id`, and `bytes` and `sha256` for every sound.
 - **An API change** means: update `docs/server-api.md` in the same commit, keep device 0.1.1 working, and run both test suites.
 - **Reuse, do not copy**: package and WAV checks come from `../src/node/manifest.js` and `../src/node/wav.js`. If they need a change, change them there and keep the device tests green; `../sdk/fixtures` and the port in `../sdk/js` change with them.
-- **`public/vendor/la2l.js` is built** from `../sdk/js`. Never edit it by hand; CI fails when it differs from a fresh build.
+- **`public/vendor/` is built** from `../sdk/js` (`la2l.js`, `la2l-button.js`, `la2l-receiver.js`). Never edit it by hand; CI fails when it differs from a fresh build. LA2L Sender (`public/sender.js`) and the test receiver page run on it: a change in their behaviour may belong in the SDK.
+- **Examples** are served from a folder of the repository (`static.js`, `EXAMPLES`), listed once at start; the Dockerfile copies them into the image.
 - **Addresses** stay out of the database, except as a keyed hash with a package while it has files (the limit per address). The key lives only in the memory of the running server, so a restart forgets who sent what, as it forgets the rate limits. That is on purpose: a backup of the database cannot tell an address.
 
 ## Deployment

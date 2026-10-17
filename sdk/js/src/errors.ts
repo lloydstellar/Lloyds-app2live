@@ -5,13 +5,16 @@
  * English that the app can show to the user as it is.
  */
 export type La2lErrorCode =
-  | 'not_paired' // the token is unknown or revoked: pair again
+  | 'not_paired' // no token, or the server no longer knows it: show the pair screen
   | 'bad_code' // the pairing code does not work
   | 'rate_limited' // too many calls: wait retryAfter seconds
   | 'server_full' // the server or this computer has no room: try later, or Import in Live first
-  | 'bad_package' // the manifest or the package as a whole is refused
+  | 'bad_package' // the server or LA2L would refuse the package as a whole
   | 'bad_wav' // a file is not a WAV file that Live can use
-  | 'network' // the server could not be reached
+  | 'expired' // the package is gone: it expired, or it was not uploaded in time
+  | 'import_failed' // LA2L in Live could not import the package
+  | 'network' // the server could not be reached, or the connection broke off
+  | 'aborted' // the app stopped it with an AbortSignal
   | 'server'; // any other answer from the server
 
 export class La2lError extends Error {

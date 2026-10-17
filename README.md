@@ -2,7 +2,7 @@
 
 Lloyd's App2Live is an open source connection between Ableton Live and phone or web apps. An app (Android or web) sends a package of WAV files with a short description to a server. You click **Import** in the Max for Live device, and every sound lands on its own new audio track: named, coloured, and warped to the tempo the app gave.
 
-This repository holds both ends of that chain: the Max for Live device (the root of the repository) and the server, `la2l-server` (in [`server/`](server/)).
+This repository holds both ends of that chain: the Max for Live device (the root of the repository) and the server, `la2l-server` (in [`server/`](server/)). It also holds the developer kit for the apps (in [`sdk/`](sdk/)): `la2l` for JavaScript and TypeScript, with a Send to Live button, a command line and a test receiver that stands in for Live; an example at `https://lloydstellar.nl/la2l/examples/drum-machine/`; and the API for machines in [`docs/openapi.yaml`](docs/openapi.yaml).
 
 The device is at version 0.2.2. It is tested against a simulated Live and a simulated server, and in Live 12.4.6 on Windows, with the real server too. The server runs at `https://lloydstellar.nl/la2l/`. The apps come next; until then, LA2L Sender on that address pairs with the device and sends WAV files from a browser. **Settings > Test import** places a test loop without a server, so the Live side can also be tested on its own.
 

@@ -1,0 +1,143 @@
+/* Web808, the drum machine example of LA2L. */
+:root {
+  --bg: #f4f2ed;
+  --card: #ffffff;
+  --line: #d8d3c8;
+  --text: #1c1b18;
+  --muted: #5d594f;
+  --on: #b4420e;
+  --beat: #ece7dc;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131210;
+    --card: #1d1b18;
+    --line: #36322c;
+    --text: #ece8df;
+    --muted: #a39d91;
+    --on: #f0a23a;
+    --beat: #2a2722;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  margin: 8px 0 0;
+}
+
+header p,
+.hint {
+  color: var(--muted);
+}
+
+.hint a {
+  color: inherit;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.controls input {
+  width: 5em;
+  min-height: 40px;
+  margin-left: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+}
+
+#play {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 4.5em repeat(16, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+
+.row span {
+  font-weight: 600;
+}
+
+.step {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  cursor: pointer;
+}
+
+/* On a phone: two rows of eight steps per sound, so every step is big enough to tap. */
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+  }
+
+  .row span {
+    grid-column: 1 / -1;
+  }
+}
+
+.step.beat {
+  background: var(--beat);
+}
+
+.step[aria-pressed="true"] {
+  background: var(--on);
+  border-color: var(--on);
+}
+
+.step.now {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.step:focus-visible,
+#play:focus-visible {
+  outline: 3px solid var(--on);
+  outline-offset: 2px;
+}
