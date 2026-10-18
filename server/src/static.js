@@ -1,6 +1,6 @@
 'use strict';
-// Serves the pages from public/ (LA2L Sender, the test receiver, and the SDK for the browser), with
-// strict security headers. Only the files listed here exist; every other path is a 404, so no path
+// Serves the pages from public/ (LA2L Sender, the test receiver, the SDK for the browser and the
+// developer pages) and the examples of the developer kit, with strict security headers. Only the files listed here exist; every other path is a 404, so no path
 // can reach outside public/.
 
 const fs = require('fs');
@@ -30,6 +30,8 @@ const FILES = {
   '/vendor/la2l.js': ['vendor/la2l.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-button.js': ['vendor/la2l-button.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-receiver.js': ['vendor/la2l-receiver.js', 'text/javascript; charset=utf-8'],
+  // The address in the $id of the JSON Schema; the developer pages carry the same file.
+  '/app2live-1.schema.json': ['developers/app2live-1.schema.json', 'application/json; charset=utf-8'],
 };
 
 // Examples of the developer kit, from a folder of the repository (in the image: /app/examples).
@@ -44,8 +46,24 @@ const TYPES = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
 };
+
+// The developer pages, made from docs/developers by tools/devpages.js and committed, as vendor/
+// is: /developers/ and /developers/<page>, each with its Markdown twin /developers/<page>.md, the
+// OpenAPI file and the JSON Schema next to them, and /llms.txt and /llms-full.txt. Read once at
+// start, as the examples are.
+const DEVELOPERS = path.join(PUBLIC, 'developers');
+const DEVELOPER_TYPES = Object.assign({}, TYPES, {
+  '.md': 'text/markdown; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.yaml': 'application/yaml; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+});
+// Search engines leave them out until the launch, when the device can be downloaded too
+// (sdk/BUILD-PROMPT.md, section 15). Then set this to true.
+const DEVELOPER_PAGES_INDEXED = false;
+
 // A folder without its "/" goes to the folder, so the relative addresses in its page work.
-const REDIRECTS = { '/examples/drum-machine': 'drum-machine/' };
+const REDIRECTS = { '/examples/drum-machine': 'drum-machine/', '/developers': 'developers/' };
 
 const HEADERS = {
   'Content-Security-Policy':
@@ -57,10 +75,10 @@ const HEADERS = {
 // Reads the files once. They are small, and a missing one should stop the server at start.
 function loadFiles() {
   const files = new Map();
-  const add = (urlPath, file, type) => {
+  const add = (urlPath, file, type, extra = {}) => {
     const body = fs.readFileSync(file);
     const etag = `"${crypto.createHash('sha256').update(body).digest('base64url').slice(0, 22)}"`;
-    files.set(urlPath, { body, type, etag });
+    files.set(urlPath, { body, type, etag, extra });
   };
   for (const [urlPath, [file, type]] of Object.entries(FILES)) add(urlPath, path.resolve(PUBLIC, file), type);
   for (const [prefix, dir] of Object.entries(EXAMPLES)) {
@@ -69,6 +87,16 @@ function loadFiles() {
       if (!type || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) continue;
       add(prefix + (name === 'index.html' ? '' : name), path.join(dir, name), type);
     }
+  }
+  const robots = DEVELOPER_PAGES_INDEXED ? {} : { 'X-Robots-Tag': 'noindex' };
+  for (const name of fs.readdirSync(DEVELOPERS).sort()) {
+    const type = DEVELOPER_TYPES[path.extname(name).toLowerCase()];
+    if (!type || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) continue;
+    let urlPath = '/developers/' + name;
+    if (name === 'index.html') urlPath = '/developers/';
+    else if (name.endsWith('.html')) urlPath = '/developers/' + name.slice(0, -'.html'.length);
+    else if (name === 'llms.txt' || name === 'llms-full.txt') urlPath = '/' + name;
+    add(urlPath, path.join(DEVELOPERS, name), type, robots);
   }
   return files;
 }
@@ -92,7 +120,7 @@ class StaticFiles {
     if (!f) return this.plain(res, 404, 'Not found.');
     if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
     // no-cache: the browser keeps the file but asks every time, so a new version shows at once.
-    const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: f.etag }, HEADERS);
+    const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: f.etag }, HEADERS, f.extra);
     if (req.headers['if-none-match'] === f.etag) return answer(res, 304, headers);
     answer(res, 200, Object.assign({ 'Content-Length': f.body.length }, headers), f.body);
   }

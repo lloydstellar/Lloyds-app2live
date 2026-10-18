@@ -25,6 +25,8 @@ jobs:
       - name: Server tests
         run: npm test
         working-directory: server
+      - name: The committed developer pages are what docs/developers makes
+        run: node tools/devpages.js --check
       - name: Docker image
         run: docker build -f server/Dockerfile .
       - name: Deploy scripts

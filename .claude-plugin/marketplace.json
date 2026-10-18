@@ -1,0 +1,15 @@
+{
+  "name": "la2l",
+  "owner": { "name": "Lloyd Stellar", "url": "https://lloydstellar.nl" },
+  "metadata": {
+    "description": "LA2L (Lloyd's App2Live): send sounds from apps to Ableton Live."
+  },
+  "plugins": [
+    {
+      "name": "la2l",
+      "source": "./skills",
+      "description": "The la2l-send-to-ableton skill: build apps that send sounds to Ableton Live with LA2L.",
+      "version": "0.1.0"
+    }
+  ]
+}

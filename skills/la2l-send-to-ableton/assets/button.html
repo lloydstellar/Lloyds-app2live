@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Send to Live</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-DCfxAXK3uQxg3OATJBKMk0VOSXgO6PJAiyd+1SpwzTWa6Gbvc9GFc+kx1DhcRxGr" crossorigin="anonymous"></script>
+<script type="module">
+  // The button and the WAV helpers come from that one file, without a build step.
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+
+  // One bar of four kicks at the tempo, rendered offline.
+  async function renderLoop(bpm) {
+    const rate = 48000;
+    const beat = 60 / bpm;
+    const ctx = new OfflineAudioContext(2, Math.round(rate * beat * 4), rate);
+    for (let i = 0; i < 4; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(120, i * beat);
+      osc.frequency.exponentialRampToValueAtTime(45, i * beat + 0.3);
+      gain.gain.setValueAtTime(0.9, i * beat);
+      gain.gain.exponentialRampToValueAtTime(0.001, i * beat + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(i * beat);
+      osc.stop(i * beat + 0.4);
+    }
+    return ctx.startRendering();
+  }
+
+  document.querySelector('la2l-send-button').sounds = async () => ({
+    title: 'Four on the floor',
+    bpm: 120,
+    sounds: [{ name: 'Kick loop', audio: wavFromAudioBuffer(await renderLoop(120)), kind: 'loop', role: 'drums', lengthBeats: 4 }],
+  });
+</script>
+</head>
+<body>
+  <la2l-send-button app-name="My app"></la2l-send-button>
+</body>
+</html>

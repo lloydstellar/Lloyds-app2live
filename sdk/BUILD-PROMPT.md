@@ -1,6 +1,6 @@
 # Build brief: the LA2L developer kit
 
-You are Claude Code on Erik's Linux VPS, the machine that runs la2l-server. Your job is to build what app developers, and the AI tools they use, need to send sounds to LA2L: the API contract in a form machines read, a web SDK on npm, an Android SDK on Maven Central, a skill and docs for AI tools, LA2L Sender as a share target on Android, a test receiver that stands in for Ableton Live, and the server changes these need. This brief is the whole assignment. Read it to the end before you start, then work phase by phase (section 15). After each phase, tell Erik in Dutch what to test, and wait for his answer before the next phase.
+You are Claude Code on Erik's Linux VPS, the machine that runs la2l-server. Your job is to build what app developers, and the AI tools they use, need to send sounds to LA2L: the API contract in a form machines read, a web SDK on npm, an Android SDK in a Maven repository of our own, a skill and docs for AI tools, LA2L Sender as a share target on Android, a test receiver that stands in for Ableton Live, and the server changes these need. This brief is the whole assignment. Read it to the end before you start, then work phase by phase (section 15). After each phase, tell Erik in Dutch what to test, and wait for his answer before the next phase.
 
 To start, Erik will say something like: *"Lees sdk/BUILD-PROMPT.md en begin met fase 0."*
 
@@ -17,7 +17,7 @@ The plan behind this brief was worked out with Erik in Dutch; this is its builda
  (Web Audio)       (Kotlin or Java)       audio, without LA2L code language
    │                  │                       │                        │
  la2l on npm       la2l for Android       LA2L Sender as a         REST API (OpenAPI),
- client, button,   on Maven Central       share target (PWA)       or npx la2l send
+ client, button,   in our own Maven repo  share target (PWA)       or npx la2l send
  CLI                  │                       │                        │
    └──────────────────┴───────────┬───────────┴────────────────────────┘
                                   ▼
@@ -83,13 +83,15 @@ The column "Default" is Claude's advice from the plan; build with it unless Erik
 | # | Decision | Default | Why |
 |---|---|---|---|
 | 1 | Make the repository public | Yes, in phase 2. First the npm name is claimed and the history is checked for personal data, such as commit author e-mail addresses. If Erik wants those gone, the history must be rewritten before the repository goes public, which needs a force-push. A rewrite alone is not enough on GitHub: the pull requests keep their old commits, with the old addresses, and only GitHub Support can remove those. A new repository with the rewritten history avoids that, but leaves the pull requests behind. Phase 0 found an address of Erik's as the author of 23 commits. | npm provenance, and importing the skill in Lovable, Bolt and Replit, work only with a public repository. |
-| 2 | Names | `la2l` on npm; `nl.lloydstellar:la2l` and `nl.lloydstellar:la2l-ktx` on Maven Central; the skill `la2l-send-to-ableton` | Short, and the product's own name. On 2026-10-17 `la2l` was still free on npm, PyPI and pub.dev. |
+| 2 | Names | `la2l` on npm; `nl.lloydstellar:la2l` and `nl.lloydstellar:la2l-ktx` on Maven Central (since decision 8: in our own Maven repository); the skill `la2l-send-to-ableton` | Short, and the product's own name. On 2026-10-17 `la2l` was still free on npm, PyPI and pub.dev. |
 | 3 | Order on Android | First LA2L Sender as a share target, then the Android SDK; an Android app of our own only when that is not enough | No Play account and no closed test needed, and it fits Erik's earlier choice for sharing on Android. The share target works only as a web app installed from Chrome or Samsung Internet. |
 | 4 | Test receiver | Yes: a page, in the CLI, and a local variant without internet | Without Ableton, web developers and AI agents cannot test otherwise. The local variant keeps CI and AI agents off the real server. |
 | 5 | Languages | Now TypeScript/JavaScript and Kotlin/Java; Python, Dart and React Native on request | That covers nearly all web and Android apps. Music apps with a C++ engine upload from their Kotlin or Java layer, so no C++ SDK is needed. |
 | 6 | Developer registration | No API key; storage limits before the launch; an optional `X-LA2L-Client` header | See 3.1 and section 7. |
 | 7 | Button and brand | "Send to Live" with the LA2L logo, no Ableton logo | Ableton and Live are Ableton's trademarks; the button must not look like an official Ableton feature. |
 | 8 | Maven Central | Erik asks Sonatype, before phase 5, to confirm that the free Android SDK may be published free of charge | Since 2026-10-01 Maven Central asks a paid subscription for artifacts that support a commercial product or service, "service-dependent SDKs" included, and Sonatype does not say exactly what still counts as ordinary community open source. If Sonatype says no: a Maven repository of our own on lloydstellar.nl, which costs developers one extra line in Gradle. |
+
+**Erik's answers (2026-10-18).** 1: yes, in phase 2, and his address may stay in the old commits; the switch itself still waits for his yes at that moment. 2 to 7: the defaults. 8: a Maven repository of our own on lloydstellar.nl right away, without asking Sonatype. 9: `MAX_TOTAL_STORAGE_MB` 10 GB. 10: the storage warning by e-mail from the VPS. 11: Android builds only in GitHub Actions, never on the VPS.
 
 ---
 
@@ -131,8 +133,8 @@ sdk/
   CLAUDE.md                        write it in phase 1 and keep it up to date, like server/CLAUDE.md
   fixtures/                        shared manifests and WAV files with the expected verdicts (6.3)
   js/                              npm: la2l (9)
-  android/                         Maven Central: nl.lloydstellar:la2l and la2l-ktx (12)
-skills/la2l-send-to-ableton/       the skill (10.2)
+  android/                         our Maven repository: nl.lloydstellar:la2l and la2l-ktx (12)
+skills/la2l-send-to-ableton/       the skill (10.2); skills/ is the root of its Claude Code plugin
 .claude-plugin/marketplace.json    the Claude Code plugin entry for the skill (10.2)
 examples/
   web-drum-machine/                a web drum machine that sends its loop (9.8)
@@ -357,7 +359,7 @@ How it gets into each tool:
 | Where | How |
 |---|---|
 | Claude Code, Codex, Cursor, Copilot, Gemini CLI | `npx skills add lloydstellar/Lloyds-app2live` |
-| Claude Code, as a plugin | `/plugin marketplace add lloydstellar/Lloyds-app2live`, through `.claude-plugin/marketplace.json` (check Claude Code's current docs for its format) |
+| Claude Code, as a plugin | `/plugin marketplace add lloydstellar/Lloyds-app2live`, then `/plugin install la2l@la2l`. The marketplace entry `.claude-plugin/marketplace.json` points to `skills/` as the plugin, with `skills/.claude-plugin/plugin.json`, so the skill has one copy for every tool. `claude plugin validate` checks both. |
 | Lovable, Bolt, Replit | Import the GitHub address of the skill folder (public repositories only) |
 | claude.ai | Upload a ZIP of the skill folder |
 
@@ -371,7 +373,9 @@ A run passes when its package gets through the test receiver as a loop with a te
 
 ### 10.4 Developer pages and privacy
 
-Under `https://lloydstellar.nl/la2l/developers/`: start here; web; Android; sharing to LA2L Sender from an app (11.4); the REST API, with `openapi.yaml`; testing; AI tools; the button and the brand rules. Short pages, examples first. One source per page for both the HTML and the `.md` version; a small converter in `tools/` is fine, without runtime dependencies on the server.
+Under `https://lloydstellar.nl/la2l/developers/`: start here; web; Android; sharing to LA2L Sender from an app (11.4, built with phase 4, when LA2L Sender can take a share); the REST API, with `openapi.yaml`; testing; AI tools; the button and the brand rules. Short pages, examples first. One source per page for both the HTML and the `.md` version; a small converter in `tools/` is fine, without runtime dependencies on the server.
+
+Until the launch the server asks search engines to leave the developer pages out (`X-Robots-Tag: noindex`; `DEVELOPER_PAGES_INDEXED` in `server/src/static.js`).
 
 The privacy statement at `https://lloydstellar.nl/la2l/privacy`: what the server keeps (computer names, app names, packages for at most 24 hours, results for 7 days, addresses for the rate limits, the storage limits and the log), why, for how long, and who to ask. Erik approves the text before it goes online.
 
@@ -443,7 +447,7 @@ delivery.awaitImport()
 
 ### 12.5 Building on this VPS
 
-Android builds need a JDK 17 and the Android SDK command-line tools: a few GB. Prefer a container (the official `eclipse-temurin:17-jdk` image, with Google's command-line tools in a volume) over installing them on the VPS, and ask Erik before you download them. GitHub's Ubuntu runners have both, so CI needs nothing extra.
+Erik decided in phase 0: Android builds run only in GitHub Actions, never on the VPS (it has 3.8 GB of memory and serves other sites). GitHub's Ubuntu runners have a JDK 17 and the Android SDK, so CI needs nothing extra. An APK for Erik to install comes from CI as an artifact.
 
 ---
 
@@ -454,7 +458,7 @@ Everything is published from GitHub Actions in this repository, never by hand fr
 | Where | How | What Erik arranges |
 |---|---|---|
 | npm, `la2l` | Trusted publishing from GitHub Actions (OIDC), so no npm token is stored as a secret. Provenance comes with it, but only from a public repository. A tag `js-v0.1.0` publishes. | An npm account with 2FA. Before the repository goes public he claims the name with an empty version 0.0.1 that he publishes himself (trusted publishing can only be set up for a package that exists), and then links this repository's workflow to it on npmjs.com. |
-| Maven Central, `nl.lloydstellar:la2l` and `la2l-ktx` | The Central Portal, through the Gradle plugin `com.vanniktech.maven.publish`, signed with GPG. A tag `android-v0.1.0` publishes. | Sonatype's answer first (3.2, decision 8). Then an account on the Central Portal, a DNS TXT record on lloydstellar.nl that proves the namespace, and a GPG key and a Portal token as GitHub secrets. |
+| A Maven repository of our own, `nl.lloydstellar:la2l` and `la2l-ktx` | At `https://lloydstellar.nl/la2l/maven/` (decision 8): developers add that address to `repositories` in Gradle. GitHub Actions builds and signs the artifacts on a tag `android-v0.1.0`; how they reach the VPS is settled with Erik in phase 5, for example a release asset that the VPS fetches, so no key to the VPS is stored on GitHub. | A GPG key as a GitHub secret, in phase 5. |
 | jsDelivr and unpkg | Automatic from npm. `dist/button.js` is self-contained and minified; the docs give its `integrity` hash per version. | Nothing. |
 | Skills | Straight from the repository; there is no registry. | Nothing. |
 | Context7 | Added once. | Adds the repository. |
@@ -492,7 +496,7 @@ Every phase ends with: all tests green, locally and on GitHub; a pull request; t
 | **3. AI layer** | The skill and its plugin entry, `agents-md`, the paste text, `llms.txt` and `llms-full.txt`, the developer pages, the privacy statement, Context7, the AI test. | Runs the AI test in Cursor and Lovable: at least 4 of 5 runs per tool pass. Reads the developer pages, and approves the privacy statement. |
 | **Launch** | Not part of this brief: device 1.0 can be downloaded (frozen with Freeze and tested on a Mac), and the developer pages are online. | Picks the moment. |
 | **4. Android without code** | The PWA and the share target (section 11), with a new server version. | Installs LA2L Sender from Chrome on his Android phone and pairs it with Live. In FL Studio Mobile or n-Track he exports a WAV, shares it to LA2L Sender, marks it as a loop with its BPM and sends it. Import in Live brings it in, in time. |
-| **5. Android SDK** | `la2l` and `la2l-ktx` 0.1.0, `La2lShare`, the recorder example and the Java example; with Sonatype's and Erik's yes, on Maven Central. | Installs the example app (an APK from CI), records a loop and sends it. After Import it plays at the right tempo in Live. |
+| **5. Android SDK** | `la2l` and `la2l-ktx` 0.1.0, `La2lShare`, the recorder example and the Java example; with Erik's yes, in our own Maven repository on lloydstellar.nl. | Installs the example app (an APK from CI), records a loop and sends it. After Import it plays at the right tempo in Live. |
 
 ---
 

@@ -1,0 +1,12 @@
+{
+  "name": "la2l",
+  "displayName": "LA2L: send sounds to Ableton Live",
+  "version": "0.1.0",
+  "description": "A skill for building apps that send sounds to Ableton Live through LA2L (Lloyd's App2Live): pairing, WAV files from Web Audio, a Send to Live button, and testing without Ableton.",
+  "author": { "name": "Lloyd Stellar", "url": "https://lloydstellar.nl" },
+  "homepage": "https://lloydstellar.nl/la2l/developers/",
+  "repository": "https://github.com/lloydstellar/Lloyds-app2live",
+  "license": "Apache-2.0",
+  "keywords": ["ableton", "ableton-live", "la2l", "audio", "web-audio", "music"],
+  "skills": ["./"]
+}

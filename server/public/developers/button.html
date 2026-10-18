@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The button: LA2L for developers</title>
+<meta name="description" content="&lt;la2l-send-button&gt; is a Send to Live button with the LA2L logo. The first click asks for the code that LA2L shows in Live; after that one click sends, and the…">
+<link rel="alternate" type="text/markdown" href="button.md">
+<link rel="icon" href="../logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="./"><img src="../logo.png" alt="" width="40" height="40"> LA2L for developers</a>
+  <nav aria-label="Pages">
+  <ul>
+    <li><a href="./">Start</a></li>
+    <li><a href="web">Web apps</a></li>
+    <li><a href="button" aria-current="page">The button</a></li>
+    <li><a href="android">Android</a></li>
+    <li><a href="rest-api">REST API</a></li>
+    <li><a href="manifest">Package description</a></li>
+    <li><a href="testing">Testing</a></li>
+    <li><a href="ai-tools">AI tools</a></li>
+  </ul>
+  </nav>
+</header>
+<main>
+<h1 id="the-button">The button</h1>
+<p><code>&lt;la2l-send-button&gt;</code> is a Send to Live button with the LA2L logo. The first click asks for the code that LA2L shows in Live; after that one click sends, and the button says what happens: &quot;Sending 2 sounds… 45%&quot;, &quot;Waiting for Import in Live&quot;, &quot;In Live&quot;.</p>
+<h2 id="without-a-build-step">Without a build step</h2>
+<pre><code class="language-html">&lt;script type=&quot;module&quot; src=&quot;https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js&quot;
+        integrity=&quot;sha384-DCfxAXK3uQxg3OATJBKMk0VOSXgO6PJAiyd+1SpwzTWa6Gbvc9GFc+kx1DhcRxGr&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;
+&lt;la2l-send-button app-name=&quot;Web808&quot;&gt;&lt;/la2l-send-button&gt;
+&lt;script type=&quot;module&quot;&gt;
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  document.querySelector('la2l-send-button').sounds = async () =&gt; ({
+    title: 'Treinbeat',
+    bpm: 92,
+    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop(92, schedule)), kind: 'loop', role: 'drums' }],
+  });
+&lt;/script&gt;</code></pre>
+<p>The one file carries the button with <code>LA2L</code>, <code>La2lError</code>, <code>wavFromAudioBuffer</code>, <code>wavFromSamples</code> and <code>toWav</code>, so the page imports the WAV helpers from the same address. <code>renderLoop()</code> is yours: <a href="web">Web apps</a> shows one that renders one bar as an <code>AudioBuffer</code>.</p>
+<h2 id="with-a-bundler">With a bundler</h2>
+<pre><code class="language-js">import 'la2l/button';
+import { wavFromAudioBuffer } from 'la2l';</code></pre>
+<h2 id="giving-it-the-sounds">Giving it the sounds</h2>
+<p>Set <code>sounds</code> to a function. The button calls it at the click, so it sends what the user has at that moment. It may return a promise, the options of <code>send()</code> (<code>title</code>, <code>bpm</code>, <code>sounds</code>), or only the list of sounds. A framework that cannot set a property can listen for the <code>la2l-request</code> event instead and call <code>event.detail.provide(value)</code> in it.</p>
+<h2 id="in-react-vue-svelte-and-angular">In React, Vue, Svelte and Angular</h2>
+<p>The button is a custom element, so every framework can use it. Give it <code>sounds</code> as a property, not as an attribute. In React, through a ref (React 18 passes only strings to a custom element), with one declaration per project so that TypeScript knows the element:</p>
+<pre><code class="language-tsx">import { useEffect, useRef } from 'react';
+import 'la2l/button';
+import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'la2l-send-button': React.DetailedHTMLProps&lt;React.HTMLAttributes&lt;La2lSendButton&gt;, La2lSendButton&gt; &amp; { 'app-name'?: string; server?: string; 'app-id'?: string };
+    }
+  }
+}
+
+export function SendToLive({ sounds }: { sounds: SoundsProvider }) {
+  const ref = useRef&lt;La2lSendButton&gt;(null);
+  useEffect(() =&gt; {
+    if (ref.current) ref.current.sounds = sounds;
+  }, [sounds]);
+  return &lt;la2l-send-button ref={ref} app-name=&quot;Web808&quot; /&gt;;
+}</code></pre>
+<ul>
+<li>Vue: tell the compiler it is not a Vue component, in the Vue plugin of <code>vite.config</code>: <code>template: { compilerOptions: { isCustomElement: (tag) =&gt; tag.startsWith('la2l-') } }</code>. Then <code>&lt;la2l-send-button app-name=&quot;Web808&quot; :sounds.prop=&quot;sounds&quot; /&gt;</code>.</li>
+<li>Svelte: <code>&lt;la2l-send-button app-name=&quot;Web808&quot; sounds={sounds}&gt;&lt;/la2l-send-button&gt;</code>.</li>
+<li>Angular: add <code>CUSTOM_ELEMENTS_SCHEMA</code> to the <code>schemas</code> of the component, then <code>&lt;la2l-send-button app-name=&quot;Web808&quot; [sounds]=&quot;sounds&quot;&gt;&lt;/la2l-send-button&gt;</code>.</li>
+</ul>
+<h2 id="attributes-events-texts-and-looks">Attributes, events, texts and looks</h2>
+<div class="table"><table>
+<thead><tr><th>Attribute</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>app-name</code></td><td>The name Live shows: &quot;Paired with Web808&quot;, and &quot;Kick (Web808)&quot; in every track name. Default: the page title.</td></tr>
+<tr><td><code>server</code></td><td>Another LA2L server, such as a local test receiver.</td></tr>
+<tr><td><code>app-id</code></td><td>Your own id for this installation. Default: one made once.</td></tr>
+</tbody>
+</table></div>
+<div class="table"><table>
+<thead><tr><th>Event</th><th><code>detail</code></th></tr></thead>
+<tbody>
+<tr><td><code>la2l-paired</code></td><td><code>{ deviceName }</code></td></tr>
+<tr><td><code>la2l-sent</code></td><td>the <code>Delivery</code></td></tr>
+<tr><td><code>la2l-imported</code></td><td>the status, with the result per sound</td></tr>
+<tr><td><code>la2l-error</code></td><td>the <code>La2lError</code></td></tr>
+</tbody>
+</table></div>
+<p>Another language: <code>button.texts = { send: 'Naar Live sturen', waiting: 'Wacht op Import in Live' }</code>. Every text you leave out stays English.</p>
+<p>The looks follow CSS custom properties on the element: <code>--la2l-accent</code>, <code>--la2l-accent-text</code>, <code>--la2l-radius</code>, <code>--la2l-font</code>, <code>--la2l-text</code>, <code>--la2l-muted</code>, <code>--la2l-bad</code>, <code>--la2l-focus</code>, <code>--la2l-line</code>, <code>--la2l-dialog-background</code>, <code>--la2l-dialog-text</code> and <code>--la2l-color-scheme</code>.</p>
+<pre><code class="language-css">la2l-send-button { --la2l-accent: #2a6df4; --la2l-radius: 8px; }</code></pre>
+<h2 id="the-brand">The brand</h2>
+<ul>
+<li>Call it <strong>Send to Live</strong>, with the LA2L logo, as the button does. Use the LA2L logo as it is: <a href="../logo.png">logo.png</a>.</li>
+<li>Never use the Ableton logo, and do not make it look like a feature of Ableton. Ableton and Live are trademarks of Ableton AG, and LA2L is not made by Ableton.</li>
+<li>In your own words: &quot;Sends your sounds to Ableton Live with LA2L.&quot;</li>
+</ul>
+</main>
+<footer class="foot">
+  <p><a href="button.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
+</footer>
+</body>
+</html>

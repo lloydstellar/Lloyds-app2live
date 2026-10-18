@@ -44,7 +44,7 @@ npx la2l send kick.wav --loop --bpm 92 --role drums
 - `la2l`: the client (`LA2L`, `Delivery`, `La2lError`), WAV files from Web Audio (`wavFromAudioBuffer`, `wavFromSamples`, `toWav`), and the checks of LA2L itself (`checkWav`, `checkManifest`, `planSound`, `sha256`), with the same texts.
 - `la2l/button`: `<la2l-send-button>`, for a browser.
 - `la2l/testing`: `startTestReceiver()`, an LA2L server in memory that imports what you send as Live would, for tests without Ableton or internet. Node.js only.
-- `npx la2l`: pair, send, status, unpair, and `test-receiver`.
+- `npx la2l`: pair, send, status, unpair, `test-receiver`, and `agents-md`, which writes an index of these docs into your project's `AGENTS.md` and `CLAUDE.md` for AI coding agents.
 
 ESM with type definitions, for browsers, Node.js 22.12 and newer, Deno and Bun. No dependencies.
 

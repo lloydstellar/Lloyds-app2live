@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Android: LA2L for developers</title>
+<meta name="description" content="An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (nl.lloydstellar:la2l) is being built; until it is released…">
+<link rel="alternate" type="text/markdown" href="android.md">
+<link rel="icon" href="../logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="./"><img src="../logo.png" alt="" width="40" height="40"> LA2L for developers</a>
+  <nav aria-label="Pages">
+  <ul>
+    <li><a href="./">Start</a></li>
+    <li><a href="web">Web apps</a></li>
+    <li><a href="button">The button</a></li>
+    <li><a href="android" aria-current="page">Android</a></li>
+    <li><a href="rest-api">REST API</a></li>
+    <li><a href="manifest">Package description</a></li>
+    <li><a href="testing">Testing</a></li>
+    <li><a href="ai-tools">AI tools</a></li>
+  </ul>
+  </nav>
+</header>
+<main>
+<h1 id="android">Android</h1>
+<p>An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (<code>nl.lloydstellar:la2l</code>) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
+<h2 id="1-a-wav-file">1. A WAV file</h2>
+<p>From 16-bit PCM, as <code>AudioRecord</code> gives it or as your audio engine renders it:</p>
+<pre><code class="language-kotlin">fun wav16(pcm: ShortArray, sampleRate: Int, channels: Int): ByteArray {
+    val data = pcm.size * 2
+    val b = java.nio.ByteBuffer.allocate(44 + data).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+    b.put(&quot;RIFF&quot;.toByteArray()).putInt(36 + data).put(&quot;WAVE&quot;.toByteArray())
+    b.put(&quot;fmt &quot;.toByteArray()).putInt(16).putShort(1).putShort(channels.toShort())
+    b.putInt(sampleRate).putInt(sampleRate * channels * 2).putShort((channels * 2).toShort()).putShort(16)
+    b.put(&quot;data&quot;.toByteArray()).putInt(data)
+    pcm.forEach { b.putShort(it) }
+    return b.array()
+}
+
+fun sha256Hex(bytes: ByteArray): String =
+    java.security.MessageDigest.getInstance(&quot;SHA-256&quot;).digest(bytes).joinToString(&quot;&quot;) { &quot;%02x&quot;.format(it) }</code></pre>
+<p>A loop must be a whole number of beats long: <code>sampleRate * 60 / bpm * beats</code> frames. An m4a or mp3 must be decoded first (<code>MediaCodec</code>): LA2L takes WAV only.</p>
+<h2 id="2-the-calls">2. The calls</h2>
+<pre><code class="language-kotlin">const val BASE = &quot;https://lloydstellar.nl/la2l/api&quot;
+
+class Answer(val status: Int, val json: org.json.JSONObject, val retryAfter: Int?) {
+    fun error(fallback: String) = java.io.IOException(json.optString(&quot;error&quot;).ifEmpty { fallback })
+}
+
+fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = &quot;application/json&quot;): Answer {
+    val c = java.net.URL(BASE + path).openConnection() as java.net.HttpURLConnection
+    c.connectTimeout = 15_000
+    c.readTimeout = 60_000
+    c.requestMethod = method
+    c.setRequestProperty(&quot;X-LA2L-Client&quot;, &quot;my-app/1.0 (My app)&quot;)
+    if (token != null) c.setRequestProperty(&quot;Authorization&quot;, &quot;Bearer $token&quot;)
+    try {
+        if (body != null) {
+            c.doOutput = true
+            c.setRequestProperty(&quot;Content-Type&quot;, type)
+            c.setFixedLengthStreamingMode(body.size)
+            c.outputStream.use { it.write(body) }
+        }
+        val status = c.responseCode
+        val text = (if (status &lt; 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: &quot;&quot;
+        // An answer that is not JSON, such as an error page of a proxy, counts as an empty one.
+        val json = try { org.json.JSONObject(text) } catch (e: org.json.JSONException) { org.json.JSONObject() }
+        return Answer(status, json, c.getHeaderField(&quot;Retry-After&quot;)?.toIntOrNull())
+    } finally {
+        c.disconnect()
+    }
+}
+
+fun pair(code: String, installId: String): String {
+    val body = org.json.JSONObject().put(&quot;code&quot;, code).put(&quot;app_name&quot;, &quot;My app&quot;).put(&quot;app_id&quot;, installId)
+    val a = call(&quot;POST&quot;, &quot;/pair/claim&quot;, null, body.toString().toByteArray())
+    if (a.status != 200) throw a.error(&quot;Pairing failed.&quot;)
+    return a.json.getString(&quot;app_token&quot;) // keep it in SharedPreferences, Context.MODE_PRIVATE
+}
+
+fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray): String {
+    val item = org.json.JSONObject().put(&quot;file&quot;, &quot;sound.wav&quot;).put(&quot;name&quot;, name).put(&quot;kind&quot;, &quot;loop&quot;)
+        .put(&quot;role&quot;, &quot;drums&quot;).put(&quot;bytes&quot;, wav.size).put(&quot;sha256&quot;, sha256Hex(wav))
+    val manifest = org.json.JSONObject().put(&quot;schema&quot;, &quot;app2live/1&quot;).put(&quot;title&quot;, title)
+        .put(&quot;source&quot;, org.json.JSONObject().put(&quot;app&quot;, &quot;My app&quot;).put(&quot;platform&quot;, &quot;android&quot;))
+        .put(&quot;tempo&quot;, org.json.JSONObject().put(&quot;bpm&quot;, bpm))
+        .put(&quot;items&quot;, org.json.JSONArray().put(item))
+    val created = call(&quot;POST&quot;, &quot;/packages&quot;, token, manifest.toString().toByteArray())
+    if (created.status != 201) throw created.error(&quot;Sending failed.&quot;)
+    val id = created.json.getString(&quot;package_id&quot;)
+    val put = call(&quot;PUT&quot;, created.json.getJSONObject(&quot;upload&quot;).getString(&quot;sound.wav&quot;), token, wav, &quot;audio/wav&quot;)
+    if (put.status != 200) throw put.error(&quot;The upload failed.&quot;)
+    val commit = call(&quot;POST&quot;, &quot;/packages/$id/commit&quot;, token, &quot;{}&quot;.toByteArray())
+    if (commit.status != 200) throw commit.error(&quot;Sending failed.&quot;)
+    return id // then GET /packages/$id/status every few seconds until &quot;imported&quot;
+}</code></pre>
+<ul>
+<li><strong>401</strong> on any call: the user unpaired your app in Live. Forget the token and show the code field again.</li>
+<li><strong>429</strong>: wait <code>retryAfter</code> seconds, from the <code>Retry-After</code> header. <strong>5xx</strong> or no connection: try again later.</li>
+<li>A large file does not fit in memory: stream it from disk with <code>setFixedLengthStreamingMode(file.length())</code> and copy a <code>FileInputStream</code> to <code>outputStream</code>.</li>
+<li><strong>422</strong> names the sound and the problem, in plain English: show it.</li>
+<li>The field for the code: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot;</li>
+<li>Never log the token, and never put it in a URL.</li>
+</ul>
+<h2 id="3-following-it">3. Following it</h2>
+<p><code>GET /packages/{id}/status</code> says <code>waiting</code> until the user clicks Import in Live, then <code>imported</code>, <code>partial</code> (with the result per sound), <code>failed</code> or <code>expired</code>. While your app is open, ask every few seconds and show &quot;Waiting for Import in Live&quot;.</p>
+<p>A large upload that must go on when the user leaves the app belongs in a WorkManager job.</p>
+<p>Every call and field: <a href="rest-api">The REST API</a> and <a href="manifest">The package description</a>.</p>
+</main>
+<footer class="foot">
+  <p><a href="android.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
+</footer>
+</body>
+</html>
