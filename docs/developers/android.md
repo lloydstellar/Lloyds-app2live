@@ -1,12 +1,28 @@
 # Android
 
-An Android app sends with five HTTPS calls, below in Kotlin, or shares its WAV files with LA2L Sender without any network code: see [Sharing](sharing.md).
+An Android app sends with the Android SDK, or with five HTTPS calls of its own (below, in Kotlin), or shares its WAV files with LA2L Sender without any network code: see [Sharing](sharing.md).
 
-The Android SDK, `nl.lloydstellar:la2l` for Java and `nl.lloydstellar:la2l-ktx` for Kotlin, is built and tested but **not published yet**: its Maven repository at `https://lloydstellar.nl/la2l/maven/` comes later. This is how it will look:
+The Android SDK is `nl.lloydstellar:la2l` for Java, without dependencies, and `nl.lloydstellar:la2l-ktx` for Kotlin, for Android 7.0 (API 24) and newer. They are in LA2L's own Maven repository:
 
 ```kotlin
-// Once published. settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }
-// app/build.gradle.kts: implementation("nl.lloydstellar:la2l-ktx:0.1.0")
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://lloydstellar.nl/la2l/maven/")
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("nl.lloydstellar:la2l-ktx:0.1.0") // or nl.lloydstellar:la2l:0.1.0 from Java
+}
+```
+
+Every file in it is signed with the key at https://lloydstellar.nl/la2l/maven/signing-key.asc. Sending, in Kotlin:
+
+```kotlin
 import nl.lloydstellar.la2l.*
 import nl.lloydstellar.la2l.ktx.* // pair, send, awaitImport as suspend functions
 
@@ -38,7 +54,7 @@ la2l.send(new SoundPackage("Treinbeat").bpm(92).add(Sound.loop("Kick", kickWav).
 
 ## Without the SDK
 
-What to use until the SDK is published: the same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+For an app that wants no dependency: the same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
 
 ### 1. A WAV file
 

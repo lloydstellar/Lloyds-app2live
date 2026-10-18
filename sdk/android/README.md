@@ -7,7 +7,7 @@ Send sounds from an Android app to Ableton Live with [LA2L](https://lloydstellar
 
 ## Install
 
-**Not published yet.** Version 0.1.0 is built and tested, and will be in LA2L's own Maven repository; until then `https://lloydstellar.nl/la2l/maven/` answers 404, and an app sends with the REST API (https://lloydstellar.nl/la2l/developers/android, "Without the SDK"). Once it is there:
+Version 0.1.0 is in LA2L's own Maven repository, `https://lloydstellar.nl/la2l/maven/`:
 
 ```kotlin
 // settings.gradle.kts
@@ -25,7 +25,7 @@ dependencies {
 }
 ```
 
-Every file is signed. The key is [signing-key.asc](signing-key.asc), also at https://lloydstellar.nl/la2l/maven/signing-key.asc once the repository is online; its fingerprint is `D38E 63C1 D254 89FF 5AAB 9442 D117 2ECD 7AAE 8584`.
+Every file is signed. The key is [signing-key.asc](signing-key.asc), also at https://lloydstellar.nl/la2l/maven/signing-key.asc; its fingerprint is `D38E 63C1 D254 89FF 5AAB 9442 D117 2ECD 7AAE 8584`.
 
 la2l adds the `INTERNET` permission to your app. The token stays in a private file in the app's no-backup folder, so Auto Backup does not copy it to another phone.
 

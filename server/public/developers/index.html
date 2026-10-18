@@ -47,7 +47,7 @@ await delivery.imported(); // the user clicked Import in Live</code></pre>
 <thead><tr><th>Your app</th><th>Use</th><th>Read</th></tr></thead>
 <tbody>
 <tr><td>A web app</td><td><code>npm install @lloydstellar/la2l</code>, or the Send to Live button without a build step</td><td><a href="web">Web apps</a>, <a href="button">The button</a></td></tr>
-<tr><td>An Android app</td><td>Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later</td><td><a href="android">Android</a>, <a href="sharing">Sharing</a></td></tr>
+<tr><td>An Android app</td><td>The Android SDK <code>nl.lloydstellar:la2l-ktx</code> (Kotlin) or <code>nl.lloydstellar:la2l</code> (Java), five HTTPS calls of your own, or share the WAV files with LA2L Sender</td><td><a href="android">Android</a>, <a href="sharing">Sharing</a></td></tr>
 <tr><td>A script, or any other language</td><td><code>npx @lloydstellar/la2l send</code>, or the same five calls</td><td><a href="rest-api">The REST API</a></td></tr>
 <tr><td>Built with an AI tool</td><td>The LA2L skill, or the paste text for Lovable and Bolt</td><td><a href="ai-tools">AI tools</a></td></tr>
 </tbody>
@@ -71,7 +71,7 @@ await delivery.imported(); // the user clicked Import in Live</code></pre>
 <ul>
 <li><a href="web">Web apps</a>: the npm package, Web Audio to WAV, following a send.</li>
 <li><a href="button">The button</a>: <code>&lt;la2l-send-button&gt;</code>, and how to name LA2L and Ableton.</li>
-<li><a href="android">Android</a>: the REST calls in Kotlin, and the Android SDK that comes later.</li>
+<li><a href="android">Android</a>: the Android SDK for Kotlin and Java, and the REST calls in Kotlin without it.</li>
 <li><a href="sharing">Sharing</a>: an Android app shares its sounds with LA2L Sender, without network code.</li>
 <li><a href="rest-api">The REST API</a>: the five calls, the command line, and the OpenAPI file.</li>
 <li><a href="manifest">The package description</a>: every field, and what LA2L does with it.</li>

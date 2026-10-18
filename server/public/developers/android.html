@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Android: LA2L for developers</title>
-<meta name="description" content="An Android app sends with five HTTPS calls, below in Kotlin, or shares its WAV files with LA2L Sender without any network code: see Sharing.">
+<meta name="description" content="An Android app sends with the Android SDK, or with five HTTPS calls of its own (below, in Kotlin), or shares its WAV files with LA2L Sender without any network…">
 <link rel="alternate" type="text/markdown" href="android.md">
 <link rel="icon" href="../logo.png">
 <link rel="stylesheet" href="style.css">
@@ -29,11 +29,23 @@
 </header>
 <main>
 <h1 id="android">Android</h1>
-<p>An Android app sends with five HTTPS calls, below in Kotlin, or shares its WAV files with LA2L Sender without any network code: see <a href="sharing">Sharing</a>.</p>
-<p>The Android SDK, <code>nl.lloydstellar:la2l</code> for Java and <code>nl.lloydstellar:la2l-ktx</code> for Kotlin, is built and tested but <strong>not published yet</strong>: its Maven repository at <code>https://lloydstellar.nl/la2l/maven/</code> comes later. This is how it will look:</p>
-<pre><code class="language-kotlin">// Once published. settings.gradle.kts: dependencyResolutionManagement { repositories { maven(&quot;https://lloydstellar.nl/la2l/maven/&quot;) } }
-// app/build.gradle.kts: implementation(&quot;nl.lloydstellar:la2l-ktx:0.1.0&quot;)
-import nl.lloydstellar.la2l.*
+<p>An Android app sends with the Android SDK, or with five HTTPS calls of its own (below, in Kotlin), or shares its WAV files with LA2L Sender without any network code: see <a href="sharing">Sharing</a>.</p>
+<p>The Android SDK is <code>nl.lloydstellar:la2l</code> for Java, without dependencies, and <code>nl.lloydstellar:la2l-ktx</code> for Kotlin, for Android 7.0 (API 24) and newer. They are in LA2L's own Maven repository:</p>
+<pre><code class="language-kotlin">// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven(&quot;https://lloydstellar.nl/la2l/maven/&quot;)
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation(&quot;nl.lloydstellar:la2l-ktx:0.1.0&quot;) // or nl.lloydstellar:la2l:0.1.0 from Java
+}</code></pre>
+<p>Every file in it is signed with the key at <a href="https://lloydstellar.nl/la2l/maven/signing-key.asc">https://lloydstellar.nl/la2l/maven/signing-key.asc</a>. Sending, in Kotlin:</p>
+<pre><code class="language-kotlin">import nl.lloydstellar.la2l.*
 import nl.lloydstellar.la2l.ktx.* // pair, send, awaitImport as suspend functions
 
 val la2l = La2l(context, &quot;Web808&quot;) // Live shows &quot;Paired with Web808&quot;
@@ -58,7 +70,7 @@ la2l.send(new SoundPackage(&quot;Treinbeat&quot;).bpm(92).add(Sound.loop(&quot;K
 <li><strong>Examples</strong>: <code>examples/android-recorder</code> records a loop in time after a count-in and sends it; <code>examples/android-java</code> does the same with a tone from Java, and shares it with LA2L Sender.</li>
 </ul>
 <h2 id="without-the-sdk">Without the SDK</h2>
-<p>What to use until the SDK is published: the same five HTTPS calls, in Kotlin with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
+<p>For an app that wants no dependency: the same five HTTPS calls, in Kotlin with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
 <h3 id="1-a-wav-file">1. A WAV file</h3>
 <p>From 16-bit PCM, as <code>AudioRecord</code> gives it or as your audio engine renders it:</p>
 <pre><code class="language-kotlin">fun wav16(pcm: ShortArray, sampleRate: Int, channels: Int): ByteArray {
