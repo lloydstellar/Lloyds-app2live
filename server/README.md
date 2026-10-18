@@ -112,7 +112,7 @@ docker logs la2l-server 2>&1 | grep ERROR    # the errors of a running server
 ls ~/la2l-server-logs                        # the logs of earlier containers
 ```
 
-Docker keeps up to 5 files of 10 MB per container (set in `compose.yaml`). A new build makes a new container with an empty log; `update.sh` saves the old one to `~/la2l-server-logs` and keeps the last 30. `docker compose restart` keeps the log.
+Docker keeps up to 5 files of 10 MB per container (set in `compose.yaml`). A new build makes a new container with an empty log; `update.sh` saves the old one to `~/la2l-server-logs` and keeps the last 30; a saved log is removed after 30 days (by `update.sh`, and every night by `backup.sh`), as the privacy statement says. `docker compose restart` keeps the log.
 
 Every line starts with the time in UTC. Only a server that cannot start writes a line without it: `la2l-server: ...` for a wrong setting, `la2l-server could not start: ...` for anything else, such as a database from a newer server. There is one line per request:
 
@@ -127,7 +127,7 @@ Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.11.0 listening on ...` | The server started. |
+| `la2l-server 0.11.1 listening on ...` | The server started. |
 | `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. With `; test receivers: 3 with 4 app(s)` when there are test receivers, which are not counted as computers. |
 | `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. `new test receiver`: a test receiver, such as the page `/la2l/receiver`. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |

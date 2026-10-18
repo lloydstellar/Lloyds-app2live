@@ -24,4 +24,5 @@ Web apps use the npm package la2l (ESM, no dependencies) or its <la2l-send-butto
 ## Optional
 
 - [LA2L: Send to Live](https://lloydstellar.nl/la2l/developers/paste-text.md): A text to paste into the knowledge of Lovable or Bolt: the rules and examples on one page
+- [Privacy](https://lloydstellar.nl/la2l/developers/privacy.md): What the LA2L server keeps about the people who use it, why, and for how long
 - [All pages in one file](https://lloydstellar.nl/la2l/llms-full.txt)

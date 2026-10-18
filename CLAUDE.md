@@ -7,7 +7,7 @@ This repository holds the parts of that chain:
 | Part | Where | Runs on | State |
 |---|---|---|---|
 | The device | the repository root: `src/`, `tests/`, `tools/`, `devices/la2l/` | Erik's computer, inside Live 12.4 or newer (Windows and Mac) | 0.2.2, tested in Live 12.4.6 on Windows |
-| The server, `la2l-server` | `server/` | Erik's Linux VPS, at `https://lloydstellar.nl/la2l/` | 0.11.0; built from `server/BUILD-PROMPT.md`, run as `server/README.md` says |
+| The server, `la2l-server` | `server/` | Erik's Linux VPS, at `https://lloydstellar.nl/la2l/` | 0.11.1; built from `server/BUILD-PROMPT.md`, run as `server/README.md` says |
 | The developer kit: SDKs, skill and test receiver for app makers | `sdk/` (fixtures, `la2l` for npm in `sdk/js`, the Android SDK in `sdk/android`), `docs/openapi.yaml`, `docs/app2live-1.schema.json`, `docs/developers/`, `skills/`, `examples/`, the test receiver and the developer pages in `server/public/` | npm, our own Maven repository and the server's pages | Phases 1 to 5 of 5 built from `sdk/BUILD-PROMPT.md` on the VPS (`la2l` 0.1.0 with its button, command line and test receivers; the drum machine example; the skill and the developer pages; LA2L Sender as a share target on Android; the Android SDK 0.1.0, built in GitHub Actions); nothing published yet; see `sdk/CLAUDE.md` |
 
 The contract between the two is [docs/server-api.md](docs/server-api.md); the package format is [docs/manifest.md](docs/manifest.md). Change them only together with the code on both sides, and keep device 0.1.1 working: it may still be installed somewhere, and the server must not care which version calls it.
