@@ -33,7 +33,7 @@ Starts pairing. The token is sent along when this computer is already paired (Se
 Request:
 
 ```json
-{ "device_id": "0b6c4c58-1f0e-4a5e-9d64-0c7f2c1e8a10", "device_name": "ERIK-PC", "client": "LA2L 0.1.1", "platform": "win32" }
+{ "device_id": "0b6c4c58-1f0e-4a5e-9d64-0c7f2c1e8a10", "device_name": "STUDIO-PC", "client": "LA2L 0.1.1", "platform": "win32" }
 ```
 
 `device_id` is a random UUID made once per computer. `device_name` is the computer name, to show in the app.
@@ -181,7 +181,7 @@ No token. Links the app to the computer that shows the code.
 Answer:
 
 ```json
-{ "app_token": "la2la_...", "device_name": "ERIK-PC" }
+{ "app_token": "la2la_...", "device_name": "STUDIO-PC" }
 ```
 
 A wrong, used or expired code: `404 {"error": "This code does not work. Check the code in Live."}`, the same answer for all three. At most 10 tries a minute from one address, then 429.
@@ -189,10 +189,10 @@ A wrong, used or expired code: `404 {"error": "This code does not work. Check th
 ### `GET /app/me`  (app token)
 
 ```json
-{ "device_name": "ERIK-PC", "app_name": "Web808", "paired_at": "2026-10-16T14:30:00.000Z" }
+{ "device_name": "STUDIO-PC", "app_name": "Web808", "paired_at": "2026-10-16T14:30:00.000Z" }
 ```
 
-So the app can show "Paired with ERIK-PC". Ask this now and then, for example when the app starts; a 401 means it was unpaired.
+So the app can show "Paired with STUDIO-PC". Ask this now and then, for example when the app starts; a 401 means it was unpaired.
 
 ### `POST /app/unpair`  (app token)
 

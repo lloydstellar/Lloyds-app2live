@@ -152,8 +152,8 @@ paths:
                     examples: [la2la_6Wq0...]
                   device_name:
                     type: string
-                    description: The name of the computer, to show as "Paired with ERIK-PC".
-                    examples: [ERIK-PC]
+                    description: The name of the computer, to show as "Paired with STUDIO-PC".
+                    examples: [STUDIO-PC]
         '404':
           description: A wrong, used or expired code. The same answer for all three.
           content:
@@ -203,7 +203,7 @@ paths:
                 properties:
                   device_name:
                     type: string
-                    examples: [ERIK-PC]
+                    examples: [STUDIO-PC]
                   app_name:
                     type: string
                     examples: [Web808]

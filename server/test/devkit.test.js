@@ -282,7 +282,7 @@ test('schema 2: a database of server 0.6.0 is brought up to date and keeps every
     old.exec(MIGRATIONS[0]);
     old.exec('PRAGMA user_version = 1');
     const now = '2026-10-17T10:00:00.000Z';
-    old.prepare("INSERT INTO devices (device_id, name, token_hash, created_at) VALUES ('dev-old', 'ERIK-PC', ?, ?)").run('d'.repeat(64), now);
+    old.prepare("INSERT INTO devices (device_id, name, token_hash, created_at) VALUES ('dev-old', 'STUDIO-PC', ?, ?)").run('d'.repeat(64), now);
     for (const [name, hash] of [['LA2L Sender', 'a'], ['Robot Voice', 'b']]) {
       old.prepare('INSERT INTO apps (device_ref, name, token_hash, created_at) VALUES (1, ?, ?, ?)').run(name, hash.repeat(64), now);
     }

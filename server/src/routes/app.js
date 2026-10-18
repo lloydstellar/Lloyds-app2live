@@ -68,7 +68,7 @@ function appRoutes(router, { store, storage, auth, limits, clock, log }) {
     sendJson(ctx.res, 200, { app_token: result.appToken, device_name: result.deviceName });
   });
 
-  // So an app can show "Paired with ERIK-PC", and find out with a 401 that it was unpaired.
+  // So an app can show "Paired with STUDIO-PC", and find out with a 401 that it was unpaired.
   router.add('GET', '/api/app/me', (ctx) => {
     const app = auth.app(ctx);
     sendJson(ctx.res, 200, { device_name: app.device_name, app_name: app.name, paired_at: app.created_at });

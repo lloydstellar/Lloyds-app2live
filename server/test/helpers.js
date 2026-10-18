@@ -87,7 +87,7 @@ async function startServer(env = {}, overrides = {}, opts = {}) {
 // Pair start as device 0.1.1 sends it. Resolves to the answer's JSON.
 async function pairStart(s, deviceId = 'dev-1', token) {
   const r = await s.request('POST', '/api/pair/start', {
-    body: { device_id: deviceId, device_name: 'ERIK-PC', client: 'LA2L 0.1.1', platform: 'win32' },
+    body: { device_id: deviceId, device_name: 'STUDIO-PC', client: 'LA2L 0.1.1', platform: 'win32' },
     token,
   });
   if (r.status !== 200) throw new Error(`pair/start answered ${r.status}: ${r.body}`);
