@@ -32,7 +32,7 @@ final class Text {
     }
 
     /** 1693484 -> "1.6 MB", 210763776 -> "201 MB", as the device writes sizes. */
-    static String megabytes(long bytes) {
+    static String megabytes(double bytes) {
         return String.format(Locale.ROOT, bytes < 10485760 ? "%.1f MB" : "%.0f MB", bytes / 1048576.0);
     }
 
@@ -60,20 +60,26 @@ final class Text {
         return v.toString();
     }
 
-    // A number as JavaScript prints it, for the cases a description has: 92, 92.5, 1e+21.
+    // A number as JavaScript prints it: 92, 92.5, 0.0005, 1152921504606847000, 1e+21. JavaScript
+    // takes the fewest digits that give the same double back; so does this, on every Java.
     static String jsNumber(double d) {
         if (Double.isNaN(d)) return "NaN";
         if (Double.isInfinite(d)) return d > 0 ? "Infinity" : "-Infinity";
-        if (d == Math.rint(d) && Math.abs(d) < 1e21) return String.valueOf((long) d);
-        String s = Double.toString(d);
-        if (s.contains("E")) {
-            String[] parts = s.split("E");
-            String mantissa = parts[0].endsWith(".0") ? parts[0].substring(0, parts[0].length() - 2) : parts[0];
-            int exponent = Integer.parseInt(parts[1]);
-            if (exponent >= -6 && exponent < 21) return new java.math.BigDecimal(d).stripTrailingZeros().toPlainString();
-            return mantissa + "e" + (exponent > 0 ? "+" : "") + exponent;
+        if (d == 0) return "0";
+        if (d == Math.rint(d) && Math.abs(d) < 9007199254740992.0) return String.valueOf((long) d);
+        String fewest = null;
+        for (int digits = 1; digits <= 17 && fewest == null; digits++) {
+            String s = String.format(Locale.ROOT, "%." + (digits - 1) + "e", d);
+            if (Double.parseDouble(s) == d) fewest = s;
         }
-        return s;
+        if (fewest == null) fewest = String.format(Locale.ROOT, "%.16e", d);
+        java.math.BigDecimal exact = new java.math.BigDecimal(fewest).stripTrailingZeros();
+        double size = Math.abs(d);
+        if (size >= 1e-6 && size < 1e21) return exact.toPlainString();
+        String digits = exact.unscaledValue().abs().toString();
+        int exponent = digits.length() - 1 - exact.scale();
+        String mantissa = digits.length() > 1 ? digits.charAt(0) + "." + digits.substring(1) : digits;
+        return (d < 0 ? "-" : "") + mantissa + "e" + (exponent > 0 ? "+" : "") + exponent;
     }
 
     /** JavaScript's truthiness: not null, false, 0, NaN or "". */

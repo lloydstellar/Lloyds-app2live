@@ -224,7 +224,8 @@ public final class ManifestCheck {
         if (items.length() > MAX_ITEMS) throw new ManifestError("The package has " + items.length() + " sounds. LA2L takes " + MAX_ITEMS + " at most.");
 
         Set<String> files = new HashSet<>();
-        long total = 0;
+        // A number as in JavaScript: sizes of 6e18 add up without overflowing, as on the device.
+        double total = 0;
         for (int index = 0; index < items.length(); index++) {
             CheckedSound item = new CheckedSound(index);
             pkg.items.add(item);
@@ -255,7 +256,7 @@ public final class ManifestCheck {
             Object bytes = it.opt("bytes");
             if (Text.isInteger(bytes) && Text.finite(bytes) > 0) {
                 item.bytes = (long) (double) Text.finite(bytes);
-                total += item.bytes;
+                total += Text.finite(bytes);
             } else if (it.has("bytes")) warnings.add(item.name + ": bytes ignored");
 
             Object kindValue = it.opt("kind");

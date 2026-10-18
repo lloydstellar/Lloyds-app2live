@@ -1,5 +1,8 @@
 // la2l-ktx: the calls of la2l as suspend functions, and a builder for the sounds of a package.
 //
+//   import nl.lloydstellar.la2l.*
+//   import nl.lloydstellar.la2l.ktx.*
+//
 //   val la2l = La2l(context, "Web808")
 //   if (!la2l.isPaired) la2l.pair(codeFromUser)
 //   val delivery = la2l.send(title = "Treinbeat", bpm = 92.0) {
@@ -8,7 +11,8 @@
 //   }
 //   delivery.awaitImport()
 //
-// Cancelling the coroutine stops the call. Every failure is a La2lException with a code.
+// Cancelling the coroutine stops the call, also an upload under way. Every failure is a
+// La2lException with a code.
 package nl.lloydstellar.la2l.ktx
 
 import java.io.File

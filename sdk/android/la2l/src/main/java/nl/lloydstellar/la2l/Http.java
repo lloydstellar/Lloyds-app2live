@@ -172,6 +172,7 @@ final class Http {
         HttpURLConnection c = null;
         try {
             c = open(method, path, token);
+            job.attach(c);
             c.setReadTimeout(JSON_MS);
             if (body != null) {
                 byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
@@ -184,11 +185,13 @@ final class Http {
             }
             return answerOf(c);
         } catch (SocketTimeoutException e) {
+            job.check();
             throw tooSlow();
         } catch (IOException e) {
             job.check();
             throw unreachable();
         } finally {
+            job.detach();
             if (c != null) c.disconnect();
         }
     }
@@ -228,6 +231,7 @@ final class Http {
         long size = sound.size();
         try {
             c = open("PUT", path, token);
+            job.attach(c);
             c.setReadTimeout(UPLOAD_ANSWER_MS);
             c.setDoOutput(true);
             c.setRequestProperty("Content-Type", "audio/wav");
@@ -246,11 +250,13 @@ final class Http {
             }
             return answerOf(c);
         } catch (SocketTimeoutException e) {
+            job.check();
             throw tooSlow();
         } catch (IOException e) {
             job.check();
             throw new La2lException(La2lException.Code.NETWORK, "The upload broke off. Check the internet connection.");
         } finally {
+            job.detach();
             if (c != null) c.disconnect();
         }
     }

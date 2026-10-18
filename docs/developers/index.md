@@ -23,7 +23,7 @@ await delivery.imported(); // the user clicked Import in Live
 | Your app | Use | Read |
 |---|---|---|
 | A web app | `npm install la2l`, or the Send to Live button without a build step | [Web apps](web.md), [The button](button.md) |
-| An Android app | The Android SDK, `nl.lloydstellar:la2l-ktx` or `la2l`; or share the WAV files with LA2L Sender | [Android](android.md), [Sharing](sharing.md) |
+| An Android app | Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later | [Android](android.md), [Sharing](sharing.md) |
 | A script, or any other language | `npx la2l send`, or the same five calls | [The REST API](rest-api.md) |
 | Built with an AI tool | The LA2L skill, or the paste text for Lovable and Bolt | [AI tools](ai-tools.md) |
 
@@ -49,7 +49,7 @@ The test receiver stands in for LA2L in Live: it shows a code, imports what you 
 
 - [Web apps](web.md): the npm package, Web Audio to WAV, following a send.
 - [The button](button.md): `<la2l-send-button>`, and how to name LA2L and Ableton.
-- [Android](android.md): the Android SDK for Kotlin and Java, and the REST calls without it.
+- [Android](android.md): the REST calls in Kotlin, and the Android SDK that comes later.
 - [Sharing](sharing.md): an Android app shares its sounds with LA2L Sender, without network code.
 - [The REST API](rest-api.md): the five calls, the command line, and the OpenAPI file.
 - [The package description](manifest.md): every field, and what LA2L does with it.

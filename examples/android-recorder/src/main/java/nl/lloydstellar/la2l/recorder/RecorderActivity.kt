@@ -21,7 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.lloydstellar.la2l.Kind
@@ -138,42 +138,54 @@ class RecorderActivity : Activity() {
         else status.text = "LA2L Recorder needs the microphone to record a loop."
     }
 
-    // A count-in of four clicks at the tempo, then exactly `beats` beats of mono 16-bit sound at
-    // 48 kHz: a loop of a whole number of beats, so it stays in time in Live.
-    private suspend fun recordLoop(bpm: Double, beats: Int): ByteArray {
+    // Four clicks of count-in at the tempo, then exactly `beats` beats of mono 16-bit sound at 48
+    // kHz: a loop of a whole number of beats, so it stays in time in Live. The microphone runs from
+    // the first click, and exactly four beats of frames are dropped, so the downbeat is in.
+    private suspend fun recordLoop(bpm: Double, beats: Int): ByteArray = withContext(Dispatchers.IO) {
         val rate = 48000
-        val frames = Math.round(rate * 60.0 / bpm * beats).toInt()
-        val beatMs = Math.round(60000.0 / bpm)
+        val beatFrames = rate * 60.0 / bpm
+        val countIn = Math.round(beatFrames * 4).toInt()
+        val frames = Math.round(beatFrames * beats).toInt()
+        val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        @Suppress("MissingPermission")
+        val recorder = AudioRecord(MediaRecorder.AudioSource.MIC, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(min, rate))
+        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            recorder.release()
+            throw IllegalStateException("the microphone could not be opened")
+        }
         val clicks = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
+        val loop = ShortArray(frames)
+        val piece = ShortArray(4096)
+        var started = false
         try {
-            for (i in 4 downTo 1) {
-                status.text = "$i"
-                clicks.startTone(if (i == 4) ToneGenerator.TONE_PROP_BEEP2 else ToneGenerator.TONE_PROP_BEEP, 60)
-                delay(beatMs)
+            recorder.startRecording()
+            started = true
+            var read = 0
+            var click = 0
+            while (read < countIn + frames) {
+                ensureActive()
+                // A click on each beat of the count-in, as the recording gets there.
+                while (click < 4 && read >= Math.round(beatFrames * click)) {
+                    clicks.startTone(if (click == 0) ToneGenerator.TONE_PROP_BEEP2 else ToneGenerator.TONE_PROP_BEEP, 60)
+                    val left = 4 - click
+                    withContext(Dispatchers.Main) { status.text = "$left" }
+                    click++
+                }
+                val n = recorder.read(piece, 0, minOf(piece.size, countIn + frames - read))
+                if (n < 0) throw IllegalStateException("the microphone answered $n")
+                for (i in 0 until n) {
+                    val at = read + i - countIn
+                    if (at >= 0) loop[at] = piece[i]
+                }
+                if (read < countIn && read + n >= countIn) withContext(Dispatchers.Main) { status.text = "Recording..." }
+                read += n
             }
         } finally {
+            if (started) recorder.stop()
+            recorder.release()
             clicks.release()
         }
-        status.text = "Recording..."
-        return withContext(Dispatchers.IO) {
-            val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            @Suppress("MissingPermission")
-            val recorder = AudioRecord(MediaRecorder.AudioSource.MIC, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(min, rate))
-            val samples = ShortArray(frames)
-            try {
-                recorder.startRecording()
-                var done = 0
-                while (done < frames) {
-                    val n = recorder.read(samples, done, minOf(4096, frames - done))
-                    if (n < 0) throw IllegalStateException("the microphone answered $n")
-                    done += n
-                }
-            } finally {
-                recorder.stop()
-                recorder.release()
-            }
-            Wav.fromPcm16(samples, rate, 1)
-        }
+        Wav.fromPcm16(loop, rate, 1)
     }
 
     private fun sendNow() {

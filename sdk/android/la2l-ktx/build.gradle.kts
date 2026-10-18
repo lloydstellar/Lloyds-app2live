@@ -35,6 +35,8 @@ android {
 
 kotlin {
     explicitApi()
+    // The published POM asks for this kotlin-stdlib, so apps on Kotlin 2.1 can compile against it.
+    coreLibrariesVersion = "2.1.0"
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
         // Apps on Kotlin 2.1 and newer can use it.

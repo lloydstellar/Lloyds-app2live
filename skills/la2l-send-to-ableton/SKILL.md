@@ -22,7 +22,7 @@ Do the steps below in order. Prefer the SDK over raw HTTP: ten lines instead of 
 | A web app with npm and a bundler (React, Vue, Svelte, Next.js, Vite) | `npm install la2l`: the client, or the button from `la2l/button` |
 | A web page without a build step | The button from jsDelivr (one `<script type="module">`) |
 | A script (Python, shell, anything that can run a command) | `npx la2l pair` and `npx la2l send` |
-| Android (Kotlin or Java) | The Android SDK `nl.lloydstellar:la2l-ktx` (or `la2l` from Java), or a share with LA2L Sender: [references/android.md](references/android.md) |
+| Android (Kotlin or Java) | The REST API from Kotlin, or a share with LA2L Sender: [references/android.md](references/android.md). The Android SDK is not published yet |
 | Anything else | The REST API: [references/api.md](references/api.md) |
 
 ## 2. Install

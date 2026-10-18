@@ -70,8 +70,8 @@ public final class Delivery {
         return La2l.run(job -> status(job));
     }
 
-    public void status(Callback<DeliveryStatus> callback) {
-        La2l.deliver(statusAsync(), callback);
+    public CompletableFuture<DeliveryStatus> status(Callback<DeliveryStatus> callback) {
+        return La2l.deliver(statusAsync(), callback);
     }
 
     /**
@@ -108,8 +108,8 @@ public final class Delivery {
         });
     }
 
-    public void imported(Callback<DeliveryStatus> callback) {
-        La2l.deliver(importedAsync(), callback);
+    public CompletableFuture<DeliveryStatus> imported(Callback<DeliveryStatus> callback) {
+        return La2l.deliver(importedAsync(), callback);
     }
 
     /** Takes the package back, until it is in Live. */
@@ -123,7 +123,7 @@ public final class Delivery {
         });
     }
 
-    public void cancel(Callback<Void> callback) {
-        La2l.deliver(cancelAsync(), callback);
+    public CompletableFuture<Void> cancel(Callback<Void> callback) {
+        return La2l.deliver(cancelAsync(), callback);
     }
 }

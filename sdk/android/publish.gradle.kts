@@ -44,7 +44,8 @@ afterEvaluate {
             }
         }
     }
-    val key = providers.environmentVariable("SIGNING_KEY").orNull
+    // GitHub gives an empty value for a secret that does not exist: that is no key either.
+    val key = providers.environmentVariable("SIGNING_KEY").orNull?.takeIf { it.isNotBlank() }
     if (key != null) {
         configure<SigningExtension> {
             useInMemoryPgpKeys(key, providers.environmentVariable("SIGNING_PASSWORD").orNull)

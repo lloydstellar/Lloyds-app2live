@@ -7,7 +7,7 @@ Send sounds from an Android app to Ableton Live with [LA2L](https://lloydstellar
 
 ## Install
 
-The libraries are in LA2L's own Maven repository:
+**Not published yet.** Version 0.1.0 is built and tested, and will be in LA2L's own Maven repository; until then `https://lloydstellar.nl/la2l/maven/` answers 404, and an app sends with the REST API (https://lloydstellar.nl/la2l/developers/android, "Without the SDK"). Once it is there:
 
 ```kotlin
 // settings.gradle.kts
@@ -25,11 +25,14 @@ dependencies {
 }
 ```
 
-la2l adds the `INTERNET` permission to your app.
+la2l adds the `INTERNET` permission to your app. The token stays in a private file in the app's no-backup folder, so Auto Backup does not copy it to another phone.
 
 ## Kotlin
 
 ```kotlin
+import nl.lloydstellar.la2l.*
+import nl.lloydstellar.la2l.ktx.* // pair, send, awaitImport as suspend functions
+
 val la2l = La2l(context, "Web808") // Live shows "Paired with Web808"
 if (!la2l.isPaired) la2l.pair(codeFromUser) // "K7P 42Q", from LA2L in Live
 
@@ -55,7 +58,7 @@ la2l.send(pkg, new Callback<Delivery>() {
 });
 ```
 
-Every call has a variant with a `Callback`, which reports on the main thread, and one that returns a `CompletableFuture`: `pairAsync`, `meAsync`, `unpairAsync`, `sendAsync`, and on a `Delivery` `statusAsync`, `importedAsync`, `cancelAsync`.
+Every call has a variant with a `Callback`, which reports on the main thread, and one that returns a `CompletableFuture`: `pairAsync`, `meAsync`, `unpairAsync`, `sendAsync`, and on a `Delivery` `statusAsync`, `importedAsync`, `cancelAsync`. The Callback variants return the future too: cancel it in `onDestroy`, and the call stops and reports nothing.
 
 ## Pairing
 
@@ -90,7 +93,10 @@ LA2L takes WAV only: PCM 16 or 24 bit (8 and 32 work too) or float 32 or 64 bit,
 `La2lShare.intent` builds a share for LA2L Sender, the installed web app of LA2L: the WAV files, readable through la2l's own provider, and their description in the text, so LA2L Sender knows loop or one-shot, BPM and role.
 
 ```kotlin
-val share = La2lShare.intent(context, SoundPackage("Treinbeat").bpm(92.0).add(Sound.loop("Kick", kickWav).role(Role.DRUMS)))
+// It copies the files: off the main thread, or with the Callback variant, which answers on it.
+val share = withContext(Dispatchers.IO) {
+    La2lShare.intent(context, SoundPackage("Treinbeat").bpm(92.0).add(Sound.loop("Kick", kickWav).role(Role.DRUMS)))
+}
 context.startActivity(Intent.createChooser(share, "Send to Live"))
 ```
 
@@ -98,7 +104,7 @@ No pairing in your app: the user installed LA2L Sender from Chrome and paired it
 
 ## Large uploads in the background
 
-A send of many megabytes over a phone network can take minutes. To let it go on when the user leaves the app, send from a WorkManager job (`androidx.work:work-runtime-ktx`, not a dependency of la2l):
+A send of many megabytes over a phone network can take minutes. To let it go on when the user leaves the app, send from a WorkManager job (`androidx.work:work-runtime-ktx`, not a dependency of la2l). Android stops a job after 10 minutes unless it runs in the foreground: for a large upload, call `setForeground` with a notification first.
 
 ```kotlin
 class SendToLive(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -127,7 +133,7 @@ WorkManager.getInstance(context).enqueue(
 
 The test receiver stands in for LA2L in Live. Open https://lloydstellar.nl/la2l/receiver on a computer, pair your app with the code it shows, and send: the page says per sound what Live would do, and your app needs no change.
 
-For tests that run on the computer (JVM tests), `npx la2l test-receiver --local` starts an LA2L server in memory: point the client at the address it prints, with `new La2l.Options("My app").server(address).storage(Storage.memory())`. A phone or an emulator reaches it after `adb reverse tcp:<port> tcp:<port>`, at `http://127.0.0.1:<port>/api`, if the app's network security config allows plain http to 127.0.0.1 (in a debug build only). la2l allows plain http for `localhost` and `127.0.0.1` only.
+For tests that run on the computer (JVM tests, with `testImplementation("org.json:json:20260814")`, since Android's own org.json is not there), `npx la2l test-receiver --local` starts an LA2L server in memory: point the client at the address it prints, with `new La2l.Options("My app").server(address).storage(Storage.memory())`. A phone or an emulator reaches it after `adb reverse tcp:<port> tcp:<port>`, at `http://127.0.0.1:<port>/api`, if the app's network security config allows plain http to 127.0.0.1 (in a debug build only). la2l allows plain http for `localhost` and `127.0.0.1` only.
 
 ## Building
 

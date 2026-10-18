@@ -32,7 +32,8 @@ import org.json.JSONObject;
  * Sends sounds from an Android app to LA2L in Ableton Live. Pair once with the code LA2L shows in
  * Live, then send sounds and follow them until they are in Live. The calls run on a background
  * thread: the Async methods return a CompletableFuture, the others report to a Callback on the
- * main thread. From Kotlin, la2l-ktx makes them suspend functions.
+ * main thread and return the future too. Cancelling the future stops the call, and a cancelled
+ * call reports nothing: cancel in onDestroy. From Kotlin, la2l-ktx makes them suspend functions.
  *
  * <pre>
  * La2l la2l = new La2l(context, "Web808"); // Live shows "Paired with Web808"
@@ -93,16 +94,16 @@ public final class La2l {
             return this;
         }
 
-        /** Where the token is kept. Default with a Context: the app's private SharedPreferences. */
+        /** Where the token is kept. Default with a Context: a private file that is not backed up. */
         public Options storage(Storage storage) {
             this.storage = storage;
             return this;
         }
     }
 
-    /** The client for this app, with the token in the app's private SharedPreferences. */
+    /** The client for this app, with the token in a private file that Android does not back up. */
     public La2l(Context context, String appName) {
-        this(new Options(appName).storage(Storage.sharedPreferences(context)).appVersion(versionOf(context)));
+        this(new Options(appName).storage(Storage.privateFile(context)).appVersion(versionOf(context)));
     }
 
     public La2l(Options options) {
@@ -212,18 +213,27 @@ public final class La2l {
         return new La2lException(La2lException.Code.SERVER, t.getMessage() == null ? t.toString() : t.getMessage());
     }
 
-    static <T> void deliver(CompletableFuture<T> future, Callback<T> callback) {
-        future.whenComplete((value, error) -> MainThread.post(() -> {
-            if (error == null) callback.onSuccess(value);
-            else callback.onError(unwrap(error));
-        }));
+    // The callback on the main thread, unless the app cancelled the call: then it wants nothing.
+    static <T> CompletableFuture<T> deliver(CompletableFuture<T> future, Callback<T> callback) {
+        future.whenComplete((value, error) -> {
+            if (future.isCancelled()) return;
+            MainThread.post(() -> {
+                if (error == null) callback.onSuccess(value);
+                else callback.onError(unwrap(error));
+            });
+        });
+        return future;
     }
 
     static JSONObject json(Object... keysAndValues) {
         JSONObject o = new JSONObject();
         try {
             for (int i = 0; i < keysAndValues.length; i += 2) {
-                if (keysAndValues[i + 1] != null) o.put((String) keysAndValues[i], keysAndValues[i + 1]);
+                Object v = keysAndValues[i + 1];
+                if (v == null) continue;
+                // NaN and infinity are no JSON: they go as null, and the server warns, as with the web SDK.
+                if (v instanceof Double && !Double.isFinite((Double) v)) v = JSONObject.NULL;
+                o.put((String) keysAndValues[i], v);
             }
         } catch (JSONException e) {
             throw new IllegalArgumentException(e.getMessage());
@@ -254,8 +264,8 @@ public final class La2l {
         });
     }
 
-    public void pair(String code, Callback<String> callback) {
-        deliver(pairAsync(code), callback);
+    public CompletableFuture<String> pair(String code, Callback<String> callback) {
+        return deliver(pairAsync(code), callback);
     }
 
     /** Which computer this app is paired with. Ask it now and then; NOT_PAIRED means: pair again. */
@@ -269,8 +279,8 @@ public final class La2l {
         });
     }
 
-    public void me(Callback<Me> callback) {
-        deliver(meAsync(), callback);
+    public CompletableFuture<Me> me(Callback<Me> callback) {
+        return deliver(meAsync(), callback);
     }
 
     /**
@@ -288,8 +298,8 @@ public final class La2l {
         });
     }
 
-    public void unpair(Callback<Void> callback) {
-        deliver(unpairAsync(), callback);
+    public CompletableFuture<Void> unpair(Callback<Void> callback) {
+        return deliver(unpairAsync(), callback);
     }
 
     // ---- sending ----
@@ -303,8 +313,8 @@ public final class La2l {
         return run(job -> send(pkg, job));
     }
 
-    public void send(SoundPackage pkg, Callback<Delivery> callback) {
-        deliver(sendAsync(pkg), callback);
+    public CompletableFuture<Delivery> send(SoundPackage pkg, Callback<Delivery> callback) {
+        return deliver(sendAsync(pkg), callback);
     }
 
     /** Follows a package that was sent earlier, for example after the app restarted. */
@@ -412,7 +422,7 @@ public final class La2l {
         for (JSONObject item : items) list.put(item);
         JSONObject tempo = new JSONObject();
         try {
-            if (pkg.bpm != null) tempo.put("bpm", (double) pkg.bpm);
+            if (pkg.bpm != null) tempo.put("bpm", Double.isFinite(pkg.bpm) ? (Object) pkg.bpm : JSONObject.NULL);
             if (pkg.timeSignature != null) tempo.put("time_signature", new JSONArray().put(pkg.timeSignature[0]).put(pkg.timeSignature[1]));
         } catch (JSONException e) {
             throw new La2lException(La2lException.Code.BAD_PACKAGE, "tempo.bpm is not a number from 20 to 999");

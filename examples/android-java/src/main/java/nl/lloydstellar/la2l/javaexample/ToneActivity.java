@@ -7,6 +7,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import nl.lloydstellar.la2l.Callback;
 import nl.lloydstellar.la2l.Delivery;
 import nl.lloydstellar.la2l.DeliveryStatus;
@@ -23,6 +26,8 @@ import nl.lloydstellar.la2l.Wav;
 public class ToneActivity extends Activity {
     private La2l la2l;
     private TextView status;
+    // The calls under way: cancelled when the activity goes, so none reports to a closed screen.
+    private final List<CompletableFuture<?>> calls = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +57,7 @@ public class ToneActivity extends Activity {
         setContentView(root);
         if (la2l.isPaired()) status.setText("Paired with " + la2l.getDeviceName() + ".");
 
-        pair.setOnClickListener(v -> la2l.pair(code.getText().toString(), new Callback<String>() {
+        pair.setOnClickListener(v -> calls.add(la2l.pair(code.getText().toString(), new Callback<String>() {
             @Override
             public void onSuccess(String computer) {
                 status.setText("Paired with " + computer + ".");
@@ -62,15 +67,15 @@ public class ToneActivity extends Activity {
             public void onError(La2lException error) {
                 status.setText(error.getMessage());
             }
-        }));
+        })));
 
         send.setOnClickListener(v -> {
             status.setText("Sending...");
-            la2l.send(tone().onProgress((part, sound, soundPart) -> status.setText("Sending... " + Math.round(part * 100) + "%")), new Callback<Delivery>() {
+            calls.add(la2l.send(tone().onProgress((part, sound, soundPart) -> status.setText("Sending... " + Math.round(part * 100) + "%")), new Callback<Delivery>() {
                 @Override
                 public void onSuccess(Delivery delivery) {
                     status.setText("Waiting for Import in Live");
-                    delivery.imported(new Callback<DeliveryStatus>() {
+                    calls.add(delivery.imported(new Callback<DeliveryStatus>() {
                         @Override
                         public void onSuccess(DeliveryStatus result) {
                             status.setText("In Live");
@@ -80,24 +85,34 @@ public class ToneActivity extends Activity {
                         public void onError(La2lException error) {
                             status.setText(error.getMessage());
                         }
-                    });
+                    }));
                 }
 
                 @Override
                 public void onError(La2lException error) {
                     status.setText(error.getMessage());
                 }
-            });
+            }));
         });
 
-        share.setOnClickListener(v -> {
-            try {
-                Intent intent = La2lShare.intent(this, tone());
+        // The files are copied on a background thread; the chooser opens on the main thread.
+        share.setOnClickListener(v -> calls.add(La2lShare.intent(this, tone(), new Callback<Intent>() {
+            @Override
+            public void onSuccess(Intent intent) {
                 startActivity(Intent.createChooser(intent, "Send to Live"));
-            } catch (Exception e) {
-                status.setText(e.getMessage());
             }
-        });
+
+            @Override
+            public void onError(La2lException error) {
+                status.setText(error.getMessage());
+            }
+        })));
+    }
+
+    @Override
+    protected void onDestroy() {
+        for (CompletableFuture<?> call : calls) call.cancel(true);
+        super.onDestroy();
     }
 
     // Two bars of 4/4 at 120 BPM: an A on every beat, fading out. Exactly 4 seconds at 48 kHz.

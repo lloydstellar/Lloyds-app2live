@@ -45,12 +45,12 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 
 | Source | Is |
 |---|---|
-| `la2l/src/main/java/nl/lloydstellar/la2l/La2l.java`, `Http.java`, `Delivery.java`, `Storage.java` | The client, as the web client does it: pairing, sending with checks, retries and progress, following a package; the token in private `SharedPreferences`. Every call returns a `CompletableFuture` (`pairAsync`, `sendAsync`, ...) and has a `Callback` variant on the main thread |
+| `la2l/src/main/java/nl/lloydstellar/la2l/La2l.java`, `Http.java`, `Delivery.java`, `Storage.java`, `Job.java` | The client, as the web client does it: pairing, sending with checks, retries and progress, following a package; the token in a private file outside Android's backups. Every call returns a `CompletableFuture` (`pairAsync`, `sendAsync`, ...) and has a `Callback` variant on the main thread that returns it too; cancelling closes the open connection, and a cancelled call reports nothing |
 | `WavCheck.java`, `ManifestCheck.java`, `Text.java` | The checks of the device, ported with the same texts; `FixturesTest` holds them to `../fixtures/expected.json` |
 | `Wav.java` | WAV files from 16-bit or float samples, in memory or on disk |
 | `La2lShare.java`, `La2lFileProvider.java` | A share for LA2L Sender with the description in `EXTRA_TEXT`, and the provider that lets the picked app read the files |
 | `la2l-ktx/src/main/kotlin/.../La2lKtx.kt` | `pair`, `me`, `unpair`, `send { sound(...) }`, `status`, `awaitImport`, `cancel` as suspend functions |
-| `la2l/src/test`, `la2l-ktx/src/test` | JVM tests; `ClientTest` and `La2lKtxTest` run against the real server of `../../server` and the test receiver of `js/` (Node and a build of `js/` needed) |
+| `la2l/src/test`, `la2l-ktx/src/test` | JVM tests; `ClientTest` and `La2lKtxTest` run against the real server of `../../server` and the test receiver of `js/`, `ParityTest` holds `ManifestCheck` to the web SDK on 600 random descriptions (Node and a build of `js/` needed); `FaultyServerTest` plays retries, a 409, a 429, a 401 and a cancel on a fake server |
 | `publish.gradle.kts`, `../../.github/workflows/publish-android.yml` | A Maven repository in `build/maven`, signed when the secrets are there; a tag `android-v<version>` attaches it to a GitHub release |
 
 The versions of Gradle (8.14), the Android Gradle Plugin (8.13) and Kotlin (2.3) are set in `android/build.gradle.kts` and in the workflows; `la2l-ktx` is compiled for Kotlin 2.1 and newer. The example apps target API 34: from 35 Android draws them under the system bars, which their small layouts do not handle.

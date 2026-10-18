@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,40 +43,54 @@ public final class La2lShare {
 
     /**
      * A share intent with copies of the WAV files, readable by the app the user picks, and the
-     * description in EXTRA_TEXT. Checks every file first, as a send would.
+     * description in EXTRA_TEXT. Every sound is checked before anything is copied. It copies up to
+     * 200 MB per package: call it off the main thread, or use the variant with a Callback.
      */
     public static Intent intent(Context context, SoundPackage pkg) throws La2lException, IOException {
         if (pkg == null || pkg.sounds.isEmpty()) throw new La2lException(La2lException.Code.BAD_PACKAGE, "The package has no sounds.");
-        File base = new File(context.getCacheDir(), FOLDER);
-        clean(base);
-        File folder = new File(base, UUID.randomUUID().toString());
-        if (!folder.mkdirs()) throw new IOException("Cannot make " + folder);
+        // First every check, so a refusal leaves nothing behind.
         List<String> names = new ArrayList<>();
         Set<String> taken = new HashSet<>();
-        ArrayList<Uri> uris = new ArrayList<>();
+        for (Sound s : pkg.sounds) {
+            if (s.fileName != null) {
+                if (!ManifestCheck.isValidFileName(s.fileName) || !taken.add(s.fileName.toLowerCase(java.util.Locale.ROOT))) {
+                    throw new La2lException(La2lException.Code.BAD_PACKAGE, label(s, pkg) + " has no valid file name, or the same as another sound.");
+                }
+            }
+        }
         for (int i = 0; i < pkg.sounds.size(); i++) {
             Sound s = pkg.sounds.get(i);
-            String label = s.name != null && !s.name.trim().isEmpty() ? s.name.trim() : "Sound " + (i + 1);
             try {
                 if (s.file != null) WavCheck.check(s.file);
                 else WavCheck.check(s.bytes);
             } catch (La2lException e) {
-                throw new La2lException(La2lException.Code.BAD_WAV, label + " is not a usable WAV: " + e.getMessage());
+                throw new La2lException(La2lException.Code.BAD_WAV, label(s, pkg) + " is not a usable WAV: " + e.getMessage());
             }
-            String name = s.fileName != null ? s.fileName : La2l.fileName(s.file != null ? s.file.getName() : label, i, taken);
-            names.add(name);
-            File copy = new File(folder, name);
-            try (OutputStream out = new FileOutputStream(copy)) {
-                if (s.bytes != null) out.write(s.bytes);
-                else {
-                    try (InputStream in = new java.io.FileInputStream(s.file)) {
-                        byte[] buf = new byte[65536];
-                        int n;
-                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            names.add(s.fileName != null ? s.fileName : La2l.fileName(s.file != null ? s.file.getName() : label(s, pkg), i, taken));
+        }
+        File base = new File(context.getCacheDir(), FOLDER);
+        clean(base);
+        File folder = new File(base, UUID.randomUUID().toString());
+        if (!folder.mkdirs()) throw new IOException("Cannot make " + folder);
+        ArrayList<Uri> uris = new ArrayList<>();
+        try {
+            for (int i = 0; i < pkg.sounds.size(); i++) {
+                Sound s = pkg.sounds.get(i);
+                try (OutputStream out = new FileOutputStream(new File(folder, names.get(i)))) {
+                    if (s.bytes != null) out.write(s.bytes);
+                    else {
+                        try (InputStream in = new java.io.FileInputStream(s.file)) {
+                            byte[] buf = new byte[65536];
+                            int n;
+                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        }
                     }
                 }
+                uris.add(new Uri.Builder().scheme("content").authority(authority(context)).appendPath(folder.getName()).appendPath(names.get(i)).build());
             }
-            uris.add(new Uri.Builder().scheme("content").authority(authority(context)).appendPath(folder.getName()).appendPath(name).build());
+        } catch (IOException e) {
+            remove(folder);
+            throw e;
         }
         Intent intent = new Intent(uris.size() == 1 ? Intent.ACTION_SEND : Intent.ACTION_SEND_MULTIPLE);
         intent.setType("audio/wav");
@@ -85,6 +100,24 @@ public final class La2lShare {
         if (pkg.title != null) intent.putExtra(Intent.EXTRA_SUBJECT, pkg.title);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         return intent;
+    }
+
+    /**
+     * The same on a background thread: the Callback gets the intent on the main thread, to pass to
+     * Intent.createChooser. Cancel the returned future in onDestroy; a cancelled one reports nothing.
+     */
+    public static CompletableFuture<Intent> intent(final Context context, final SoundPackage pkg, Callback<Intent> callback) {
+        return La2l.deliver(La2l.run(job -> {
+            try {
+                return intent(context, pkg);
+            } catch (IOException e) {
+                throw new La2lException(La2lException.Code.SERVER, "The files for the share cannot be written: " + e.getMessage());
+            }
+        }), callback);
+    }
+
+    private static String label(Sound s, SoundPackage pkg) {
+        return s.name != null && !s.name.trim().isEmpty() ? s.name.trim() : "Sound " + (pkg.sounds.indexOf(s) + 1);
     }
 
     /**
@@ -109,7 +142,7 @@ public final class La2lShare {
         }
         JSONObject tempo = new JSONObject();
         try {
-            if (pkg.bpm != null) tempo.put("bpm", (double) pkg.bpm);
+            if (pkg.bpm != null) tempo.put("bpm", Double.isFinite(pkg.bpm) ? (Object) pkg.bpm : JSONObject.NULL);
         } catch (JSONException e) {
             throw new IllegalArgumentException("The BPM is not a number.");
         }
@@ -123,9 +156,13 @@ public final class La2lShare {
         long now = System.currentTimeMillis();
         for (File folder : old) {
             if (now - folder.lastModified() < KEEP_MS) continue;
-            File[] files = folder.listFiles();
-            if (files != null) for (File f : files) f.delete();
-            folder.delete();
+            remove(folder);
         }
+    }
+
+    private static void remove(File folder) {
+        File[] files = folder.listFiles();
+        if (files != null) for (File f : files) f.delete();
+        folder.delete();
     }
 }

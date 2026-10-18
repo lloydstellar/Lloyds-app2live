@@ -1,10 +1,14 @@
 # Android
 
-The Android SDK sends sounds to LA2L from Kotlin or Java: `nl.lloydstellar:la2l`, a library without dependencies for Android 7.0 (API 24) and newer, and `nl.lloydstellar:la2l-ktx`, with suspend functions and a builder on top. They are in LA2L's own Maven repository. Without any network code, an app can also share its WAV files with LA2L Sender, the installed web app of LA2L, with the description of the sounds in `EXTRA_TEXT`: `La2lShare.intent` builds that share (https://lloydstellar.nl/la2l/developers/sharing).
+An Android app sends with five HTTPS calls, below in Kotlin, or shares its WAV files with LA2L Sender without any network code, with the description of the sounds in `EXTRA_TEXT` (https://lloydstellar.nl/la2l/developers/sharing).
+
+The Android SDK, `nl.lloydstellar:la2l` for Java and `nl.lloydstellar:la2l-ktx` for Kotlin, is built and tested but **not published yet**: its Maven repository at `https://lloydstellar.nl/la2l/maven/` comes later. This is how it will look:
 
 ```kotlin
-// settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }
+// Once published. settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }
 // app/build.gradle.kts: implementation("nl.lloydstellar:la2l-ktx:0.1.0")
+import nl.lloydstellar.la2l.*
+import nl.lloydstellar.la2l.ktx.* // pair, send, awaitImport as suspend functions
 
 val la2l = La2l(context, "Web808") // Live shows "Paired with Web808"
 if (!la2l.isPaired) la2l.pair(codeFromUser) // "K7P 42Q", from LA2L in Live
@@ -26,7 +30,7 @@ la2l.send(new SoundPackage("Treinbeat").bpm(92).add(Sound.loop("Kick", kickWav).
 });
 ```
 
-- **Pairing**: a field for the code with this line above it: "In Live, click Pair app in LA2L and type the code it shows." The token stays in the app's private `SharedPreferences`; never log it. Ask for a code again only after the code `NOT_PAIRED`.
+- **Pairing**: a field for the code with this line above it: "In Live, click Pair app in LA2L and type the code it shows." The token stays in a private file that Android does not back up; never log it. Ask for a code again only after the code `NOT_PAIRED`.
 - **Sounds**: WAV only. `Wav.fromPcm16` and `Wav.fromFloat` make one from interleaved samples, in memory or on disk; `WavCheck.check(file)` says whether LA2L can use a file. Make a loop exactly a whole number of beats long, `sampleRate * 60 / bpm * beats` frames, and give it its BPM.
 - **Errors**: every failure is a `La2lException` with a `code` and a message to show as it is. `RATE_LIMITED` has `getRetryAfter()`; `IMPORT_FAILED` means the package stays and the next Import tries again.
 - **Large uploads**: send from a WorkManager job, so the upload goes on when the user leaves the app. The README of `sdk/android` has the recipe.
@@ -34,7 +38,7 @@ la2l.send(new SoundPackage("Treinbeat").bpm(92).add(Sound.loop("Kick", kickWav).
 
 ## Without the SDK
 
-The same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+What to use until the SDK is published: the same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
 
 ### 1. A WAV file
 
