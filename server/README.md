@@ -144,6 +144,24 @@ Between the requests are the events:
 
 Tokens, pair ids, codes, `Authorization` headers and request bodies are never logged. The addresses are, so the logs stay on the VPS.
 
+### The storage warning by e-mail
+
+`deploy/storage-mail.sh` mails the `WARNING storage` line through the sendmail of the VPS. The address is not in the repository: it is the first line of `~/.config/la2l/alert-email`.
+
+```bash
+mkdir -p ~/.config/la2l && chmod 700 ~/.config/la2l
+echo "you@example.org" > ~/.config/la2l/alert-email
+bash deploy/storage-mail.sh --test       # a test mail: check that it arrives, also in the spam folder
+```
+
+Then let cron look every 15 minutes (`crontab -e`, one line at the end):
+
+```
+*/15 * * * * bash $HOME/la2l-server/server/deploy/storage-mail.sh >> $HOME/la2l-server-logs/storage-mail.log 2>&1
+```
+
+`--dry-run` prints the mail it would send now, without sending it.
+
 ### Who is paired
 
 ```bash

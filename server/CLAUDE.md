@@ -34,6 +34,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 | `npm test` | repository root | Device tests; run them after any change to `src/node/manifest.js`, `src/node/wav.js` or the API |
 | `npm run build && npm test` | `../sdk/js` | Builds `public/vendor/la2l.js` from the SDK, and runs its tests, which hold `docs/openapi.yaml` to this server. After `npm ci` there |
 | `bash deploy/update.sh` | `server/` | Build and start what is checked out, after `git pull`. Saves the log of the old container to `~/la2l-server-logs` first (Docker drops it with the container), backs up the database, then waits for the health check |
+| `bash deploy/storage-mail.sh [--test\|--dry-run]` | `server/` | Mails the `WARNING storage` line of the last 20 minutes to the address in `~/.config/la2l/alert-email`; from cron every 15 minutes. Not installed until Erik gives the address and a test mail has arrived |
 | `bash deploy/backup.sh` | `server/` | Copies the database to `~/la2l-server-backups` and keeps the newest 30, whether the server runs or not |
 | `bash deploy/restore.sh <backup>` | `server/` | Puts a backup back: checks it, asks, stops the server, backs up the current database, replaces it, starts, and prints how to undo it. Works whether the server runs, is stopped or keeps restarting |
 | `docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh` | `server/` | Checks the deploy scripts, as CI does |
