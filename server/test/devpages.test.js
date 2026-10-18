@@ -92,10 +92,18 @@ test('server/public/developers is what docs/developers makes, and nothing else',
 });
 
 let s;
+let maven;
 test.before(async () => {
-  s = await startServer();
+  // The Android page links to the signing key, which the server serves from its Maven repository.
+  maven = fs.mkdtempSync(path.join(require('os').tmpdir(), 'la2l-maven-'));
+  fs.mkdirSync(path.join(maven, 'nl', 'lloydstellar'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'sdk', 'android', 'signing-key.asc'), path.join(maven, 'signing-key.asc'));
+  s = await startServer({ MAVEN_DIR: maven });
 });
-test.after(() => s.stop());
+test.after(async () => {
+  await s.stop();
+  fs.rmSync(maven, { recursive: true, force: true });
+});
 
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'";
 

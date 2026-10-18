@@ -25,7 +25,7 @@ await delivery.imported(); // the user clicked Import in Live
 | Your app | Use | Read |
 |---|---|---|
 | A web app | `npm install @lloydstellar/la2l`, or the Send to Live button without a build step | [Web apps](https://lloydstellar.nl/la2l/developers/web.md), [The button](https://lloydstellar.nl/la2l/developers/button.md) |
-| An Android app | Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later | [Android](https://lloydstellar.nl/la2l/developers/android.md), [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md) |
+| An Android app | The Android SDK `nl.lloydstellar:la2l-ktx` (Kotlin) or `nl.lloydstellar:la2l` (Java), five HTTPS calls of your own, or share the WAV files with LA2L Sender | [Android](https://lloydstellar.nl/la2l/developers/android.md), [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md) |
 | A script, or any other language | `npx @lloydstellar/la2l send`, or the same five calls | [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) |
 | Built with an AI tool | The LA2L skill, or the paste text for Lovable and Bolt | [AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md) |
 
@@ -51,7 +51,7 @@ The test receiver stands in for LA2L in Live: it shows a code, imports what you 
 
 - [Web apps](https://lloydstellar.nl/la2l/developers/web.md): the npm package, Web Audio to WAV, following a send.
 - [The button](https://lloydstellar.nl/la2l/developers/button.md): `<la2l-send-button>`, and how to name LA2L and Ableton.
-- [Android](https://lloydstellar.nl/la2l/developers/android.md): the REST calls in Kotlin, and the Android SDK that comes later.
+- [Android](https://lloydstellar.nl/la2l/developers/android.md): the Android SDK for Kotlin and Java, and the REST calls in Kotlin without it.
 - [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md): an Android app shares its sounds with LA2L Sender, without network code.
 - [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md): the five calls, the command line, and the OpenAPI file.
 - [The package description](https://lloydstellar.nl/la2l/developers/manifest.md): every field, and what LA2L does with it.
@@ -270,13 +270,29 @@ la2l-send-button { --la2l-accent: #2a6df4; --la2l-radius: 8px; }
 
 # Android
 
-An Android app sends with five HTTPS calls, below in Kotlin, or shares its WAV files with LA2L Sender without any network code: see [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md).
+An Android app sends with the Android SDK, or with five HTTPS calls of its own (below, in Kotlin), or shares its WAV files with LA2L Sender without any network code: see [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md).
 
-The Android SDK, `nl.lloydstellar:la2l` for Java and `nl.lloydstellar:la2l-ktx` for Kotlin, is built and tested but **not published yet**: its Maven repository at `https://lloydstellar.nl/la2l/maven/` comes later. This is how it will look:
+The Android SDK is `nl.lloydstellar:la2l` for Java, without dependencies, and `nl.lloydstellar:la2l-ktx` for Kotlin, for Android 7.0 (API 24) and newer. They are in LA2L's own Maven repository:
 
 ```kotlin
-// Once published. settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }
-// app/build.gradle.kts: implementation("nl.lloydstellar:la2l-ktx:0.1.0")
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://lloydstellar.nl/la2l/maven/")
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("nl.lloydstellar:la2l-ktx:0.1.0") // or nl.lloydstellar:la2l:0.1.0 from Java
+}
+```
+
+Every file in it is signed with the key at https://lloydstellar.nl/la2l/maven/signing-key.asc. Sending, in Kotlin:
+
+```kotlin
 import nl.lloydstellar.la2l.*
 import nl.lloydstellar.la2l.ktx.* // pair, send, awaitImport as suspend functions
 
@@ -308,7 +324,7 @@ la2l.send(new SoundPackage("Treinbeat").bpm(92).add(Sound.loop("Kick", kickWav).
 
 ## Without the SDK
 
-What to use until the SDK is published: the same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+For an app that wants no dependency: the same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
 
 ### 1. A WAV file
 

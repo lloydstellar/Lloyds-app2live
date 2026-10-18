@@ -28,7 +28,7 @@ const PAGES = [
   ['index', 'Start', 'What LA2L does, the ways in, how pairing and sending go, the limits'],
   ['web', 'Web apps', 'The npm package @lloydstellar/la2l: pairing, WAV files from Web Audio, sending and following a package, errors'],
   ['button', 'The button', 'The <la2l-send-button> web component, in a page or a framework, and the brand rules'],
-  ['android', 'Android', 'The REST calls in Kotlin, and the Android SDK nl.lloydstellar:la2l and la2l-ktx that comes later'],
+  ['android', 'Android', 'The Android SDK nl.lloydstellar:la2l and la2l-ktx, and the REST calls in Kotlin without it'],
   ['sharing', 'Sharing', 'An Android app shares WAV files with LA2L Sender, the installed web app, with the description in the text'],
   ['rest-api', 'REST API', 'The five HTTPS calls, with curl; the command line npx @lloydstellar/la2l; the rules for errors and limits'],
   ['manifest', 'Package description', 'Every field of the app2live/1 description, and what LA2L does with it'],

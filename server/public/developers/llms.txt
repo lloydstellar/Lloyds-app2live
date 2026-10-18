@@ -9,7 +9,7 @@ Web apps use the npm package @lloydstellar/la2l (ESM, no dependencies) or its <l
 - [LA2L for developers](https://lloydstellar.nl/la2l/developers/index.md): What LA2L does, the ways in, how pairing and sending go, the limits
 - [Web apps](https://lloydstellar.nl/la2l/developers/web.md): The npm package @lloydstellar/la2l: pairing, WAV files from Web Audio, sending and following a package, errors
 - [The button](https://lloydstellar.nl/la2l/developers/button.md): The <la2l-send-button> web component, in a page or a framework, and the brand rules
-- [Android](https://lloydstellar.nl/la2l/developers/android.md): The REST calls in Kotlin, and the Android SDK nl.lloydstellar:la2l and la2l-ktx that comes later
+- [Android](https://lloydstellar.nl/la2l/developers/android.md): The Android SDK nl.lloydstellar:la2l and la2l-ktx, and the REST calls in Kotlin without it
 - [Sharing to LA2L Sender](https://lloydstellar.nl/la2l/developers/sharing.md): An Android app shares WAV files with LA2L Sender, the installed web app, with the description in the text
 - [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md): The five HTTPS calls, with curl; the command line npx @lloydstellar/la2l; the rules for errors and limits
 - [The package description](https://lloydstellar.nl/la2l/developers/manifest.md): Every field of the app2live/1 description, and what LA2L does with it
