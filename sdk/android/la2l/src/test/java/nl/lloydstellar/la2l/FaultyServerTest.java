@@ -6,14 +6,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -30,7 +29,25 @@ import org.junit.Test;
 // is tried again, a 409 during an upload is waited out, "arrived damaged" gets one more try, a
 // short 429 is waited out, a 401 forgets the token, and cancelling stops an upload under way.
 public class FaultyServerTest {
-    private HttpServer server;
+    // A small HTTP server on a socket: one request per connection, answered with JSON. Android's
+    // unit tests compile against android.jar, which has no HTTP server of the JDK.
+    private static final class Answer {
+        final int status;
+        final String json;
+        final String[] headers;
+
+        Answer(int status, String json, String... headers) {
+            this.status = status;
+            this.json = json;
+            this.headers = headers;
+        }
+    }
+
+    private interface Handler {
+        Answer handle(String call, java.util.Map<String, String> headers, byte[] body) throws Exception;
+    }
+
+    private ServerSocket socket;
     private final List<String> calls = Collections.synchronizedList(new ArrayList<String>());
     private final List<String> clients = Collections.synchronizedList(new ArrayList<String>());
     private volatile byte[] uploaded;
@@ -39,78 +56,97 @@ public class FaultyServerTest {
     private int statuses;
     private volatile boolean stallUploads;
 
-    private static void answer(HttpExchange x, int status, String json, String... headers) throws IOException {
-        byte[] body = json.getBytes(StandardCharsets.UTF_8);
-        for (int i = 0; i < headers.length; i += 2) x.getResponseHeaders().add(headers[i], headers[i + 1]);
-        x.getResponseHeaders().add("Content-Type", "application/json");
-        x.sendResponseHeaders(status, body.length);
-        try (OutputStream out = x.getResponseBody()) {
-            out.write(body);
-        }
+    private static String line(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int b;
+        while ((b = in.read()) >= 0 && b != '\n') if (b != '\r') out.write(b);
+        return out.toString("UTF-8");
     }
 
-    private static byte[] read(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        return out.toByteArray();
+    private void serve(Socket c, Handler handler) {
+        try (Socket client = c) {
+            InputStream in = new java.io.BufferedInputStream(client.getInputStream());
+            String[] request = line(in).split(" ");
+            java.util.Map<String, String> headers = new java.util.HashMap<>();
+            for (String h; !(h = line(in)).isEmpty(); ) {
+                int colon = h.indexOf(':');
+                if (colon > 0) headers.put(h.substring(0, colon).trim().toLowerCase(java.util.Locale.ROOT), h.substring(colon + 1).trim());
+            }
+            int length = headers.containsKey("content-length") ? Integer.parseInt(headers.get("content-length")) : 0;
+            byte[] body = new byte[length];
+            for (int done = 0; done < length; ) {
+                int n = in.read(body, done, length - done);
+                if (n < 0) break;
+                done += n;
+            }
+            Answer a = handler.handle(request[0] + " " + request[1].replaceFirst("^/api", ""), headers, body);
+            byte[] json = a.json.getBytes(StandardCharsets.UTF_8);
+            StringBuilder head = new StringBuilder("HTTP/1.1 " + a.status + " X\r\nContent-Type: application/json\r\nContent-Length: " + json.length + "\r\nConnection: close\r\n");
+            for (int i = 0; i < a.headers.length; i += 2) head.append(a.headers[i]).append(": ").append(a.headers[i + 1]).append("\r\n");
+            OutputStream out = client.getOutputStream();
+            out.write(head.append("\r\n").toString().getBytes(StandardCharsets.UTF_8));
+            out.write(json);
+            out.flush();
+        } catch (Exception e) {
+            // the client went away
+        }
     }
 
     @Before
     public void start() throws IOException {
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            return t;
-        }));
-        server.createContext("/api", x -> {
-            String call = x.getRequestMethod() + " " + x.getRequestURI().getPath().replaceFirst("^/api", "");
+        socket = new ServerSocket(0, 50, java.net.InetAddress.getByName("127.0.0.1"));
+        Handler handler = (call, headers, body) -> {
             calls.add(call);
-            clients.add(x.getRequestHeaders().getFirst("X-LA2L-Client"));
-            byte[] body = read(x.getRequestBody());
+            clients.add(headers.get("x-la2l-client"));
             if (stallUploads && call.startsWith("PUT ")) {
-                // A link that stalls: no answer for 20 seconds.
-                try {
-                    Thread.sleep(20000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                answer(x, 500, "{}");
-                return;
+                Thread.sleep(20000); // a link that stalls: no answer for 20 seconds
+                return new Answer(500, "{}");
             }
             synchronized (this) {
-                if (call.equals("POST /pair/claim")) answer(x, 200, "{\"app_token\":\"la2la_test\",\"device_name\":\"STUDIO-PC\"}");
-                else if (call.equals("POST /packages")) {
-                    if (creates++ == 0) answer(x, 503, "{\"error\":\"The server has a problem. Try again later.\"}");
-                    else answer(x, 201, "{\"package_id\":\"p1\",\"upload\":{\"loop.wav\":\"/packages/p1/files/loop.wav\"},\"warnings\":[]}");
-                } else if (call.startsWith("PUT /packages/p1/files/")) {
-                    if (puts++ == 0) answer(x, 409, "{\"error\":\"This file is being uploaded already.\"}");
-                    else if (puts == 2) answer(x, 422, "{\"error\":\"The file arrived damaged. Send it again.\"}");
-                    else {
-                        uploaded = body;
-                        answer(x, 200, "{\"ok\":true}");
-                    }
-                } else if (call.equals("POST /packages/p1/commit")) answer(x, 200, "{\"ok\":true,\"status\":\"waiting\"}");
-                else if (call.equals("GET /packages/p1/status")) {
-                    if (statuses++ == 0) answer(x, 429, "{\"error\":\"Too many requests. Wait a minute.\"}", "Retry-After", "1");
-                    else answer(x, 200, "{\"status\":\"imported\",\"items\":[{\"id\":\"sound-1\",\"name\":\"Loop\",\"status\":\"imported\"}]}");
-                } else if (call.equals("DELETE /packages/p1")) answer(x, 200, "{\"ok\":true}");
-                else if (call.equals("GET /app/me")) answer(x, 401, "{\"error\":\"This app is not paired any more.\"}");
-                else answer(x, 404, "{\"error\":\"Not found.\"}");
+                if (call.equals("POST /pair/claim")) return new Answer(200, "{\"app_token\":\"la2la_test\",\"device_name\":\"STUDIO-PC\"}");
+                if (call.equals("POST /packages")) {
+                    if (creates++ == 0) return new Answer(503, "{\"error\":\"The server has a problem. Try again later.\"}");
+                    return new Answer(201, "{\"package_id\":\"p1\",\"upload\":{\"loop.wav\":\"/packages/p1/files/loop.wav\"},\"warnings\":[]}");
+                }
+                if (call.startsWith("PUT /packages/p1/files/")) {
+                    if (puts++ == 0) return new Answer(409, "{\"error\":\"This file is being uploaded already.\"}");
+                    if (puts == 2) return new Answer(422, "{\"error\":\"The file arrived damaged. Send it again.\"}");
+                    uploaded = body;
+                    return new Answer(200, "{\"ok\":true}");
+                }
+                if (call.equals("POST /packages/p1/commit")) return new Answer(200, "{\"ok\":true,\"status\":\"waiting\"}");
+                if (call.equals("GET /packages/p1/status")) {
+                    if (statuses++ == 0) return new Answer(429, "{\"error\":\"Too many requests. Wait a minute.\"}", "Retry-After", "1");
+                    return new Answer(200, "{\"status\":\"imported\",\"items\":[{\"id\":\"sound-1\",\"name\":\"Loop\",\"status\":\"imported\"}]}");
+                }
+                if (call.equals("DELETE /packages/p1")) return new Answer(200, "{\"ok\":true}");
+                if (call.equals("GET /app/me")) return new Answer(401, "{\"error\":\"This app is not paired any more.\"}");
+                return new Answer(404, "{\"error\":\"Not found.\"}");
+            }
+        };
+        Thread accept = new Thread(() -> {
+            while (!socket.isClosed()) {
+                try {
+                    Socket c = socket.accept();
+                    Thread t = new Thread(() -> serve(c, handler));
+                    t.setDaemon(true);
+                    t.start();
+                } catch (IOException e) {
+                    return;
+                }
             }
         });
-        server.start();
+        accept.setDaemon(true);
+        accept.start();
     }
 
     @After
-    public void stop() {
-        server.stop(0);
+    public void stop() throws IOException {
+        socket.close();
     }
 
     private La2l client() throws Exception {
-        La2l la2l = new La2l(new La2l.Options("Faulty test").server("http://127.0.0.1:" + server.getAddress().getPort() + "/api").storage(Storage.memory()));
+        La2l la2l = new La2l(new La2l.Options("Faulty test").server("http://127.0.0.1:" + socket.getLocalPort() + "/api").storage(Storage.memory()));
         assertEquals("STUDIO-PC", la2l.pairAsync("K7P 42Q").get(10, TimeUnit.SECONDS));
         return la2l;
     }
