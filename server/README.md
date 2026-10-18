@@ -127,7 +127,7 @@ Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.11.0 listening on ...` | The server started. |
+| `la2l-server 0.12.0 listening on ...` | The server started. |
 | `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. With `; test receivers: 3 with 4 app(s)` when there are test receivers, which are not counted as computers. |
 | `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. `new test receiver`: a test receiver, such as the page `/la2l/receiver`. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |
@@ -161,6 +161,19 @@ Then let cron look every 15 minutes (`crontab -e`, one line at the end):
 ```
 
 `--dry-run` prints the mail it would send now, without sending it.
+
+### The Maven repository
+
+la2l-server also serves LA2L's Android libraries at `https://lloydstellar.nl/la2l/maven/` (`nl.lloydstellar:la2l` and `la2l-ktx`, from `../sdk/android`), out of the Docker volume `la2l-server_la2l-maven`, which it can only read. A tag `android-v<version>` on GitHub makes a signed release (`.github/workflows/publish-android.yml`); then, on the VPS:
+
+```bash
+bash deploy/maven-sync.sh --check    # download every release and check it; changes nothing
+bash deploy/maven-sync.sh            # the same, then put them online
+```
+
+It takes every release `android-v<version>` through the `gh` login of the VPS. Before anything goes online it checks that each ZIP holds only the files of the two libraries in that version and no links, that every file has a good signature of the key in `../sdk/android/signing-key.asc`, and that every checksum matches; one failed check, and nothing changes. Then it writes `maven-metadata.xml` with every version and swaps the whole repository in at once. The server reads the files when they are asked for: no restart. A version that is online never changes (it is cached for a year), so a fix is a new version.
+
+The private half of the key is in the GitHub secrets `SIGNING_KEY` and `SIGNING_PASSWORD`; Erik keeps a copy outside the repository.
 
 ### Who is paired
 
@@ -204,6 +217,7 @@ The first table lists the paired computers with their apps (`test` is 1 for a te
 sudo bash deploy/install-nginx.sh --remove    # takes /la2l/ out of nginx
 docker compose down                           # removes the container; the volume and its data stay
 docker volume rm la2l-server_la2l-data        # deletes every pairing and sound for good
+docker volume rm la2l-server_la2l-maven       # takes the Android libraries offline
 ```
 
 ## Where things are
@@ -219,8 +233,9 @@ docker volume rm la2l-server_la2l-data        # deletes every pairing and sound 
 | `src/upload.js`, `src/wav-check.js`, `src/storage.js` | Uploads to disk with their checksum, the WAV check, the package folders. |
 | `src/auth.js`, `src/tokens.js`, `src/ratelimit.js` | Tokens and codes, who is calling, rate limits. |
 | `src/router.js`, `src/http-util.js`, `src/static.js` | Routes, JSON in and out, CORS, the Sender page files. |
+| `src/maven.js` | The Maven repository at `/maven/`: which paths exist, and their types. |
 | `public/` | LA2L Sender (`index.html`, `sender.js`, `big.js` for `?big`) and what makes it an installed app and a share target (`manifest.webmanifest`, the icons, `sw.js`, `share.js`, `zip.js`, and `share.html` for a share that reaches the server), the test receiver (`receiver.html`, `receiver.js`), the developer pages in `developers/` (made by `../tools/devpages.js`), and `vendor/`, built from `../sdk/js`: never edit `developers/` or `vendor/` by hand. The image also gets `../examples/web-drum-machine`, served under `/examples/drum-machine/`. |
 | `test/` | The tests, with an end-to-end test that runs the real device code against this server. |
-| `deploy/` | `update.sh`; `backup.sh` and `restore.sh`, with `copy-db.js` and `check-db.js`, which they run in a short-lived container of the server's image; and nginx: `nginx-la2l.conf` with `install-nginx.sh`. |
+| `deploy/` | `update.sh`; `backup.sh` and `restore.sh`, with `copy-db.js` and `check-db.js`, which they run in a short-lived container of the server's image; `storage-mail.sh` and `maven-sync.sh`; and nginx: `nginx-la2l.conf` with `install-nginx.sh`. |
 
 The server reuses the package and WAV checks of the device from `../src/node`, so both ends judge a package the same way. [CLAUDE.md](CLAUDE.md) has the rules for working on the code; [BUILD-PROMPT.md](BUILD-PROMPT.md) is the brief it was built from.
