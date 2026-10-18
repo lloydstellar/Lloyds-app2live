@@ -12,12 +12,13 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 | The test receiver | the page `../server/public/receiver.html` (on `js/src/receiver.ts`, served as `vendor/la2l-receiver.js`), `npx la2l test-receiver [--local]`, `startTestReceiver()` from `la2l/testing` | Phases 1 and 2 |
 | LA2L Sender on the SDK | `../server/public/sender.js`, on `vendor/la2l.js` | Phase 2 |
 | Web808, the drum machine example | `../examples/web-drum-machine`, served at `https://lloydstellar.nl/la2l/examples/drum-machine/` | Phase 2 |
-| The server changes | `../server`, la2l-server 0.7.0 (API), 0.8.0 (pages) and 0.9.0 (the developer pages) | Phases 1 to 3 |
+| The server changes | `../server`, la2l-server 0.7.0 (API), 0.8.0 (pages), 0.9.0 (the developer pages) and 0.10.0 (LA2L Sender as a share target) | Phases 1 to 4 |
 | The skill `la2l-send-to-ableton` | `../skills/la2l-send-to-ableton`; `../skills` is the root of its Claude Code plugin, listed in `../.claude-plugin/marketplace.json` | Phase 3. `npx skills add` and the plugin work once the repository is public |
 | The developer pages | Sources in `../docs/developers/*.md`; `../tools/devpages.js` makes `../server/public/developers` (committed): a page and a `.md` twin each, `llms.txt`, `llms-full.txt`, and copies of the OpenAPI file and the schema. Served at `/la2l/developers/`, `/la2l/llms.txt` and `/la2l/llms-full.txt`, with `X-Robots-Tag: noindex` until the launch | Phase 3 |
 | The paste text for Lovable and Bolt, the AI test, Context7 | `../docs/developers/paste-text.md` (also a page), `../docs/developers/ai-test.md` (the record, not a page), `../context7.json` | Phase 3. The AI test and Context7 wait for npm and a public repository |
 | The privacy statement | `../docs/developers/privacy.md`: a draft, not served until Erik approves it; then it goes to `/la2l/privacy` | Phase 3 |
-| Android: the share target and the SDK | | Phases 4 and 5 |
+| LA2L Sender as a share target on Android | `../server/public/manifest.webmanifest`, `sw.js` (takes a share into IndexedDB), `share.js` (the description in the shared text), `zip.js` (ZIP files in the browser), `share.html` (a share that reaches the server), the icons (made by `../tools/pwa-icons.py`); the developer page `../docs/developers/sharing.md` | Phase 4 |
+| The Android SDK | | Phase 5 |
 
 ## Read first
 

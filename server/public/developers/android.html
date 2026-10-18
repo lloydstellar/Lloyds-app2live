@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Android: LA2L for developers</title>
-<meta name="description" content="An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (nl.lloydstellar:la2l) is being built; until it is released…">
+<meta name="description" content="An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L…">
 <link rel="alternate" type="text/markdown" href="android.md">
 <link rel="icon" href="../logo.png">
 <link rel="stylesheet" href="style.css">
@@ -19,6 +19,7 @@
     <li><a href="web">Web apps</a></li>
     <li><a href="button">The button</a></li>
     <li><a href="android" aria-current="page">Android</a></li>
+    <li><a href="sharing">Sharing</a></li>
     <li><a href="rest-api">REST API</a></li>
     <li><a href="manifest">Package description</a></li>
     <li><a href="testing">Testing</a></li>
@@ -28,7 +29,7 @@
 </header>
 <main>
 <h1 id="android">Android</h1>
-<p>An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (<code>nl.lloydstellar:la2l</code>) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
+<p>An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L Sender: see <a href="sharing">Sharing</a>. An Android SDK (<code>nl.lloydstellar:la2l</code>) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
 <h2 id="1-a-wav-file">1. A WAV file</h2>
 <p>From 16-bit PCM, as <code>AudioRecord</code> gives it or as your audio engine renders it:</p>
 <pre><code class="language-kotlin">fun wav16(pcm: ShortArray, sampleRate: Int, channels: Int): ByteArray {

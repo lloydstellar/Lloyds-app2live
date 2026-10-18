@@ -64,6 +64,11 @@ export interface Progress {
 export interface SendOptions {
   /** The scene name in Session View and the folder name on disk. */
   title?: string;
+  /**
+   * The app name in the description, and so in the track names: "Kick (Web808)". Default: the
+   * client's appName. For a send on behalf of another app, as LA2L Sender does with a share.
+   */
+  appName?: string;
   /** The tempo of every loop that has no bpm of its own. */
   bpm?: number;
   timeSignature?: [number, number];
@@ -279,7 +284,8 @@ export class LA2L {
     }
 
     // 2. The manifest, as strict as the server.
-    const manifest: Record<string, unknown> = { schema: SCHEMA, created_at: new Date().toISOString(), source: { app: this.appName, app_version: this.appVersion, platform: platform() }, items };
+    const app = typeof options.appName === 'string' && options.appName.trim() ? options.appName.trim() : this.appName;
+    const manifest: Record<string, unknown> = { schema: SCHEMA, created_at: new Date().toISOString(), source: { app, app_version: this.appVersion, platform: platform() }, items };
     if (options.title !== undefined) manifest.title = options.title;
     const tempo: Record<string, unknown> = {};
     if (options.bpm !== undefined) tempo.bpm = options.bpm;

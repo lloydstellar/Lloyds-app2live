@@ -3,7 +3,7 @@
 The server between the apps and the LA2L device in Ableton Live. It runs on Erik's Linux VPS in Docker, behind the web server that already serves lloydstellar.nl:
 
 - API: `https://lloydstellar.nl/la2l/api` (the device's default `serverUrl`)
-- LA2L Sender, a test page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`
+- LA2L Sender, a page that pairs and sends sounds from a browser: `https://lloydstellar.nl/la2l/`. Installed from Chrome on Android it is a web app in the share menu of other apps (`public/manifest.webmanifest`, `public/sw.js`); a share that reaches the server, because the service worker never ran, gets `public/share.html`
 - The test receiver, a page that stands in for Live for app developers: `https://lloydstellar.nl/la2l/receiver` (the developer kit, `../sdk/CLAUDE.md`)
 - Web808, the drum machine example of the SDK: `https://lloydstellar.nl/la2l/examples/drum-machine/`, from `../examples/web-drum-machine`
 - The developer pages: `https://lloydstellar.nl/la2l/developers/`, with `llms.txt` and `llms-full.txt` at `https://lloydstellar.nl/la2l/`. Made from `../docs/developers` by `../tools/devpages.js`; kept out of search engines until the launch
@@ -58,6 +58,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 - **Reuse, do not copy**: package and WAV checks come from `../src/node/manifest.js` and `../src/node/wav.js`. If they need a change, change them there and keep the device tests green; `../sdk/fixtures` and the port in `../sdk/js` change with them.
 - **`public/developers/` is made** by `../tools/devpages.js` from `../docs/developers`, with `../docs/openapi.yaml` and `../docs/app2live-1.schema.json`. Never edit it by hand; CI fails when it differs. `static.js` serves it with `X-Robots-Tag: noindex` until `DEVELOPER_PAGES_INDEXED` is true, at the launch. The privacy statement (`../docs/developers/privacy.md`) is not served until Erik approves it.
 - **`public/vendor/` is built** from `../sdk/js` (`la2l.js`, `la2l-button.js`, `la2l-receiver.js`). Never edit it by hand; CI fails when it differs from a fresh build. LA2L Sender (`public/sender.js`) and the test receiver page run on it: a change in their behaviour may belong in the SDK.
+- **The service worker** (`public/sw.js`, scope `/la2l/`) takes only the share POST to `/la2l/share` and caches nothing, so every page stays as fresh as without it. Keep it that way: a cache in a service worker would serve old pages after an update.
 - **Examples** are served from a folder of the repository (`static.js`, `EXAMPLES`), listed once at start; the Dockerfile copies them into the image.
 - **Addresses** stay out of the database, except as a keyed hash with a package while it has files (the limit per address). The key lives only in the memory of the running server, so a restart forgets who sent what, as it forgets the rate limits. That is on purpose: a backup of the database cannot tell an address.
 

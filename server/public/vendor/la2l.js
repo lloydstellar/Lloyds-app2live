@@ -994,7 +994,8 @@ var LA2L = class {
     if (total > LIMITS.maxPackageBytes) {
       throw new La2lError("bad_package", `The package is ${megabytes(total)}. LA2L takes ${megabytes(LIMITS.maxPackageBytes)} at most. Send the sounds in more packages.`);
     }
-    const manifest = { schema: SCHEMA, created_at: (/* @__PURE__ */ new Date()).toISOString(), source: { app: this.appName, app_version: this.appVersion, platform: platform() }, items };
+    const app = typeof options.appName === "string" && options.appName.trim() ? options.appName.trim() : this.appName;
+    const manifest = { schema: SCHEMA, created_at: (/* @__PURE__ */ new Date()).toISOString(), source: { app, app_version: this.appVersion, platform: platform() }, items };
     if (options.title !== void 0) manifest.title = options.title;
     const tempo = {};
     if (options.bpm !== void 0) tempo.bpm = options.bpm;
@@ -1232,7 +1233,12 @@ async function toWav(file, options = {}) {
   } catch (e) {
     throw new La2lError("bad_wav", "This file cannot be read as sound. Send a WAV, MP3 or M4A file.");
   }
-  return wavFromAudioBuffer(buffer, { bits: options.bits || 16 });
+  const bits = options.bits || 16;
+  const bytes = 44 + buffer.length * Math.min(2, buffer.numberOfChannels) * (bits / 8);
+  if (options.maxBytes !== void 0 && bytes > options.maxBytes) {
+    throw new La2lError("bad_wav", `This sound is too long: as WAV it would be ${megabytes(bytes)}. LA2L takes ${megabytes(options.maxBytes)} at most.`);
+  }
+  return wavFromAudioBuffer(buffer, { bits });
 }
 
 // src/plan.ts

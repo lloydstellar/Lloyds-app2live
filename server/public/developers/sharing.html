@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Sharing to LA2L Sender: LA2L for developers</title>
+<meta name="description" content="An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a…">
+<link rel="alternate" type="text/markdown" href="sharing.md">
+<link rel="icon" href="../logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="./"><img src="../logo.png" alt="" width="40" height="40"> LA2L for developers</a>
+  <nav aria-label="Pages">
+  <ul>
+    <li><a href="./">Start</a></li>
+    <li><a href="web">Web apps</a></li>
+    <li><a href="button">The button</a></li>
+    <li><a href="android">Android</a></li>
+    <li><a href="sharing" aria-current="page">Sharing</a></li>
+    <li><a href="rest-api">REST API</a></li>
+    <li><a href="manifest">Package description</a></li>
+    <li><a href="testing">Testing</a></li>
+    <li><a href="ai-tools">AI tools</a></li>
+  </ul>
+  </nav>
+</header>
+<main>
+<h1 id="sharing-to-la2l-sender">Sharing to LA2L Sender</h1>
+<p>An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a description of the sounds in the text of the share. LA2L Sender shows them with loop or one-shot, BPM and role filled in, and the user taps Send.</p>
+<p>The user installs LA2L Sender once from Chrome (any phone) or Samsung Internet (Samsung phones), at <code>https://lloydstellar.nl/la2l/</code>, opens it once and pairs it with Live. From then on it is in the share menu. Android only: not Firefox, not iOS.</p>
+<h2 id="the-share">The share</h2>
+<pre><code class="language-kotlin">val manifest = org.json.JSONObject()
+    .put(&quot;schema&quot;, &quot;app2live/1&quot;)
+    .put(&quot;title&quot;, &quot;Treinbeat&quot;)
+    .put(&quot;source&quot;, org.json.JSONObject().put(&quot;app&quot;, &quot;Web808&quot;)) // the tracks: &quot;Kick (Web808)&quot;
+    .put(&quot;tempo&quot;, org.json.JSONObject().put(&quot;bpm&quot;, 92))
+    .put(&quot;items&quot;, org.json.JSONArray()
+        .put(org.json.JSONObject().put(&quot;file&quot;, &quot;kick.wav&quot;).put(&quot;name&quot;, &quot;Kick&quot;).put(&quot;kind&quot;, &quot;loop&quot;).put(&quot;role&quot;, &quot;drums&quot;).put(&quot;length_beats&quot;, 16))
+        .put(org.json.JSONObject().put(&quot;file&quot;, &quot;robot.wav&quot;).put(&quot;name&quot;, &quot;Robot hallo&quot;).put(&quot;kind&quot;, &quot;oneshot&quot;).put(&quot;role&quot;, &quot;vocal&quot;)))
+
+val uris = arrayListOf(kickWav, robotWav).map {
+    androidx.core.content.FileProvider.getUriForFile(context, &quot;${context.packageName}.files&quot;, it)
+}
+val share = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+    type = &quot;audio/wav&quot;
+    putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
+    putExtra(android.content.Intent.EXTRA_TEXT, manifest.toString())
+    putExtra(android.content.Intent.EXTRA_SUBJECT, &quot;Treinbeat&quot;)
+    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+}
+context.startActivity(android.content.Intent.createChooser(share, &quot;Send to Live&quot;))</code></pre>
+<p>The files are shared through a <code>FileProvider</code>, declared once in <code>AndroidManifest.xml</code>:</p>
+<pre><code class="language-xml">&lt;provider
+    android:name=&quot;androidx.core.content.FileProvider&quot;
+    android:authorities=&quot;${applicationId}.files&quot;
+    android:exported=&quot;false&quot;
+    android:grantUriPermissions=&quot;true&quot;&gt;
+    &lt;meta-data android:name=&quot;android.support.FILE_PROVIDER_PATHS&quot; android:resource=&quot;@xml/shared_sounds&quot; /&gt;
+&lt;/provider&gt;</code></pre>
+<p>with <code>res/xml/shared_sounds.xml</code> naming the folder the WAV files are in, for example <code>&lt;paths&gt;&lt;cache-path name=&quot;sounds&quot; path=&quot;sounds/&quot; /&gt;&lt;/paths&gt;</code>.</p>
+<h2 id="the-description-in-the-text">The description in the text</h2>
+<ul>
+<li>One JSON object with <code>&quot;schema&quot;: &quot;app2live/1&quot;</code>, as in <a href="manifest">the package description</a>. LA2L Sender reads from the first <code>{</code> to the last <code>}</code>, so a line of your own around it is fine: &quot;Made with Web808: {...}&quot;.</li>
+<li><code>items[].file</code> is the name of a shared file. Leave out <code>package_id</code>, <code>bytes</code> and <code>sha256</code>: LA2L Sender fills them in.</li>
+<li>A shared file without an item gets the defaults, a one-shot, which the user can change before sending.</li>
+<li>The title of the share (<code>EXTRA_SUBJECT</code>) becomes the title of the package when the description has none.</li>
+<li>Chrome passes on only the files, the title (<code>EXTRA_SUBJECT</code>) and one text (<code>EXTRA_TEXT</code>, a single string). Every other extra is dropped, so the description must be in <code>EXTRA_TEXT</code>.</li>
+<li>A file whose type, as your provider reports it, is not <code>audio/*</code>, <code>.wav</code> or a ZIP file is dropped without a word. The name LA2L Sender matches with <code>items[].file</code> is the provider's <code>DISPLAY_NAME</code>.</li>
+<li>The tracks carry the app name of the description, <code>source.app</code>: &quot;Kick (Web808)&quot;. Without it, they carry &quot;LA2L Sender&quot;.</li>
+</ul>
+<h2 id="what-la2l-sender-takes">What LA2L Sender takes</h2>
+<ul>
+<li>WAV files; mp3, m4a and other sound files the phone's browser can play, up to 10 MB each, which become WAV; and a ZIP file of them, up to 256 files. For a file in a ZIP, <code>items[].file</code> is its name without its folder. Not ZIP64, and no ZIP with a password.</li>
+<li>More than 32 sounds or 200 MB: LA2L Sender sends several packages, &quot;Treinbeat (1 of 2)&quot; and so on.</li>
+<li>One file: <code>ACTION_SEND</code> with one <code>EXTRA_STREAM</code> works the same way.</li>
+</ul>
+<p>Any app that shares sound files works without a description too. Then the user sets loop or one-shot, BPM and role in LA2L Sender before sending.</p>
+</main>
+<footer class="foot">
+  <p><a href="sharing.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
+</footer>
+</body>
+</html>

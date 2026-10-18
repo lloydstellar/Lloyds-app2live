@@ -3,6 +3,7 @@
 
 import { checkWav } from './wav.js';
 import { La2lError } from './errors.js';
+import { megabytes } from './text.js';
 
 export interface WavOptions {
   /** 16 or 24 for integer PCM, 32 for 32-bit float. Default 16. */
@@ -113,6 +114,8 @@ export interface ToWavOptions {
   bits?: 16 | 24;
   /** The sample rate of the WAV file. Default 48000. A WAV file that LA2L takes is kept as it is. */
   sampleRate?: number;
+  /** The largest WAV file to make, in bytes: a longer sound is refused before the WAV is made. */
+  maxBytes?: number;
 }
 
 /**
@@ -135,5 +138,10 @@ export async function toWav(file: Blob, options: ToWavOptions = {}): Promise<Blo
   } catch (e) {
     throw new La2lError('bad_wav', 'This file cannot be read as sound. Send a WAV, MP3 or M4A file.');
   }
-  return wavFromAudioBuffer(buffer, { bits: options.bits || 16 });
+  const bits = options.bits || 16;
+  const bytes = 44 + buffer.length * Math.min(2, buffer.numberOfChannels) * (bits / 8);
+  if (options.maxBytes !== undefined && bytes > options.maxBytes) {
+    throw new La2lError('bad_wav', `This sound is too long: as WAV it would be ${megabytes(bytes)}. LA2L takes ${megabytes(options.maxBytes)} at most.`);
+  }
+  return wavFromAudioBuffer(buffer, { bits });
 }

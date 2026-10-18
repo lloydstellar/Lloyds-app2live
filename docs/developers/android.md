@@ -1,6 +1,6 @@
 # Android
 
-An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (`nl.lloydstellar:la2l`) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L Sender: see [Sharing](sharing.md). An Android SDK (`nl.lloydstellar:la2l`) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
 
 ## 1. A WAV file
 

@@ -222,3 +222,24 @@ test('the local test receiver: a fresh code after every pairing, and nextReport 
     await receiver.close();
   }
 });
+
+test('appName names the package and its tracks after another app, for a send on its behalf', async () => {
+  const la2l = new LA2L({ appName: 'LA2L Sender', server: local.server, storage: memoryStorage() });
+  await la2l.pair(await local.newCode());
+  const audio = wavFromSamples(new Float32Array(4800).fill(0.1), 48000);
+  const report = async (title) => {
+    for (let i = 0; i < 50; i++) {
+      const r = local.reports.find((x) => x.title === title);
+      if (r) return r;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`no report for ${title}`);
+  };
+  await (await la2l.send({ title: 'For Web808', appName: '  Web808 ', sounds: [{ name: 'Kick', audio, kind: 'oneshot' }] })).imported();
+  const shared = await report('For Web808');
+  assert.equal(shared.app, 'Web808');
+  assert.equal(shared.sounds[0].plan.trackName, 'Kick (Web808)');
+  // Without it, the client's own name.
+  await (await la2l.send({ title: 'Own name', sounds: [{ name: 'Kick', audio, kind: 'oneshot' }] })).imported();
+  assert.equal((await report('Own name')).sounds[0].plan.trackName, 'Kick (LA2L Sender)');
+});
