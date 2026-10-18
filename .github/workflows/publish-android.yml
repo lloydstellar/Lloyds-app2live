@@ -3,7 +3,7 @@
 # signed when the GitHub secrets SIGNING_KEY and SIGNING_PASSWORD exist, with read rights only;
 # the signing key is in the one step that signs, never in a step that runs tests or npm. The
 # second job attaches the repository to a GitHub release of the tag as
-# la2l-android-maven-<version>.zip. The VPS takes it from there into
+# la2l-android-maven-<version>.zip. On the VPS, server/deploy/maven-sync.sh takes it from there into
 # https://lloydstellar.nl/la2l/maven/; no key to the VPS is stored on GitHub.
 # Every action is pinned to a commit, with its release in the comment; update the two together.
 name: Publish la2l for Android

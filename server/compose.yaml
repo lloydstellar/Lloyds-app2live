@@ -20,6 +20,8 @@ services:
       - "127.0.0.1:8787:8787"
     volumes:
       - la2l-data:/data
+      # LA2L's Maven repository, which deploy/maven-sync.sh fills. The server only reads it.
+      - la2l-maven:/maven:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -35,3 +37,4 @@ services:
 
 volumes:
   la2l-data:
+  la2l-maven:

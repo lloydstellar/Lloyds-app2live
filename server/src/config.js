@@ -10,6 +10,7 @@ const DEFAULTS = {
   PORT: '8787',
   HOST: '0.0.0.0',
   DATA_DIR: '/data',
+  MAVEN_DIR: '/maven',
   PUBLIC_URL: 'https://lloydstellar.nl/la2l',
   TRUST_PROXY: '1',
   PAIR_TTL_SECONDS: '600',
@@ -67,6 +68,7 @@ function loadConfig(env = process.env) {
     port: int('PORT', 0, 65535),
     host,
     dataDir: path.resolve(get('DATA_DIR')),
+    mavenDir: path.resolve(get('MAVEN_DIR')),
     publicUrl: publicUrl.href.replace(/\/+$/, ''),
     trustProxy: choice('TRUST_PROXY', { 0: false, 1: true }),
     // The device counts down from expires_in and keeps it between 30 and 1800 seconds, and polls

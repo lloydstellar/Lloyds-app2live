@@ -40,6 +40,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 | `bash deploy/backup.sh` | `server/` | Copies the database to `~/la2l-server-backups` and keeps the newest 30, whether the server runs or not |
 | `bash deploy/restore.sh <backup>` | `server/` | Puts a backup back: checks it, asks, stops the server, backs up the current database, replaces it, starts, and prints how to undo it. Works whether the server runs, is stopped or keeps restarting |
 | `docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh` | `server/` | Checks the deploy scripts, as CI does |
+| `bash deploy/maven-sync.sh [--check]` | `server/` | Puts every GitHub release `android-v<version>` into the Maven repository at `/la2l/maven/`, after checking its files, signatures and checksums; `--check` changes nothing |
 | `docker compose logs -f --tail=200` | `server/` | Follow the log of the running container |
 | `docker compose restart` | `server/` | Restart without a rebuild; the log stays |
 | `curl -s https://lloydstellar.nl/la2l/api/health` | anywhere | Must answer `{"ok":true,...}` |
@@ -68,6 +69,7 @@ The server targets Node 24 (the image and CI use it). The VPS itself has Node 22
 - Docker Compose. The container listens on `127.0.0.1:8787` only; the existing web server proxies `/la2l/` to it and keeps doing TLS.
 - nginx: `deploy/nginx-la2l.conf` is installed as `/etc/nginx/snippets/la2l.conf` and included in the 443 server block of lloydstellar.nl by `deploy/install-nginx.sh`, which backs up the site file, tests with `nginx -t` and puts everything back when the test fails. After a change to the snippet, run the script again.
 - The build context is the repository root (the server needs `src/node`), set in `compose.yaml`.
+- The Maven repository (`src/maven.js`) lives in the volume `la2l-server_la2l-maven`, mounted read-only at `/maven`; only `deploy/maven-sync.sh` writes it, as the image's user. It is not in the backups: the GitHub releases are its source.
 - Data (the SQLite database and the package files) lives in the Docker volume `la2l-server_la2l-data`, mounted at `/data`. At start the server removes leftovers there and marks packages whose files are gone as expired, so a restored database is consistent again.
 - Update: `git pull && bash deploy/update.sh` in `server/`. A plain `docker compose up -d --build` works too, but loses the log of the old container and makes no backup.
 - The database is at schema 2 since 0.7.0. Going back to 0.6.0 or older takes the backup `update.sh` made before the update to 0.7.0.

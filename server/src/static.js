@@ -1,11 +1,12 @@
 'use strict';
 // Serves the pages from public/ (LA2L Sender, the test receiver, the SDK for the browser and the
 // developer pages) and the examples of the developer kit, with strict security headers. Only the files listed here exist; every other path is a 404, so no path
-// can reach outside public/.
+// can reach outside public/. Under /maven/ it serves LA2L's Maven repository (maven.js).
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { Maven } = require('./maven');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 
@@ -115,17 +116,20 @@ function loadFiles() {
 }
 
 class StaticFiles {
-  constructor() {
+  // mavenDir: the folder of the Maven repository, or nothing when there is none.
+  constructor({ mavenDir } = {}) {
     this.files = loadFiles();
+    this.maven = new Maven(mavenDir);
   }
 
   // The route name for the log: the file path when it is one of ours.
   routeName(method, urlPath) {
-    const known = this.files.has(urlPath) || Object.prototype.hasOwnProperty.call(REDIRECTS, urlPath);
+    const known = this.files.has(urlPath) || Object.prototype.hasOwnProperty.call(REDIRECTS, urlPath) || urlPath === '/maven' || Maven.known(urlPath);
     return `${method} ${known ? urlPath : '(unknown page)'}`;
   }
 
   serve(req, res, urlPath) {
+    if (urlPath === '/maven' || urlPath.startsWith('/maven/')) return this.serveMaven(req, res, urlPath);
     if (Object.prototype.hasOwnProperty.call(REDIRECTS, urlPath)) {
       return this.plain(res, 301, 'Moved.', { Location: REDIRECTS[urlPath] });
     }
@@ -141,6 +145,19 @@ class StaticFiles {
     if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: urlPath === '/share' ? 'GET, HEAD, POST' : 'GET, HEAD' });
     // no-cache: the browser keeps the file but asks every time, so a new version shows at once.
     const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: f.etag }, HEADERS, f.extra);
+    if (req.headers['if-none-match'] === f.etag) return answer(res, 304, headers);
+    answer(res, 200, Object.assign({ 'Content-Length': f.body.length }, headers), f.body);
+  }
+
+  // LA2L's Maven repository. Gradle and Maven only read files; the folder has no listing. Search
+  // engines leave it out.
+  async serveMaven(req, res, urlPath) {
+    const robots = { 'X-Robots-Tag': 'noindex' };
+    if (urlPath === '/maven') return this.plain(res, 301, 'Moved.', { Location: 'maven/' });
+    const f = await this.maven.file(urlPath);
+    if (!f) return this.plain(res, 404, 'Not found.', robots);
+    if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
+    const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': f.cache, ETag: f.etag }, HEADERS, robots);
     if (req.headers['if-none-match'] === f.etag) return answer(res, 304, headers);
     answer(res, 200, Object.assign({ 'Content-Length': f.body.length }, headers), f.body);
   }
