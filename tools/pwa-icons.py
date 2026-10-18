@@ -1,12 +1,23 @@
-# Makes the icons of LA2L Sender as an installed web app (server/public/icon-*.png) from the
-# device's logo. Run it again when the logo changes: python3 tools/pwa-icons.py (needs Pillow).
-# The logo is 120 pixels, so the larger icons are scaled up; a larger logo makes them sharper.
+# Makes the icons of LA2L Sender as an installed web app (server/public/icon-*.png) from
+# tools/logo-600.jpg, the 600 x 600 logo of lloydstellar.nl. Run it again when the logo changes:
+# python3 tools/pwa-icons.py (needs Pillow).
+# The device's logo (src/ui/la2l-logo-big.png, 120 pixels) is this logo cut round and made
+# lighter; the icons are made the same way, so they look the same, only sharp.
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 
 root = Path(__file__).resolve().parent.parent
-logo = Image.open(root / 'src' / 'ui' / 'la2l-logo-big.png').convert('RGBA')
 out = root / 'server' / 'public'
+
+source = Image.open(root / 'tools' / 'logo-600.jpg').convert('RGB')
+# Lighter as the device's logo: white from 235, and a gamma of 0.7.
+source = source.point(lambda v: round(255 * min(1, v / 235) ** 0.7))
+# Round: the circle that fills the square, with a smooth edge (drawn 4 times larger).
+size = source.width
+edge = Image.new('L', (size * 4, size * 4), 0)
+ImageDraw.Draw(edge).ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
+logo = source.convert('RGBA')
+logo.putalpha(edge.resize((size, size), Image.LANCZOS))
 
 for size in (192, 512):
     # Any shape: the round logo on transparency, edge to edge.

@@ -112,7 +112,7 @@ docker logs la2l-server 2>&1 | grep ERROR    # the errors of a running server
 ls ~/la2l-server-logs                        # the logs of earlier containers
 ```
 
-Docker keeps up to 5 files of 10 MB per container (set in `compose.yaml`). A new build makes a new container with an empty log; `update.sh` saves the old one to `~/la2l-server-logs` and keeps the last 30. `docker compose restart` keeps the log.
+Docker keeps up to 5 files of 10 MB per container (set in `compose.yaml`). A new build makes a new container with an empty log; `update.sh` saves the old one to `~/la2l-server-logs` and keeps the last 30; a saved log is removed after 30 days (by `update.sh`, and every night by `backup.sh`), as the privacy statement says. `docker compose restart` keeps the log.
 
 Every line starts with the time in UTC. Only a server that cannot start writes a line without it: `la2l-server: ...` for a wrong setting, `la2l-server could not start: ...` for anything else, such as a database from a newer server. There is one line per request:
 
