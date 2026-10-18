@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Web apps: LA2L for developers</title>
-<meta name="description" content="The npm package la2l pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.">
+<meta name="description" content="The npm package @lloydstellar/la2l pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.">
 <link rel="alternate" type="text/markdown" href="web.md">
 <link rel="icon" href="../logo.png">
 <link rel="stylesheet" href="style.css">
@@ -29,9 +29,9 @@
 </header>
 <main>
 <h1 id="web-apps">Web apps</h1>
-<p>The npm package <code>la2l</code> pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.</p>
-<pre><code class="language-bash">npm install la2l</code></pre>
-<pre><code class="language-js">import { LA2L, wavFromAudioBuffer } from 'la2l';
+<p>The npm package <code>@lloydstellar/la2l</code> pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.</p>
+<pre><code class="language-bash">npm install @lloydstellar/la2l</code></pre>
+<pre><code class="language-js">import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' });
 if (!la2l.paired) await la2l.pair(codeFromUser);
@@ -53,7 +53,7 @@ status.textContent = result.status === 'imported' ? 'In Live' : 'In Live, partly
 <p>Show a field for the code once, with this line above it: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot; Case, spaces and dashes do not matter. The SDK keeps the token in <code>localStorage</code> (in Node.js, in a file only the user can read) and sends it only in the <code>Authorization</code> header. Never put it in a URL, a log line or an error report.</p>
 <p>Ask for a code again only when a call fails with the code <code>not_paired</code>: then the user unpaired your app in Live. <code>la2l.me()</code> tells you which computer you are paired with; <code>la2l.unpair()</code> ends the pairing.</p>
 <h2 id="making-wav-files">Making WAV files</h2>
-<pre><code class="language-js">import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from 'la2l';
+<pre><code class="language-js">import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from '@lloydstellar/la2l';
 
 wavFromAudioBuffer(buffer);                 // an AudioBuffer, 16 bit; { bits: 24 } or { bits: 32 } (float)
 wavFromSamples([left, right], 48000);       // Float32Arrays from -1 to 1
@@ -104,11 +104,11 @@ const wav = wavFromAudioBuffer(await renderLoop(120, schedule));</code></pre>
 <h2 id="content-security-policy">Content-Security-Policy</h2>
 <p>A page with a CSP must allow the LA2L server: <code>connect-src https://lloydstellar.nl</code>. The button shows the LA2L logo as a <code>data:</code> image, so it also needs <code>img-src data:</code>.</p>
 <h2 id="server-side-rendering">Server-side rendering</h2>
-<p><code>la2l</code> and <code>la2l/button</code> can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call <code>send()</code> in the browser.</p>
+<p><code>@lloydstellar/la2l</code> and <code>@lloydstellar/la2l/button</code> can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call <code>send()</code> in the browser.</p>
 <h2 id="an-example">An example</h2>
 <p><a href="../examples/drum-machine/">Web808</a>, a drum machine of four sounds and 16 steps, sends its loop and every sound as a one-shot. Its source is in <code>examples/web-drum-machine</code> of the LA2L repository.</p>
 <h2 id="the-full-docs">The full docs</h2>
-<p>The package carries its docs, for the version you installed, in <code>node_modules/la2l/docs</code>: getting started, the API, Web Audio, the button, testing and errors. <code>npx la2l agents-md</code> points AI coding agents to them (<a href="ai-tools">AI tools</a>).</p>
+<p>The package carries its docs, for the version you installed, in <code>node_modules/@lloydstellar/la2l/docs</code>: getting started, the API, Web Audio, the button, testing and errors. <code>npx @lloydstellar/la2l agents-md</code> points AI coding agents to them (<a href="ai-tools">AI tools</a>).</p>
 </main>
 <footer class="foot">
   <p><a href="web.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a> · <a href="privacy">Privacy</a></p>

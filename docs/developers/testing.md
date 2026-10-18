@@ -17,13 +17,13 @@ Open [the test receiver](../receiver). It shows a code; pair your app with it as
 ## In a terminal
 
 ```bash
-npx la2l test-receiver
+npx @lloydstellar/la2l test-receiver
 ```
 
 The same, in a terminal. With `--local` it starts an LA2L server in memory on `127.0.0.1` as well: no internet and no rate limits. Point your app at the address it prints:
 
 ```bash
-npx la2l test-receiver --local
+npx @lloydstellar/la2l test-receiver --local
 #   LA2L test receiver, with an LA2L server in memory: http://127.0.0.1:41234/api
 #   In your app, use that address as the server and pair with code K7P 42Q.
 ```
@@ -36,13 +36,13 @@ The button takes it as an attribute: `<la2l-send-button server="http://127.0.0.1
 
 ## In your tests
 
-`startTestReceiver()` from `la2l/testing` does the same inside a test, in Node.js:
+`startTestReceiver()` from `@lloydstellar/la2l/testing` does the same inside a test, in Node.js:
 
 ```js
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LA2L, memoryStorage } from 'la2l';
-import { startTestReceiver } from 'la2l/testing';
+import { LA2L, memoryStorage } from '@lloydstellar/la2l';
+import { startTestReceiver } from '@lloydstellar/la2l/testing';
 
 test('the beat arrives in Live as a loop of one bar', async () => {
   const receiver = await startTestReceiver();

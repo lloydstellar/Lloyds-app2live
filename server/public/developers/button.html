@@ -31,11 +31,11 @@
 <h1 id="the-button">The button</h1>
 <p><code>&lt;la2l-send-button&gt;</code> is a Send to Live button with the LA2L logo. The first click asks for the code that LA2L shows in Live; after that one click sends, and the button says what happens: &quot;Sending 2 sounds… 45%&quot;, &quot;Waiting for Import in Live&quot;, &quot;In Live&quot;.</p>
 <h2 id="without-a-build-step">Without a build step</h2>
-<pre><code class="language-html">&lt;script type=&quot;module&quot; src=&quot;https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js&quot;
-        integrity=&quot;sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;
+<pre><code class="language-html">&lt;script type=&quot;module&quot; src=&quot;https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js&quot;
+        integrity=&quot;sha384-A/Nu56J/Oh1+eLYYZgGeFUEk9dgZSWIanzPgaba1I1IjsXk2135KwQ4TYD940D0C&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;
 &lt;la2l-send-button app-name=&quot;Web808&quot;&gt;&lt;/la2l-send-button&gt;
 &lt;script type=&quot;module&quot;&gt;
-  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js';
   document.querySelector('la2l-send-button').sounds = async () =&gt; ({
     title: 'Treinbeat',
     bpm: 92,
@@ -44,15 +44,15 @@
 &lt;/script&gt;</code></pre>
 <p>The one file carries the button with <code>LA2L</code>, <code>La2lError</code>, <code>wavFromAudioBuffer</code>, <code>wavFromSamples</code> and <code>toWav</code>, so the page imports the WAV helpers from the same address. <code>renderLoop()</code> is yours: <a href="web">Web apps</a> shows one that renders one bar as an <code>AudioBuffer</code>.</p>
 <h2 id="with-a-bundler">With a bundler</h2>
-<pre><code class="language-js">import 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';</code></pre>
+<pre><code class="language-js">import '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';</code></pre>
 <h2 id="giving-it-the-sounds">Giving it the sounds</h2>
 <p>Set <code>sounds</code> to a function. The button calls it at the click, so it sends what the user has at that moment. It may return a promise, the options of <code>send()</code> (<code>title</code>, <code>bpm</code>, <code>sounds</code>), or only the list of sounds. A framework that cannot set a property can listen for the <code>la2l-request</code> event instead and call <code>event.detail.provide(value)</code> in it.</p>
 <h2 id="in-react-vue-svelte-and-angular">In React, Vue, Svelte and Angular</h2>
 <p>The button is a custom element, so every framework can use it. Give it <code>sounds</code> as a property, not as an attribute. In React, through a ref (React 18 passes only strings to a custom element), with one declaration per project so that TypeScript knows the element:</p>
 <pre><code class="language-tsx">import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton, SoundsProvider } from '@lloydstellar/la2l/button';
 
 declare module 'react' {
   namespace JSX {

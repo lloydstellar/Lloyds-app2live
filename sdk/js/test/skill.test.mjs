@@ -58,13 +58,14 @@ test('every link of the skill leads to a file of the skill', () => {
 });
 
 test('every name the skill, the developer pages, the paste text and the package docs import exists in the package', () => {
-  const modules = { la2l, 'la2l/button': button, 'la2l/testing': testing };
-  const cdn = /^https:\/\/cdn\.jsdelivr\.net\/npm\/la2l@[\d.]+\/dist\/button\.min\.js$/;
+  const modules = { '@lloydstellar/la2l': la2l, '@lloydstellar/la2l/button': button, '@lloydstellar/la2l/testing': testing };
+  const cdn = /^https:\/\/cdn\.jsdelivr\.net\/npm\/@lloydstellar\/la2l@[\d.]+\/dist\/button\.min\.js$/;
   const docs = (dir) => fs.readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => path.join(dir, f));
   let count = 0;
   for (const file of [...files.filter((f) => /\.(md|html|m?js)$/.test(f)), ...docs(path.join(REPO, 'docs', 'developers')), ...docs(path.join(PACKAGE, 'docs')), path.join(PACKAGE, 'README.md')]) {
     for (const [, names, from] of read(file).matchAll(/import\s*\{([^}]+)\}\s*from\s*'([^']+)'/g)) {
-      if (!from.startsWith('la2l') && !from.includes('/npm/la2l@')) continue; // react, in the React example
+      // react, in the React example. The old name 'la2l' is not skipped: it is in no module, so it fails.
+      if (!/^(@lloydstellar\/)?la2l(\/|$)/.test(from) && !/cdn\.jsdelivr\.net\/npm\/(@lloydstellar\/)?la2l@/.test(from)) continue;
       const mod = modules[from] || (cdn.test(from) ? button : null);
       assert.ok(mod, `${path.relative(SKILL, file)} imports from ${from}`);
       for (const name of names.split(',').map((n) => n.trim()).filter(Boolean)) {
@@ -107,11 +108,11 @@ test('the package of the curl example in references/api.md passes the checks', (
 });
 
 test('assets/check-with-test-receiver.mjs runs against the built package, as an app would run it', async () => {
-  // A project of its own with la2l in node_modules, so the example imports 'la2l' as it says.
+  // A project of its own with the package in node_modules, so the example imports '@lloydstellar/la2l' as it says.
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'la2l-skill-'));
   try {
-    fs.mkdirSync(path.join(project, 'node_modules'));
-    fs.symlinkSync(PACKAGE, path.join(project, 'node_modules', 'la2l'), 'dir');
+    fs.mkdirSync(path.join(project, 'node_modules', '@lloydstellar'), { recursive: true });
+    fs.symlinkSync(PACKAGE, path.join(project, 'node_modules', '@lloydstellar', 'la2l'), 'dir');
     fs.copyFileSync(path.join(SKILL, 'assets', 'check-with-test-receiver.mjs'), path.join(project, 'check.mjs'));
     const { code, out, err } = await new Promise((resolve) => {
       execFile(process.execPath, ['check.mjs'], { cwd: project }, (error, out, err) => resolve({ code: error ? error.code : 0, out, err }));

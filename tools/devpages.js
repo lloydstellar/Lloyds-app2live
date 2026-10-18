@@ -26,14 +26,14 @@ const BASE = SITE + 'developers/';
 // llms.txt. A source that is not here is not published.
 const PAGES = [
   ['index', 'Start', 'What LA2L does, the ways in, how pairing and sending go, the limits'],
-  ['web', 'Web apps', 'The npm package la2l: pairing, WAV files from Web Audio, sending and following a package, errors'],
+  ['web', 'Web apps', 'The npm package @lloydstellar/la2l: pairing, WAV files from Web Audio, sending and following a package, errors'],
   ['button', 'The button', 'The <la2l-send-button> web component, in a page or a framework, and the brand rules'],
   ['android', 'Android', 'The REST calls in Kotlin, and the Android SDK nl.lloydstellar:la2l and la2l-ktx that comes later'],
   ['sharing', 'Sharing', 'An Android app shares WAV files with LA2L Sender, the installed web app, with the description in the text'],
-  ['rest-api', 'REST API', 'The five HTTPS calls, with curl; the command line npx la2l; the rules for errors and limits'],
+  ['rest-api', 'REST API', 'The five HTTPS calls, with curl; the command line npx @lloydstellar/la2l; the rules for errors and limits'],
   ['manifest', 'Package description', 'Every field of the app2live/1 description, and what LA2L does with it'],
   ['testing', 'Testing', 'The test receiver: a page, a terminal command, and startTestReceiver() for automated tests'],
-  ['ai-tools', 'AI tools', 'The skill la2l-send-to-ableton, npx la2l agents-md, the paste text, llms.txt'],
+  ['ai-tools', 'AI tools', 'The skill la2l-send-to-ableton, npx @lloydstellar/la2l agents-md, the paste text, llms.txt'],
   ['paste-text', null, 'A text to paste into the knowledge of Lovable or Bolt: the rules and examples on one page'],
   ['privacy', null, 'What the LA2L server keeps about the people who use it, why, and for how long'],
 ];
@@ -297,7 +297,7 @@ function llms(titles) {
 
 > LA2L (Lloyd's App2Live) is a Max for Live device that brings sounds from apps into Ableton Live. An app pairs once with a code that LA2L shows in Live, then sends WAV files with a short description of each sound: loop or one-shot, role, tempo. In Live every sound becomes an audio track, warped to the app's tempo. No API key or developer account.
 
-Web apps use the npm package la2l (ESM, no dependencies) or its <la2l-send-button> web component. Every other language uses five HTTPS calls. The test receiver stands in for Live, so an app can be tested without Ableton.
+Web apps use the npm package @lloydstellar/la2l (ESM, no dependencies) or its <la2l-send-button> web component. Every other language uses five HTTPS calls. The test receiver stands in for Live, so an app can be tested without Ableton.
 
 ## Docs
 

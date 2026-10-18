@@ -9,8 +9,8 @@ Open https://lloydstellar.nl/la2l/receiver and pair your app with the code it sh
 ## In a terminal
 
 ```bash
-npx la2l test-receiver           # against the real server, like the page
-npx la2l test-receiver --local   # an LA2L server in memory on 127.0.0.1, without internet
+npx @lloydstellar/la2l test-receiver           # against the real server, like the page
+npx @lloydstellar/la2l test-receiver --local   # an LA2L server in memory on 127.0.0.1, without internet
 ```
 
 `--local` prints an address and a code. Point your app at the address with the option `server`, and pair with the code. After an app used a code, or when a code ran out, it prints a new one for the next app. Against the real server, every run shows a fresh code; apps paired in an earlier run can still send.
@@ -18,8 +18,8 @@ npx la2l test-receiver --local   # an LA2L server in memory on 127.0.0.1, withou
 ## In your tests
 
 ```js
-import { LA2L, memoryStorage } from 'la2l';
-import { startTestReceiver } from 'la2l/testing';
+import { LA2L, memoryStorage } from '@lloydstellar/la2l';
+import { startTestReceiver } from '@lloydstellar/la2l/testing';
 
 const receiver = await startTestReceiver(); // no internet, no rate limits
 const la2l = new LA2L({ appName: 'Web808', server: receiver.server, storage: memoryStorage() });
@@ -33,16 +33,16 @@ const report = await receiver.nextReport();
 await receiver.close();
 ```
 
-The local server answers the app side as the real one does, with the same texts; the tests of `la2l` run the same app-side tests against both. `receiver.nextReport()` gives the oldest report it did not give yet, so it also finds one that came before you asked. `receiver.code` is always a code that works: a new one comes after an app used it. `receiver.reports` holds them all.
+The local server answers the app side as the real one does, with the same texts; the tests of `@lloydstellar/la2l` run the same app-side tests against both. `receiver.nextReport()` gives the oldest report it did not give yet, so it also finds one that came before you asked. `receiver.code` is always a code that works: a new one comes after an app used it. `receiver.reports` holds them all.
 
 ## By hand
 
 The command line sends files from any script:
 
 ```bash
-npx la2l pair K7P42Q
-npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
-npx la2l status
+npx @lloydstellar/la2l pair K7P42Q
+npx @lloydstellar/la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
+npx @lloydstellar/la2l status
 ```
 
 The token is kept in a file only you can read, or taken from `LA2L_TOKEN`.

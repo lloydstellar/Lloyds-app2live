@@ -83,7 +83,7 @@ The column "Default" is Claude's advice from the plan; build with it unless Erik
 | # | Decision | Default | Why |
 |---|---|---|---|
 | 1 | Make the repository public | Yes, in phase 2. First the npm name is claimed and the history is checked for personal data, such as commit author e-mail addresses. If Erik wants those gone, the history must be rewritten before the repository goes public, which needs a force-push. A rewrite alone is not enough on GitHub: the pull requests keep their old commits, with the old addresses, and only GitHub Support can remove those. A new repository with the rewritten history avoids that, but leaves the pull requests behind. Phase 0 found an address of Erik's as the author of 23 commits. | npm provenance, and importing the skill in Lovable, Bolt and Replit, work only with a public repository. |
-| 2 | Names | `la2l` on npm; `nl.lloydstellar:la2l` and `nl.lloydstellar:la2l-ktx` on Maven Central (since decision 8: in our own Maven repository); the skill `la2l-send-to-ableton` | Short, and the product's own name. On 2026-10-17 `la2l` was still free on npm, PyPI and pub.dev. |
+| 2 | Names | `la2l` on npm; `nl.lloydstellar:la2l` and `nl.lloydstellar:la2l-ktx` on Maven Central (since decision 8: in our own Maven repository); the skill `la2l-send-to-ableton` | Short, and the product's own name. On 2026-10-17 `la2l` was still free on npm, PyPI and pub.dev. On 2026-10-18 npm refused to publish `la2l`: too much like existing names (lab, yaml, vaul), a rule that holds for everyone. Erik chose `@lloydstellar/la2l`, which matches the Maven group `nl.lloydstellar`; its command stays `la2l`. |
 | 3 | Order on Android | First LA2L Sender as a share target, then the Android SDK; an Android app of our own only when that is not enough | No Play account and no closed test needed, and it fits Erik's earlier choice for sharing on Android. The share target works only as a web app installed from Chrome or Samsung Internet. |
 | 4 | Test receiver | Yes: a page, in the CLI, and a local variant without internet | Without Ableton, web developers and AI agents cannot test otherwise. The local variant keeps CI and AI agents off the real server. |
 | 5 | Languages | Now TypeScript/JavaScript and Kotlin/Java; Python, Dart and React Native on request | That covers nearly all web and Android apps. Music apps with a C++ engine upload from their Kotlin or Java layer, so no C++ SDK is needed. |
@@ -245,6 +245,8 @@ It comes in three forms:
 ---
 
 ## 9. The web SDK: `la2l` on npm (phase 2; its checks in phase 1)
+
+On npm the package is `@lloydstellar/la2l` (decision 2): read `la2l` in this section and in the code below as that name, and `npx la2l` as `npx @lloydstellar/la2l`. The command it installs is still `la2l`.
 
 ### 9.1 The package
 
@@ -459,7 +461,7 @@ Everything is published from GitHub Actions in this repository, never by hand fr
 
 | Where | How | What Erik arranges |
 |---|---|---|
-| npm, `la2l` | Trusted publishing from GitHub Actions (OIDC), so no npm token is stored as a secret. Provenance comes with it, but only from a public repository. A tag `js-v0.1.0` publishes. | An npm account with 2FA. Before the repository goes public he claims the name with an empty version 0.0.1 that he publishes himself (trusted publishing can only be set up for a package that exists), and then links this repository's workflow to it on npmjs.com. |
+| npm, `@lloydstellar/la2l` (decision 2) | Trusted publishing from GitHub Actions (OIDC), so no npm token is stored as a secret. Provenance comes with it, but only from a public repository. A tag `js-v0.1.0` publishes. | An npm account with 2FA. Before the repository goes public he claims the name with an empty version 0.0.1 that he publishes himself (trusted publishing can only be set up for a package that exists), and then links this repository's workflow to it on npmjs.com. |
 | A Maven repository of our own, `nl.lloydstellar:la2l` and `la2l-ktx` | At `https://lloydstellar.nl/la2l/maven/` (decision 8): developers add that address to `repositories` in Gradle. GitHub Actions builds and signs the artifacts on a tag `android-v0.1.0`; how they reach the VPS is settled with Erik in phase 5, for example a release asset that the VPS fetches, so no key to the VPS is stored on GitHub. Settled on 2026-10-18: the workflow attaches the repository to a GitHub release as a ZIP, and `server/deploy/maven-sync.sh` on the VPS fetches every release, checks its signatures and checksums, and puts it in the volume `la2l-maven` that la2l-server serves from 0.12.0. | A GPG key as a GitHub secret, in phase 5. Made on 2026-10-18, with Erik's yes: `SIGNING_KEY` and `SIGNING_PASSWORD`; the public key is `sdk/android/signing-key.asc`. |
 | jsDelivr and unpkg | Automatic from npm. `dist/button.js` is self-contained and minified; the docs give its `integrity` hash per version. | Nothing. |
 | Skills | Straight from the repository; there is no registry. | Nothing. |

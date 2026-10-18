@@ -1,4 +1,4 @@
-// la2l agents-md: an index of the docs of la2l in the project's AGENTS.md, and in its CLAUDE.md,
+// la2l agents-md: an index of the docs of @lloydstellar/la2l in the project's AGENTS.md, and in its CLAUDE.md,
 // so that AI coding agents read the docs of the installed version instead of guessing. Agents
 // often leave a skill unused; an index in AGENTS.md they read every time.
 
@@ -7,6 +7,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VERSION } from '../version.js';
 
+// The name on npm. The command it installs is la2l, and the markers keep that short name.
+const PACKAGE = '@lloydstellar/la2l';
 const START = '<!-- BEGIN la2l docs index: npx la2l agents-md writes this part, and a new run replaces it -->';
 const START_LINE = /<!-- BEGIN la2l docs index[^\n]*?-->/;
 const END = '<!-- END la2l docs index -->';
@@ -18,26 +20,26 @@ export interface IndexResult {
   written: string[];
   /** CLAUDE.md, when it was left alone because it reads AGENTS.md already. */
   skipped: string[];
-  /** Where the index points: node_modules/la2l/docs/, or the docs online. */
+  /** Where the index points: node_modules/@lloydstellar/la2l/docs/, or the docs online. */
   docs: string;
   local: boolean;
   bytes: number;
 }
 
-// The docs of the installed la2l when the project has one, or else those of this copy, which
+// The docs of the installed package when the project has one, or else those of this copy, which
 // npx may have fetched to a folder of its own.
 function docsOf(project: string): { dir: string; version: string; local: boolean } {
-  const installed = path.join(project, 'node_modules', 'la2l');
+  const installed = path.join(project, 'node_modules', ...PACKAGE.split('/'));
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(installed, 'package.json'), 'utf8'));
-    if (pkg.name === 'la2l' && fs.existsSync(path.join(installed, 'docs'))) return { dir: path.join(installed, 'docs'), version: String(pkg.version), local: true };
+    if (pkg.name === PACKAGE && fs.existsSync(path.join(installed, 'docs'))) return { dir: path.join(installed, 'docs'), version: String(pkg.version), local: true };
   } catch {
     // not installed in this project
   }
   return { dir: path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs'), version: VERSION, local: false };
 }
 
-// "api.md: The API of la2l: new LA2L(options); Pairing; Sending", from the headings of a doc.
+// "api.md: The API of @lloydstellar/la2l: new LA2L(options); Pairing; Sending", from the headings of a doc.
 function line(dir: string, file: string): string {
   const text = fs.readFileSync(path.join(dir, file), 'utf8');
   const plain = (s: string) => s.replace(/`/g, '').trim();
@@ -55,18 +57,18 @@ export function indexBlock(dir: string, version: string, docs: string): string {
     START,
     '## LA2L: sending sounds to Ableton Live',
     '',
-    `This project sends sounds to Ableton Live with la2l ${version}. Before you write or change code that uses la2l, read the doc that fits below: it is the documentation of this version, and what you remember about la2l may be wrong or out of date.`,
+    `This project sends sounds to Ableton Live with ${PACKAGE} ${version}. Before you write or change code that uses it, read the doc that fits below: it is the documentation of this version, and what you remember about this package may be wrong or out of date.`,
     '',
     `Docs: ${docs}`,
     ...files.map((f) => line(dir, f)),
     '',
     'Rules:',
-    "- Send WAV only. Make it with wavFromAudioBuffer, wavFromSamples or toWav from 'la2l'.",
+    `- Send WAV only. Make it with wavFromAudioBuffer, wavFromSamples or toWav from '${PACKAGE}'.`,
     "- Give every sound kind: 'loop' (warped to the tempo and looped) or kind: 'oneshot' (plays as it is). Give loops a bpm, and render them a whole number of beats long.",
     '- Names have at most 40 characters. A package has at most 32 sounds and 200 MB.',
     '- Pair once with the code the user reads in Live ("In Live, click Pair app in LA2L and type the code it shows."). Ask for a code again only after the error code not_paired.',
     '- Never put the token in a URL, a log line, an analytics event or an error report.',
-    "- Test without Ableton: npx la2l test-receiver --local, or startTestReceiver() from 'la2l/testing' in automated tests.",
+    `- Test without Ableton: npx ${PACKAGE} test-receiver --local, or startTestReceiver() from '${PACKAGE}/testing' in automated tests.`,
     END,
   ].join('\n');
 }
@@ -88,7 +90,7 @@ function withIndex(text: string, block: string, name: string): string {
 /** Writes the index into AGENTS.md, and into CLAUDE.md when the project has one. */
 export function writeIndex(project: string): IndexResult {
   const { dir, version, local } = docsOf(project);
-  const docs = local ? 'node_modules/la2l/docs/' : `https://cdn.jsdelivr.net/npm/la2l@${version}/docs/`;
+  const docs = local ? `node_modules/${PACKAGE}/docs/` : `https://cdn.jsdelivr.net/npm/${PACKAGE}@${version}/docs/`;
   const block = indexBlock(dir, version, docs);
   const targets = ['AGENTS.md'];
   const skipped: string[] = [];

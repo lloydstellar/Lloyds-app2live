@@ -5,7 +5,7 @@
 Render exactly one bar (or a whole number of bars) at the tempo, and fold what rings past the end back to the start, so the loop has no seam:
 
 ```js
-import { wavFromAudioBuffer } from 'la2l';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 // One bar of 4/4 at `bpm` as an AudioBuffer: schedule(ctx) starts your sources on the context.
 async function renderLoop(bpm, schedule, tailSeconds = 1) {
@@ -32,7 +32,7 @@ Send that WAV with `kind: 'loop'`, the `bpm` and `lengthBeats: 4`.
 ## Files the user picks
 
 ```js
-import { toWav, checkWav } from 'la2l';
+import { toWav, checkWav } from '@lloydstellar/la2l';
 const wav = await toWav(file); // mp3, m4a, ogg: decoded to WAV; a WAV LA2L takes comes back as it is
 ```
 
@@ -44,7 +44,7 @@ const wav = await toWav(file); // mp3, m4a, ogg: decoded to WAV; a WAV LA2L take
 <la2l-send-button app-name="Web808"></la2l-send-button>
 ```
 
-- With a bundler: `import 'la2l/button'`. Without one: `<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"></script>`, and import the helpers from that same address.
+- With a bundler: `import '@lloydstellar/la2l/button'`. Without one: `<script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"></script>`, and import the helpers from that same address.
 - Give it the sounds: `button.sounds = async () => ({ title, bpm, sounds })`, called at the click.
 - Events: `la2l-paired`, `la2l-sent`, `la2l-imported`, `la2l-error`.
 - `button.texts = { send: 'Naar Live sturen' }` for another language; CSS custom properties such as `--la2l-accent` for the looks.
@@ -57,8 +57,8 @@ Set `sounds` as a property. In React through a ref, and declare the element once
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton, SoundsProvider } from '@lloydstellar/la2l/button';
 
 declare module 'react' {
   namespace JSX {
@@ -81,4 +81,4 @@ Vue: `isCustomElement: (tag) => tag.startsWith('la2l-')` in the compiler options
 
 ## Server-side rendering
 
-`la2l/button` can be imported on a server (Next.js, Nuxt, SvelteKit): it does nothing there. Call `la2l.send` only in the browser.
+`@lloydstellar/la2l/button` can be imported on a server (Next.js, Nuxt, SvelteKit): it does nothing there. Call `la2l.send` only in the browser.

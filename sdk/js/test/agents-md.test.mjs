@@ -17,13 +17,13 @@ const DOCS = fs.readdirSync(path.join(PACKAGE, 'docs')).filter((f) => f.endsWith
 const projects = [];
 test.after(() => projects.forEach((p) => fs.rmSync(p, { recursive: true, force: true })));
 
-// A project folder, with la2l in node_modules unless `installed` is false.
+// A project folder, with @lloydstellar/la2l in node_modules unless `installed` is false.
 function project({ installed = true, files = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'la2l-agents-'));
   projects.push(dir);
   if (installed) {
-    fs.mkdirSync(path.join(dir, 'node_modules'));
-    fs.symlinkSync(PACKAGE, path.join(dir, 'node_modules', 'la2l'), 'dir');
+    fs.mkdirSync(path.join(dir, 'node_modules', '@lloydstellar'), { recursive: true });
+    fs.symlinkSync(PACKAGE, path.join(dir, 'node_modules', '@lloydstellar', 'la2l'), 'dir');
   }
   for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
   return dir;
@@ -38,18 +38,18 @@ function la2l(args, cwd) {
 const read = (dir, name) => fs.readFileSync(path.join(dir, name), 'utf8');
 const block = (text) => text.slice(text.indexOf('<!-- BEGIN la2l docs index'), text.indexOf('<!-- END la2l docs index -->') + 28);
 
-test('a new AGENTS.md with an index of every doc, pointing to node_modules/la2l/docs', async () => {
+test('a new AGENTS.md with an index of every doc, pointing to node_modules/@lloydstellar/la2l/docs', async () => {
   const dir = project();
   const r = await la2l(['agents-md'], dir);
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /^Wrote the index of the la2l docs \(\d\.\d KB\) to AGENTS\.md\. It points to node_modules\/la2l\/docs\/\n$/);
+  assert.match(r.out, /^Wrote the index of the la2l docs \(\d\.\d KB\) to AGENTS\.md\. It points to node_modules\/@lloydstellar\/la2l\/docs\/\n$/);
   const text = read(dir, 'AGENTS.md');
   assert.equal(block(text) + '\n', text);
-  assert.ok(text.includes('Docs: node_modules/la2l/docs/'));
-  assert.ok(text.includes(`with la2l ${VERSION}.`));
+  assert.ok(text.includes('Docs: node_modules/@lloydstellar/la2l/docs/'));
+  assert.ok(text.includes(`with @lloydstellar/la2l ${VERSION}.`));
   for (const doc of DOCS) {
     assert.ok(text.includes(`\n|${doc}: `), doc);
-    assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'la2l', 'docs', doc)));
+    assert.ok(fs.existsSync(path.join(dir, 'node_modules', '@lloydstellar', 'la2l', 'docs', doc)));
   }
   assert.ok(text.indexOf('|getting-started.md') < text.indexOf('|api.md'));
   assert.ok(Buffer.byteLength(text) < 8192, 'a few KB at most');
@@ -65,7 +65,7 @@ test('a second run replaces the index and keeps the rest of AGENTS.md and CLAUDE
   assert.ok(first.claude.startsWith('# Claude\n\nBe brief.\n\n<!-- BEGIN la2l docs index'));
   assert.equal(block(first.agents), block(first.claude));
   // Someone writes below the index, and the index gets old.
-  fs.writeFileSync(path.join(dir, 'AGENTS.md'), first.agents.replace('with la2l', 'with la2l OLD') + '\nMore rules.\n');
+  fs.writeFileSync(path.join(dir, 'AGENTS.md'), first.agents.replace('with @lloydstellar/la2l', 'with @lloydstellar/la2l OLD') + '\nMore rules.\n');
   const r = await la2l(['agents-md'], dir);
   assert.equal(r.code, 0);
   assert.match(r.out, /to AGENTS\.md and CLAUDE\.md\./);
@@ -87,15 +87,15 @@ test('a CLAUDE.md that reads AGENTS.md already is left as it was', async () => {
   assert.equal(r.code, 0);
   assert.match(r.out, /\nCLAUDE\.md reads AGENTS\.md already \(@AGENTS\.md\), so it was left as it was\.\n$/);
   assert.equal(read(dir, 'CLAUDE.md'), '@AGENTS.md\n\nMore for Claude.\n');
-  assert.ok(read(dir, 'AGENTS.md').includes('Docs: node_modules/la2l/docs/'));
+  assert.ok(read(dir, 'AGENTS.md').includes('Docs: node_modules/@lloydstellar/la2l/docs/'));
 });
 
-test('without la2l in the project the index points to the docs of this version online', async () => {
+test('without @lloydstellar/la2l in the project the index points to the docs of this version online', async () => {
   const dir = project({ installed: false });
   const r = await la2l(['agents-md', dir], os.tmpdir());
   assert.equal(r.code, 0);
-  assert.match(r.out, /la2l is not installed in this folder, so the index points to the docs online\./);
-  assert.ok(read(dir, 'AGENTS.md').includes(`Docs: https://cdn.jsdelivr.net/npm/la2l@${VERSION}/docs/`));
+  assert.match(r.out, /@lloydstellar\/la2l is not installed in this folder, so the index points to the docs online\. After npm install @lloydstellar\/la2l, run this again to point it at node_modules\/@lloydstellar\/la2l\/docs\/\./);
+  assert.ok(read(dir, 'AGENTS.md').includes(`Docs: https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@${VERSION}/docs/`));
 });
 
 test('Windows line endings stay Windows line endings', async () => {

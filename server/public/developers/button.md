@@ -5,11 +5,11 @@
 ## Without a build step
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
-        integrity="sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl" crossorigin="anonymous"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-A/Nu56J/Oh1+eLYYZgGeFUEk9dgZSWIanzPgaba1I1IjsXk2135KwQ4TYD940D0C" crossorigin="anonymous"></script>
 <la2l-send-button app-name="Web808"></la2l-send-button>
 <script type="module">
-  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js';
   document.querySelector('la2l-send-button').sounds = async () => ({
     title: 'Treinbeat',
     bpm: 92,
@@ -23,8 +23,8 @@ The one file carries the button with `LA2L`, `La2lError`, `wavFromAudioBuffer`, 
 ## With a bundler
 
 ```js
-import 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';
+import '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 ```
 
 ## Giving it the sounds
@@ -37,8 +37,8 @@ The button is a custom element, so every framework can use it. Give it `sounds` 
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton, SoundsProvider } from '@lloydstellar/la2l/button';
 
 declare module 'react' {
   namespace JSX {

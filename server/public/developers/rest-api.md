@@ -8,12 +8,12 @@ For machines: [openapi.yaml](openapi.yaml) (OpenAPI 3.1) describes every call, a
 
 ## From a script
 
-With Node.js 22.12 or newer, the command line of `la2l` does it all:
+With Node.js 22.12 or newer, the command line of `@lloydstellar/la2l` does it all:
 
 ```bash
-npx la2l pair K7P42Q
-npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
-npx la2l status
+npx @lloydstellar/la2l pair K7P42Q
+npx @lloydstellar/la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
+npx @lloydstellar/la2l status
 ```
 
 `--oneshot` for sounds that play as they are. It keeps the token in a file only the user can read, or takes it from `LA2L_TOKEN`.

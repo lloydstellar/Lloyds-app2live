@@ -1,13 +1,13 @@
 # Web apps
 
-The npm package `la2l` pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.
+The npm package `@lloydstellar/la2l` pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.
 
 ```bash
-npm install la2l
+npm install @lloydstellar/la2l
 ```
 
 ```js
-import { LA2L, wavFromAudioBuffer } from 'la2l';
+import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' });
 if (!la2l.paired) await la2l.pair(codeFromUser);
@@ -37,7 +37,7 @@ Ask for a code again only when a call fails with the code `not_paired`: then the
 ## Making WAV files
 
 ```js
-import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from 'la2l';
+import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from '@lloydstellar/la2l';
 
 wavFromAudioBuffer(buffer);                 // an AudioBuffer, 16 bit; { bits: 24 } or { bits: 32 } (float)
 wavFromSamples([left, right], 48000);       // Float32Arrays from -1 to 1
@@ -98,7 +98,7 @@ A page with a CSP must allow the LA2L server: `connect-src https://lloydstellar.
 
 ## Server-side rendering
 
-`la2l` and `la2l/button` can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call `send()` in the browser.
+`@lloydstellar/la2l` and `@lloydstellar/la2l/button` can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call `send()` in the browser.
 
 ## An example
 
@@ -106,4 +106,4 @@ A page with a CSP must allow the LA2L server: `connect-src https://lloydstellar.
 
 ## The full docs
 
-The package carries its docs, for the version you installed, in `node_modules/la2l/docs`: getting started, the API, Web Audio, the button, testing and errors. `npx la2l agents-md` points AI coding agents to them ([AI tools](ai-tools.md)).
+The package carries its docs, for the version you installed, in `node_modules/@lloydstellar/la2l/docs`: getting started, the API, Web Audio, the button, testing and errors. `npx @lloydstellar/la2l agents-md` points AI coding agents to them ([AI tools](ai-tools.md)).

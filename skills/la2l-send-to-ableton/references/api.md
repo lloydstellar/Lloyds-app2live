@@ -1,9 +1,9 @@
 # The LA2L API
 
-## With the SDK (`npm install la2l`)
+## With the SDK (`npm install @lloydstellar/la2l`)
 
 ```js
-import { LA2L } from 'la2l';
+import { LA2L } from '@lloydstellar/la2l';
 const la2l = new LA2L({ appName: 'Web808' });
 ```
 
@@ -27,11 +27,11 @@ Every error is a `La2lError`: `code` (`not_paired`, `bad_code`, `rate_limited`, 
 ## The command line
 
 ```bash
-npx la2l pair K7P42Q
-npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
-npx la2l status
-npx la2l unpair
-npx la2l test-receiver --local
+npx @lloydstellar/la2l pair K7P42Q
+npx @lloydstellar/la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
+npx @lloydstellar/la2l status
+npx @lloydstellar/la2l unpair
+npx @lloydstellar/la2l test-receiver --local
 ```
 
 The token is kept in a file only the user can read, or taken from `LA2L_TOKEN`.

@@ -1,6 +1,6 @@
-// la2l: send sounds from an app to Ableton Live with LA2L.
+// @lloydstellar/la2l: send sounds from an app to Ableton Live with LA2L.
 //
-//   import { LA2L, wavFromAudioBuffer } from 'la2l';
+//   import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 //   const la2l = new LA2L({ appName: 'Web808' });
 //   if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows in Live
 //   const delivery = await la2l.send({ title: 'Treinbeat', bpm: 92, sounds: [

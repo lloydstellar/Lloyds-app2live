@@ -1,6 +1,6 @@
 # LA2L: Send to Live
 
-This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package `la2l`. Follow these notes whenever you build or change that part. Full docs: https://lloydstellar.nl/la2l/llms-full.txt
+This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package `@lloydstellar/la2l`. Follow these notes whenever you build or change that part. Full docs: https://lloydstellar.nl/la2l/llms-full.txt
 
 ## How it works
 
@@ -9,7 +9,7 @@ The user has LA2L, a Max for Live device, in Ableton Live. They click Pair app i
 ## Install
 
 ```bash
-npm install la2l
+npm install @lloydstellar/la2l
 ```
 
 ## The button
@@ -18,9 +18,9 @@ npm install la2l
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton } from 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton } from '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 declare module 'react' {
   namespace JSX {
@@ -49,7 +49,7 @@ Set `sounds` through a ref as above; React 18 cannot pass a function to a custom
 ## Without the button
 
 ```ts
-import { LA2L, La2lError, wavFromAudioBuffer } from 'la2l';
+import { LA2L, La2lError, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'My app' }); // Live shows "Paired with My app"
 // Pair once, from a field with this line above it:

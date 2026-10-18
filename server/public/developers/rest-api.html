@@ -33,10 +33,10 @@
 <p>Base address: <code>https://lloydstellar.nl/la2l/api</code></p>
 <p>For machines: <a href="openapi.yaml">openapi.yaml</a> (OpenAPI 3.1) describes every call, answer and error text, and <a href="app2live-1.schema.json">app2live-1.schema.json</a> (JSON Schema) the package description.</p>
 <h2 id="from-a-script">From a script</h2>
-<p>With Node.js 22.12 or newer, the command line of <code>la2l</code> does it all:</p>
-<pre><code class="language-bash">npx la2l pair K7P42Q
-npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title &quot;Beat&quot; --wait
-npx la2l status</code></pre>
+<p>With Node.js 22.12 or newer, the command line of <code>@lloydstellar/la2l</code> does it all:</p>
+<pre><code class="language-bash">npx @lloydstellar/la2l pair K7P42Q
+npx @lloydstellar/la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title &quot;Beat&quot; --wait
+npx @lloydstellar/la2l status</code></pre>
 <p><code>--oneshot</code> for sounds that play as they are. It keeps the token in a file only the user can read, or takes it from <code>LA2L_TOKEN</code>.</p>
 <h2 id="the-five-calls-with-curl">The five calls, with curl</h2>
 <pre><code class="language-bash">BASE=https://lloydstellar.nl/la2l/api

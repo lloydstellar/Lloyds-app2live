@@ -1,7 +1,8 @@
 // Builds the package and the copies la2l-server serves.
 //
 //   dist/                      tsc: the JavaScript and the type definitions npm gets; a bundler
-//                              that imports la2l and la2l/button gets the SDK once
+//                              that imports @lloydstellar/la2l and @lloydstellar/la2l/button gets
+//                              the SDK once
 //   dist/button.min.js         esbuild: the Send to Live button with the SDK, as one minified file,
 //                              for a page without a build step (jsDelivr)
 //   server/public/vendor/      esbuild: la2l.js (the SDK), la2l-button.js (= button.min.js) and
@@ -22,11 +23,11 @@ import * as esbuild from 'esbuild';
 
 const HERE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VENDOR = path.join(HERE, '..', '..', 'server', 'public', 'vendor');
-const { version } = JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8'));
+const { name, version } = JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8'));
 
 const banner = (what) =>
   [
-    `// la2l ${version}: ${what}.`,
+    `// ${name} ${version}: ${what}.`,
     '// SPDX-License-Identifier: Apache-2.0. https://github.com/lloydstellar/Lloyds-app2live',
     '// Built from sdk/js with "npm run build". Do not edit: CI compares it with a fresh build.',
   ].join('\n');
@@ -80,8 +81,8 @@ function docsWithIntegrity(hash) {
   for (const file of files) {
     const text = fs.readFileSync(file, 'utf8');
     out[file] = text
-      .replace(/la2l@\d+\.\d+\.\d+(-[\w.]+)?\/dist\/button\.min\.js/g, `la2l@${version}/dist/button.min.js`)
-      .replace(/(la2l@[\d.]+\/dist\/button\.min\.js"\s+integrity=")sha384-[A-Za-z0-9+/=]*(")/g, `$1${hash}$2`);
+      .replace(/(@lloydstellar\/)?la2l@\d+\.\d+\.\d+(-[\w.]+)?\/dist\/button\.min\.js/g, `${name}@${version}/dist/button.min.js`)
+      .replace(/(@lloydstellar\/la2l@[\d.]+\/dist\/button\.min\.js"\s+integrity=")sha384-[A-Za-z0-9+/=]*(")/g, `$1${hash}$2`);
   }
   return out;
 }
@@ -109,5 +110,5 @@ if (check) {
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== text) fs.writeFileSync(file, text);
   }
   fs.chmodSync(path.join(HERE, 'dist', 'cli', 'main.js'), 0o755);
-  console.log(`Built la2l ${version}: dist/, server/public/vendor/ (la2l.js, la2l-button.js, la2l-receiver.js), and the docs.`);
+  console.log(`Built ${name} ${version}: dist/, server/public/vendor/ (la2l.js, la2l-button.js, la2l-receiver.js), and the docs.`);
 }

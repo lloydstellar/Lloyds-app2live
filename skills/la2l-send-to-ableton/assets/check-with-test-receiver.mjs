@@ -1,8 +1,8 @@
 // Checks a send end to end without Ableton: an LA2L server in memory with a test receiver, the
 // SDK pointed at it, and the report of what Live would do. Run with: node check-with-test-receiver.mjs
 // In your own tests, send through your app's code instead of the send() below.
-import { LA2L, memoryStorage, wavFromSamples } from 'la2l';
-import { startTestReceiver } from 'la2l/testing';
+import { LA2L, memoryStorage, wavFromSamples } from '@lloydstellar/la2l';
+import { startTestReceiver } from '@lloydstellar/la2l/testing';
 
 const receiver = await startTestReceiver(); // no internet, no rate limits
 try {

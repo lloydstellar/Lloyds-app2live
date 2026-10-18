@@ -1,4 +1,4 @@
-# Publishes la2l to npm, from a tag js-v<version> only. npm trusted publishing (OIDC): no npm
+# Publishes @lloydstellar/la2l to npm, from a tag js-v<version> only. npm trusted publishing (OIDC): no npm
 # token is stored, and the package gets provenance. Before the first run, the package must exist
 # on npm and have this repository and this workflow as its trusted publisher (sdk/BUILD-PROMPT.md,
 # section 13). Provenance needs a public repository.

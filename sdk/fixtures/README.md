@@ -6,7 +6,7 @@ Small WAV files and manifests, good and bad, with the verdict on each in `expect
 |---|---|
 | The device, the source of truth | `tests/fixtures.test.js` runs `src/node/wav.js` and `src/node/manifest.js` |
 | la2l-server | `server/test/fixtures.test.js` sends every manifest to `POST /packages` and every WAV file through `PUT` |
-| `la2l` on npm | `sdk/js/test/fixtures.test.mjs` runs `checkWav`, `checkManifest` and `planSound` |
+| `@lloydstellar/la2l` on npm | `sdk/js/test/fixtures.test.mjs` runs `checkWav`, `checkManifest` and `planSound` |
 | The JSON Schema | `sdk/js/test/schema.test.mjs` checks `docs/app2live-1.schema.json` against the `schema` verdicts |
 
 When two of them disagree, the device is right, unless Erik decides otherwise.

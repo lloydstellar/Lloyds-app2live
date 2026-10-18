@@ -7,7 +7,7 @@ LA2L (Lloyd's App2Live) is a Max for Live device that brings sounds from apps in
 There is no API key and no developer account. The user pairs your app once with a code that LA2L shows in Live, and that code is the consent.
 
 ```js
-import { LA2L, wavFromAudioBuffer } from 'la2l';
+import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' }); // Live shows "Paired with Web808"
 if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows, like "K7P 42Q"
@@ -24,9 +24,9 @@ await delivery.imported(); // the user clicked Import in Live
 
 | Your app | Use | Read |
 |---|---|---|
-| A web app | `npm install la2l`, or the Send to Live button without a build step | [Web apps](https://lloydstellar.nl/la2l/developers/web.md), [The button](https://lloydstellar.nl/la2l/developers/button.md) |
+| A web app | `npm install @lloydstellar/la2l`, or the Send to Live button without a build step | [Web apps](https://lloydstellar.nl/la2l/developers/web.md), [The button](https://lloydstellar.nl/la2l/developers/button.md) |
 | An Android app | Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later | [Android](https://lloydstellar.nl/la2l/developers/android.md), [Sharing](https://lloydstellar.nl/la2l/developers/sharing.md) |
-| A script, or any other language | `npx la2l send`, or the same five calls | [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) |
+| A script, or any other language | `npx @lloydstellar/la2l send`, or the same five calls | [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) |
 | Built with an AI tool | The LA2L skill, or the paste text for Lovable and Bolt | [AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md) |
 
 ## What happens
@@ -64,14 +64,14 @@ Every page is also there as Markdown: add `.md` to its address, or read [index.m
 
 # Web apps
 
-The npm package `la2l` pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.
+The npm package `@lloydstellar/la2l` pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.
 
 ```bash
-npm install la2l
+npm install @lloydstellar/la2l
 ```
 
 ```js
-import { LA2L, wavFromAudioBuffer } from 'la2l';
+import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' });
 if (!la2l.paired) await la2l.pair(codeFromUser);
@@ -101,7 +101,7 @@ Ask for a code again only when a call fails with the code `not_paired`: then the
 ## Making WAV files
 
 ```js
-import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from 'la2l';
+import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from '@lloydstellar/la2l';
 
 wavFromAudioBuffer(buffer);                 // an AudioBuffer, 16 bit; { bits: 24 } or { bits: 32 } (float)
 wavFromSamples([left, right], 48000);       // Float32Arrays from -1 to 1
@@ -162,7 +162,7 @@ A page with a CSP must allow the LA2L server: `connect-src https://lloydstellar.
 
 ## Server-side rendering
 
-`la2l` and `la2l/button` can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call `send()` in the browser.
+`@lloydstellar/la2l` and `@lloydstellar/la2l/button` can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call `send()` in the browser.
 
 ## An example
 
@@ -170,7 +170,7 @@ A page with a CSP must allow the LA2L server: `connect-src https://lloydstellar.
 
 ## The full docs
 
-The package carries its docs, for the version you installed, in `node_modules/la2l/docs`: getting started, the API, Web Audio, the button, testing and errors. `npx la2l agents-md` points AI coding agents to them ([AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md)).
+The package carries its docs, for the version you installed, in `node_modules/@lloydstellar/la2l/docs`: getting started, the API, Web Audio, the button, testing and errors. `npx @lloydstellar/la2l agents-md` points AI coding agents to them ([AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md)).
 
 <!-- https://lloydstellar.nl/la2l/developers/button.md -->
 
@@ -181,11 +181,11 @@ The package carries its docs, for the version you installed, in `node_modules/la
 ## Without a build step
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
-        integrity="sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl" crossorigin="anonymous"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-A/Nu56J/Oh1+eLYYZgGeFUEk9dgZSWIanzPgaba1I1IjsXk2135KwQ4TYD940D0C" crossorigin="anonymous"></script>
 <la2l-send-button app-name="Web808"></la2l-send-button>
 <script type="module">
-  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js';
   document.querySelector('la2l-send-button').sounds = async () => ({
     title: 'Treinbeat',
     bpm: 92,
@@ -199,8 +199,8 @@ The one file carries the button with `LA2L`, `La2lError`, `wavFromAudioBuffer`, 
 ## With a bundler
 
 ```js
-import 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';
+import '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 ```
 
 ## Giving it the sounds
@@ -213,8 +213,8 @@ The button is a custom element, so every framework can use it. Give it `sounds` 
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton, SoundsProvider } from '@lloydstellar/la2l/button';
 
 declare module 'react' {
   namespace JSX {
@@ -482,12 +482,12 @@ For machines: [openapi.yaml](https://lloydstellar.nl/la2l/developers/openapi.yam
 
 ## From a script
 
-With Node.js 22.12 or newer, the command line of `la2l` does it all:
+With Node.js 22.12 or newer, the command line of `@lloydstellar/la2l` does it all:
 
 ```bash
-npx la2l pair K7P42Q
-npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
-npx la2l status
+npx @lloydstellar/la2l pair K7P42Q
+npx @lloydstellar/la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
+npx @lloydstellar/la2l status
 ```
 
 `--oneshot` for sounds that play as they are. It keeps the token in a file only the user can read, or takes it from `LA2L_TOKEN`.
@@ -624,13 +624,13 @@ Open [the test receiver](https://lloydstellar.nl/la2l/receiver). It shows a code
 ## In a terminal
 
 ```bash
-npx la2l test-receiver
+npx @lloydstellar/la2l test-receiver
 ```
 
 The same, in a terminal. With `--local` it starts an LA2L server in memory on `127.0.0.1` as well: no internet and no rate limits. Point your app at the address it prints:
 
 ```bash
-npx la2l test-receiver --local
+npx @lloydstellar/la2l test-receiver --local
 #   LA2L test receiver, with an LA2L server in memory: http://127.0.0.1:41234/api
 #   In your app, use that address as the server and pair with code K7P 42Q.
 ```
@@ -643,13 +643,13 @@ The button takes it as an attribute: `<la2l-send-button server="http://127.0.0.1
 
 ## In your tests
 
-`startTestReceiver()` from `la2l/testing` does the same inside a test, in Node.js:
+`startTestReceiver()` from `@lloydstellar/la2l/testing` does the same inside a test, in Node.js:
 
 ```js
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LA2L, memoryStorage } from 'la2l';
-import { startTestReceiver } from 'la2l/testing';
+import { LA2L, memoryStorage } from '@lloydstellar/la2l';
+import { startTestReceiver } from '@lloydstellar/la2l/testing';
 
 test('the beat arrives in Live as a loop of one bar', async () => {
   const receiver = await startTestReceiver();
@@ -676,7 +676,7 @@ The five calls of [the REST API](https://lloydstellar.nl/la2l/developers/rest-ap
 
 # AI tools
 
-An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
+An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `@lloydstellar/la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
 
 ## The skill
 
@@ -694,11 +694,11 @@ Agents leave a skill unused more often than you would think. Name it in your pro
 ## A docs index in AGENTS.md
 
 ```bash
-npm install la2l
-npx la2l agents-md
+npm install @lloydstellar/la2l
+npx @lloydstellar/la2l agents-md
 ```
 
-This writes an index of the docs in `node_modules/la2l/docs` into `AGENTS.md`, and into `CLAUDE.md` when the project has one, with the rules that matter most. Agents read `AGENTS.md` at every task, so they find the docs of the version you installed instead of guessing. A new run, after an update of `la2l`, replaces the index.
+This writes an index of the docs in `node_modules/@lloydstellar/la2l/docs` into `AGENTS.md`, and into `CLAUDE.md` when the project has one, with the rules that matter most. Agents read `AGENTS.md` at every task, so they find the docs of the version you installed instead of guessing. A new run, after an update of `@lloydstellar/la2l`, replaces the index.
 
 ## Lovable, Bolt and other builders without a terminal
 
@@ -710,13 +710,13 @@ Paste [the paste text](https://lloydstellar.nl/la2l/developers/paste-text.md) in
 
 ## Check what the tool built
 
-Open [the test receiver](https://lloydstellar.nl/la2l/receiver) in a second tab, pair the app with the code it shows, and send. The report says per sound what Live would do. A loop must show up as a loop at the tempo of the app, such as "Loop, warped in Beats mode at 120 BPM, 4 beats". When it says "One-shot", the app forgot `kind: 'loop'`. An agent that can run commands can test its own work: `npx la2l test-receiver --local` ([Testing](https://lloydstellar.nl/la2l/developers/testing.md)).
+Open [the test receiver](https://lloydstellar.nl/la2l/receiver) in a second tab, pair the app with the code it shows, and send. The report says per sound what Live would do. A loop must show up as a loop at the tempo of the app, such as "Loop, warped in Beats mode at 120 BPM, 4 beats". When it says "One-shot", the app forgot `kind: 'loop'`. An agent that can run commands can test its own work: `npx @lloydstellar/la2l test-receiver --local` ([Testing](https://lloydstellar.nl/la2l/developers/testing.md)).
 
 <!-- https://lloydstellar.nl/la2l/developers/paste-text.md -->
 
 # LA2L: Send to Live
 
-This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package `la2l`. Follow these notes whenever you build or change that part. Full docs: https://lloydstellar.nl/la2l/llms-full.txt
+This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package `@lloydstellar/la2l`. Follow these notes whenever you build or change that part. Full docs: https://lloydstellar.nl/la2l/llms-full.txt
 
 ## How it works
 
@@ -725,7 +725,7 @@ The user has LA2L, a Max for Live device, in Ableton Live. They click Pair app i
 ## Install
 
 ```bash
-npm install la2l
+npm install @lloydstellar/la2l
 ```
 
 ## The button
@@ -734,9 +734,9 @@ npm install la2l
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton } from 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton } from '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 declare module 'react' {
   namespace JSX {
@@ -765,7 +765,7 @@ Set `sounds` through a ref as above; React 18 cannot pass a function to a custom
 ## Without the button
 
 ```ts
-import { LA2L, La2lError, wavFromAudioBuffer } from 'la2l';
+import { LA2L, La2lError, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'My app' }); // Live shows "Paired with My app"
 // Pair once, from a field with this line above it:

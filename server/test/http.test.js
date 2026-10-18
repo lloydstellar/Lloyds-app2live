@@ -122,7 +122,7 @@ test('the test receiver, the big test and the SDK for the browser: served like t
   assert.match(page, /<h1>LA2L Test receiver<\/h1>/);
   assert.doesNotMatch(page, /style=|<style|<script>/, 'nothing inline: the CSP would block it');
   const sdk = (await s.request('GET', '/vendor/la2l.js')).body.toString();
-  assert.match(sdk.split('\n')[0], /^\/\/ la2l \d+\.\d+\.\d+: for the browser/);
+  assert.match(sdk.split('\n')[0], /^\/\/ @lloydstellar\/la2l \d+\.\d+\.\d+: for the browser/);
   for (const p of ['/vendor/', '/vendor', '/vendor/../sender.js', '/receiver/', '/receiver.html']) assert.equal((await s.request('GET', p)).status, 404, p);
 });
 

@@ -135,7 +135,7 @@ WorkManager.getInstance(context).enqueue(
 
 The test receiver stands in for LA2L in Live. Open https://lloydstellar.nl/la2l/receiver on a computer, pair your app with the code it shows, and send: the page says per sound what Live would do, and your app needs no change.
 
-For tests that run on the computer (JVM tests, with `testImplementation("org.json:json:20260814")`, since Android's own org.json is not there), `npx la2l test-receiver --local` starts an LA2L server in memory: point the client at the address it prints, with `new La2l.Options("My app").server(address).storage(Storage.memory())`. A phone or an emulator reaches it after `adb reverse tcp:<port> tcp:<port>`, at `http://127.0.0.1:<port>/api`, if the app's network security config allows plain http to 127.0.0.1 (in a debug build only). la2l allows plain http for `localhost` and `127.0.0.1` only.
+For tests that run on the computer (JVM tests, with `testImplementation("org.json:json:20260814")`, since Android's own org.json is not there), `npx @lloydstellar/la2l test-receiver --local` starts an LA2L server in memory: point the client at the address it prints, with `new La2l.Options("My app").server(address).storage(Storage.memory())`. A phone or an emulator reaches it after `adb reverse tcp:<port> tcp:<port>`, at `http://127.0.0.1:<port>/api`, if the app's network security config allows plain http to 127.0.0.1 (in a debug build only). la2l allows plain http for `localhost` and `127.0.0.1` only.
 
 ## Building
 

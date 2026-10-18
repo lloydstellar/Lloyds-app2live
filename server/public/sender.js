@@ -1,5 +1,5 @@
 // LA2L Sender: the page that sends sounds to the LA2L device in Ableton Live, and the reference app
-// of the SDK: everything it says to the server goes through `la2l` (sdk/js, served as
+// of the SDK: everything it says to the server goes through `@lloydstellar/la2l` (sdk/js, served as
 // vendor/la2l.js). Every address is relative ("api"), so the page works under any prefix, such as
 // https://lloydstellar.nl/la2l/. Its keys in localStorage are those of the page before the SDK
 // (la2l.token, la2l.deviceName, la2l.appId, la2l.recent), so paired browsers stay paired.

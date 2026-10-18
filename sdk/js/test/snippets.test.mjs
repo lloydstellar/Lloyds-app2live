@@ -32,7 +32,8 @@ for (const snippet of snippets) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'la2l-tsx-'));
     try {
       fs.mkdirSync(path.join(dir, 'node_modules', '@types'), { recursive: true });
-      fs.symlinkSync(PACKAGE, path.join(dir, 'node_modules', 'la2l'), 'dir');
+      fs.mkdirSync(path.join(dir, 'node_modules', '@lloydstellar'));
+      fs.symlinkSync(PACKAGE, path.join(dir, 'node_modules', '@lloydstellar', 'la2l'), 'dir');
       for (const types of ['react', 'csstype']) {
         const from = fs.existsSync(path.join(PACKAGE, 'node_modules', '@types', types)) ? path.join(PACKAGE, 'node_modules', '@types', types) : path.join(PACKAGE, 'node_modules', types);
         fs.symlinkSync(from, path.join(dir, 'node_modules', types === 'react' ? '@types/react' : 'csstype'), 'dir');

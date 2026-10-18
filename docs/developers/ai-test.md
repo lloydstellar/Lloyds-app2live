@@ -24,7 +24,7 @@ When a run fails, write down what went wrong, and improve the skill, the paste t
 - **Cursor**: a new empty project with the skill, the prompt in Agent mode. Erik runs it.
 - **Lovable**: a new project, the paste text under Knowledge, the prompt as the first message. Erik runs it.
 
-The runs need `la2l` on npm and the repository public (for `npx skills add` and the imports of Lovable). Until then they cannot start.
+The runs need `@lloydstellar/la2l` on npm and the repository public (for `npx skills add` and the imports of Lovable). Until then they cannot start.
 
 ## Results
 

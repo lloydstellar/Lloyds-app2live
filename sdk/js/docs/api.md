@@ -1,4 +1,4 @@
-# The API of `la2l`
+# The API of `@lloydstellar/la2l`
 
 ESM, with type definitions. Browsers, Node.js 22.12 and newer, Deno and Bun.
 
