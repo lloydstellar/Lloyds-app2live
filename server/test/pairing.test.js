@@ -18,7 +18,7 @@ test.before(async () => {
 test.after(() => s.stop());
 
 test('pair/start: a code, a long pair id, and the times the device counts with', async () => {
-  const r = await s.request('POST', '/api/pair/start', { body: { device_id: 'a1b2-c3', device_name: 'ERIK-PC', client: 'LA2L 0.1.1', platform: 'win32' } });
+  const r = await s.request('POST', '/api/pair/start', { body: { device_id: 'a1b2-c3', device_name: 'STUDIO-PC', client: 'LA2L 0.1.1', platform: 'win32' } });
   assert.equal(r.status, 200);
   assert.deepEqual(Object.keys(r.json).sort(), ['code', 'expires_at', 'expires_in', 'pair_id', 'poll_ms']);
   assert.match(r.json.pair_id, /^[A-Za-z0-9_-]{43}$/);
@@ -66,7 +66,7 @@ test('claim: the paired device gets its token, twice within 60 seconds, then 404
   const claim = await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: 'LA2L Sender', app_id: 'browser-1' } });
   assert.equal(claim.status, 200);
   assert.match(claim.json.app_token, /^la2la_[A-Za-z0-9_-]{43}$/);
-  assert.equal(claim.json.device_name, 'ERIK-PC');
+  assert.equal(claim.json.device_name, 'STUDIO-PC');
   const first = await s.request('GET', '/api/pair/' + start.pair_id);
   assert.equal(first.json.status, 'paired');
   assert.match(first.json.device_token, /^la2ld_[A-Za-z0-9_-]{43}$/);
@@ -80,7 +80,7 @@ test('claim: the paired device gets its token, twice within 60 seconds, then 404
   // Both tokens work.
   assert.deepEqual((await s.request('GET', '/api/inbox', { token: first.json.device_token })).json, { packages: [] });
   const me = await s.request('GET', '/api/app/me', { token: claim.json.app_token });
-  assert.deepEqual(me.json, { device_name: 'ERIK-PC', app_name: 'LA2L Sender', paired_at: new Date(clock() - 61000).toISOString() });
+  assert.deepEqual(me.json, { device_name: 'STUDIO-PC', app_name: 'LA2L Sender', paired_at: new Date(clock() - 61000).toISOString() });
 });
 
 test('claim: the code may be typed in any case, with spaces or a dash', async () => {
@@ -282,7 +282,7 @@ test('GET /apps: the apps that can send to this computer now, oldest first', asy
 test('the device client of LA2L 0.1.1 pairs, reads the inbox and unpairs', async () => {
   let token = null;
   const server = new Server(s.base, () => token);
-  const start = await server.pairStart({ device_id: 'dev-client', device_name: 'ERIK-PC', client: 'LA2L 0.1.1', platform: 'win32' });
+  const start = await server.pairStart({ device_id: 'dev-client', device_name: 'STUDIO-PC', client: 'LA2L 0.1.1', platform: 'win32' });
   assert.deepEqual(await server.pairStatus(start.pair_id), { status: 'waiting' });
   await s.request('POST', '/api/pair/claim', { body: { code: start.code, app_name: 'LA2L Sender' } });
   const paired = await server.pairStatus(start.pair_id);

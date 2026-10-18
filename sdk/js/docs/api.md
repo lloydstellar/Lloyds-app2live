@@ -16,7 +16,7 @@ ESM, with type definitions. Browsers, Node.js 22.12 and newer, Deno and Bun.
 ## Pairing
 
 - `la2l.paired`: whether there is a token. It can still turn out to be revoked: a call then fails with `not_paired`, and the token is forgotten.
-- `la2l.deviceName`: the computer, as "Paired with ERIK-PC".
+- `la2l.deviceName`: the computer, as "Paired with STUDIO-PC".
 - `await la2l.pair(code)`: resolves to `{ deviceName }`. Case, spaces and dashes in the code do not matter.
 - `await la2l.me()`: `{ deviceName, appName, pairedAt }`. Ask it when the app starts, to learn early that it was unpaired.
 - `await la2l.unpair()`: the server revokes the token, and it is forgotten here. When the server cannot be reached it rejects with `network` and keeps the token, so you can try again.
