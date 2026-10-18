@@ -48,6 +48,8 @@ When the app has the code, the device says **Paired with** and the name of the a
 
 Make something in the app and send it to Live. The app's own button or menu says how, for example **Send to Live**.
 
+For example [Lloyd's Online 808 Drummachine](https://lloydstellar.nl/808/): make a beat in your browser and click its LA2L button. The first time, it asks for the code from step 1; the device then says **Paired with Lloyd's 808**, like in the screenshot at the top.
+
 ### 3. Click Import
 
 Click **Import**, the button you saw at the top of this page. The device gets everything your apps sent and puts every sound on a new audio track:
@@ -62,8 +64,9 @@ The sounds are saved with your Set, in its project folder under `Samples/LA2L`, 
 
 ### No app yet? Try it
 
+- **[Lloyd's Online 808 Drummachine](https://lloydstellar.nl/808/)** is a drum machine in your browser with an LA2L button: the quickest way to hear LA2L work.
 - **LA2L Sender** at [lloydstellar.nl/la2l](https://lloydstellar.nl/la2l/) is a web page that pairs like an app and sends WAV, mp3 or m4a files from your browser or phone. On Android, installed from Chrome, it also shows up in the share menu of other apps.
-- **Web808** at [lloydstellar.nl/la2l/examples/drum-machine](https://lloydstellar.nl/la2l/examples/drum-machine/) is a small drum machine that sends its loops to Live.
+- **Web808** at [lloydstellar.nl/la2l/examples/drum-machine](https://lloydstellar.nl/la2l/examples/drum-machine/) is the small example drum machine of the developer kit; its code is in [examples/web-drum-machine](examples/web-drum-machine/).
 - **Settings > Test import** puts a test loop in your Set without any app.
 
 ### Settings
