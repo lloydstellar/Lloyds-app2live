@@ -76,7 +76,7 @@ The VPS has Node 22; the SDK supports 22.12 and newer, so its tests run there as
 
 ## Rules
 
-- **The device is the source of truth.** `src/node/manifest.js`, `src/node/wav.js` and `src/node/text.js` are ported to `js/src` with the same texts. When a check in the device changes, change the port and `fixtures/make.js` in the same branch; `js/test/parity.test.mjs` compares the two on thousands of random inputs.
+- **The device is the source of truth.** `src/node/manifest.js`, `src/node/wav.js` and `src/node/text.js` are ported to `js/src` and to `android/la2l` (`WavCheck`, `ManifestCheck`, `Text`) with the same texts. When a check in the device changes, change both ports and `fixtures/make.js` in the same branch; `js/test/parity.test.mjs` compares the web port with the device on thousands of random inputs, and `ParityTest` the Java port with the web one.
 - **The local test receiver answers as la2l-server.** A change to the app side of the server changes `js/src/testing/local-server.ts` too; `js/test/app-side.test.mjs` runs the same tests against both.
 - **No runtime dependencies** in the SDKs. `sdk/js` may have pinned devDependencies with its lockfile. The device and the server stay without npm packages: the server serves the SDK from the committed `server/public/vendor/`.
 - **The schema describes a correct manifest.** It is stricter than the server about types, known values and 40-character names, and cannot see two sounds with one file or 200 MB in total. `expected.json` says per fixture what it accepts.
