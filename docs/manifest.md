@@ -45,7 +45,7 @@ A problem with the package as a whole (no schema, no sounds, too many, too large
 |---|---|---|
 | `file` | yes | The file name on the server: starts with a letter or digit, then letters, digits, space, `.`, `_` or `-`, ends in `.wav`, at most 100 characters. Only used to download; on disk the file is named after `name`. Two sounds cannot use the same file. |
 | `id` | no | Your own id, sent back in the ack. Default: the position, starting at 1. |
-| `name` | no | Track and clip name, at most 40 characters. Letters of any language, digits and `space _ - ( ) . ' & + # !`. Default "Sound 1". |
+| `name` | no | The name of the sound, for the track and the clip, at most 40 characters. Letters of any language, digits and `space _ - ( ) . ' & + # !`. The device adds the app name to the track: "Kick" becomes "Kick (Web808)". Default "Sound 1". |
 | `kind` | no | `loop` or `oneshot`. Without it, or with anything else, the sound is placed as a one-shot: warp off, so it plays at the speed it was made. Always send it for a loop. |
 | `role` | no | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`. Picks the warp mode of a loop. |
 | `bpm` | no | The tempo of this sound, when it differs from `tempo.bpm`. |

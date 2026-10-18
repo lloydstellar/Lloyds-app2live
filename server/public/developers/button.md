@@ -65,7 +65,7 @@ export function SendToLive({ sounds }: { sounds: SoundsProvider }) {
 
 | Attribute | |
 |---|---|
-| `app-name` | The name Live shows: "Paired with Web808", and "Kick (Web808)" in every track name. Default: the page title. |
+| `app-name` | The name of your app. Live shows "Paired with Web808", and adds it to every track name: "Kick (Web808)". Default: the page title. |
 | `server` | Another LA2L server, such as a local test receiver. |
 | `app-id` | Your own id for this installation. Default: one made once. |
 

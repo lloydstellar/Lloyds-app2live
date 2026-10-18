@@ -6,7 +6,7 @@ ESM, with type definitions. Browsers, Node.js 22.12 and newer, Deno and Bun.
 
 | Option | |
 |---|---|
-| `appName` | Required. Live shows "Paired with Web808", and every track is called "Kick (Web808)". |
+| `appName` | Required: the name of your app. Live shows "Paired with Web808", and adds it to every track name: "Kick (Web808)". |
 | `appId` | This installation's own id. Default: a UUID made once and kept. Pairing again with the same id replaces the old token. |
 | `appVersion` | Only logged. |
 | `server` | Default `https://lloydstellar.nl/la2l/api`. The local test receiver prints its own ([testing.md](testing.md)). In a browser it may be relative, such as `"../api"`. Plain `http` works for localhost only, so the token never travels in clear text. |
@@ -32,7 +32,7 @@ A sound:
 |---|---|
 | `audio` | Required. A WAV file: a `Blob`, a `File`, an `ArrayBuffer` or bytes. |
 | `kind` | Required: `'loop'` or `'oneshot'`. |
-| `name` | The track name, at most 40 characters. Default: the file name, or "Sound 1". |
+| `name` | The name of the sound, at most 40 characters. Live adds the app name to the track: "Kick" becomes "Kick (Web808)", so never add it yourself. Default: the file name, or "Sound 1". |
 | `role` | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`. Picks the warp mode of a loop. |
 | `bpm`, `lengthBeats` | The tempo and length of this loop, when they differ from the package. Without a length, LA2L works it out from the file and the tempo. |
 | `warpMode`, `color`, `gainDb`, `id` | See the manifest: https://github.com/lloydstellar/Lloyds-app2live/blob/main/docs/manifest.md |
