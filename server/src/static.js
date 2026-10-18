@@ -30,6 +30,8 @@ const FILES = {
   '/vendor/la2l.js': ['vendor/la2l.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-button.js': ['vendor/la2l-button.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-receiver.js': ['vendor/la2l-receiver.js', 'text/javascript; charset=utf-8'],
+  // The address in the $id of the JSON Schema; the developer pages carry the same file.
+  '/app2live-1.schema.json': ['developers/app2live-1.schema.json', 'application/json; charset=utf-8'],
 };
 
 // Examples of the developer kit, from a folder of the repository (in the image: /app/examples).

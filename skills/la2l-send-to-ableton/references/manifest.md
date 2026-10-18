@@ -22,7 +22,7 @@ This becomes two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is
 | Field | |
 |---|---|
 | `schema` | Required: `app2live/1`. |
-| `title` | The scene name and the folder on disk. Default "Untitled". |
+| `title` | The scene name (with the app after it: "Treinbeat (Web808)") and the folder on disk. Default "Untitled". |
 | `source.app` | Added to every track name. Default "App". |
 | `tempo.bpm` | 20 to 999: the tempo of every loop without a `bpm` of its own. |
 | `items` | 1 to 32 sounds, 200 MB in total. |

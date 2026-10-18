@@ -73,6 +73,14 @@ test('a second run replaces the index and keeps the rest of AGENTS.md and CLAUDE
   assert.equal(read(dir, 'CLAUDE.md'), first.claude);
 });
 
+test('a CLAUDE.md that imports AGENTS.md in a sentence is left alone too, and @.AGENTS.md is no import', async () => {
+  const inline = project({ files: { 'CLAUDE.md': '# Claude\n\nRead @AGENTS.md first.\n' } });
+  assert.match((await la2l(['agents-md'], inline)).out, /CLAUDE\.md reads AGENTS\.md already/);
+  assert.equal(read(inline, 'CLAUDE.md'), '# Claude\n\nRead @AGENTS.md first.\n');
+  const other = project({ files: { 'CLAUDE.md': '# Claude\n\nSee @.AGENTS.md and @docs/AGENTS.md.\n' } });
+  assert.match((await la2l(['agents-md'], other)).out, /to AGENTS\.md and CLAUDE\.md\./);
+});
+
 test('a CLAUDE.md that reads AGENTS.md already is left as it was', async () => {
   const dir = project({ files: { 'CLAUDE.md': '@AGENTS.md\n\nMore for Claude.\n' } });
   const r = await la2l(['agents-md'], dir);

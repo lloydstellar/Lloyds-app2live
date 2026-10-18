@@ -70,6 +70,14 @@ test('the converter stops at what it does not know, with the line', () => {
     '# A\n\n[a link](a b)\n': 'test.md:3: a link to "a b"',
     '# A\n\n| a | b |\n|---|---|\n| c |\n': 'test.md:3: a table row with 1 cells instead of 2',
     '# A\n\n    indented\n': 'test.md:3: an indented line outside a list or code block',
+    '# A\n\n* star\n': 'test.md:3: "*": use - for lists, # to ### for headings, and ``` for code',
+    '# A\n\n#### Deep\n': 'test.md:3: "####": use - for lists, # to ### for headings, and ``` for code',
+    '# A\n\n~~~\ncode\n~~~\n': 'test.md:3: "~~~": use - for lists, # to ### for headings, and ``` for code',
+    '# A\n\nSee ![logo](logo.png)\n': 'test.md:3: an image',
+    '# A\n\nAn *emphasis*\n': 'test.md:3: a single *: use **bold**, or put it in a code span',
+    '# A\n\n<!-- note -->\n': 'test.md:3: HTML outside a code span',
+    '# A\n\n[x](javascript:alert(1))\n': 'test.md:3: a link to "javascript:alert(1": only http(s), mailto and relative links',
+    '# A\n\n3. three\n': 'test.md:3: an ordered list that does not start at 1',
   };
   for (const [md, message] of Object.entries(bad)) assert.throws(() => markdown(md, 'test.md'), { message }, md);
 });
@@ -115,6 +123,11 @@ test('every page, its Markdown twin, llms.txt and the machine-readable files are
     assert.doesNotMatch(page, /style=|<style|<script/, `${name}: nothing inline, the CSP would block it`);
   }
   assert.equal((await s.request('GET', '/developers/openapi.yaml')).body.toString(), fs.readFileSync(path.join(ROOT, 'docs', 'openapi.yaml'), 'utf8'));
+  // The schema is also at the address of its $id.
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'app2live-1.schema.json'), 'utf8'));
+  assert.ok(schema.$id.startsWith(SITE));
+  const atId = await s.request('GET', '/' + schema.$id.slice(SITE.length));
+  assert.deepEqual([atId.status, atId.headers['content-type'], JSON.parse(atId.body.toString()).$id], [200, 'application/json; charset=utf-8', schema.$id]);
   const r = await s.request('GET', '/developers');
   assert.deepEqual([r.status, r.headers.location], [301, 'developers/']);
   for (const p of ['/developers/web.html', '/developers/web/', '/developers/privacy', '/developers/privacy.md', '/privacy', '/developers/../sender.js', '/developers/index', '/developers/README.md']) {

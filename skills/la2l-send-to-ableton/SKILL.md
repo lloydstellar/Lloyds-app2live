@@ -75,7 +75,7 @@ const wav3 = await toWav(mp3File);                             // mp3 or m4a, in
 | `bpm` | The tempo, for the whole package (`send({ bpm })`) or per loop. A one-shot ignores it. |
 | `lengthBeats` | The loop length in beats. Without it LA2L works it out from the file length and the tempo. |
 
-The package as a whole has a `title`: the name of the scene and the folder in Live. Limits: 32 sounds and 200 MB per package; send more in more packages.
+The package as a whole has a `title`: the name of the scene in Live, and of the folder on disk. Limits: 32 sounds and 200 MB per package; send more in more packages.
 
 ## 6. Send, and show the status
 
@@ -101,11 +101,12 @@ With the button, all of this is one element:
 ```html
 <la2l-send-button app-name="Web808"></la2l-send-button>
 <script type="module">
-  import { wavFromAudioBuffer } from 'la2l/button';
-  // renderLoop() renders one bar with an OfflineAudioContext: see references/web.md.
+  // Without a build step the helpers come from the same file as the button; with a bundler, from 'la2l'.
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  // renderLoop(bpm, schedule) renders one bar as an AudioBuffer: see references/web.md.
   document.querySelector('la2l-send-button').sounds = async () => ({
     title: 'Beat', bpm: 120,
-    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop()), kind: 'loop', role: 'drums', lengthBeats: 4 }],
+    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop(120, schedule)), kind: 'loop', role: 'drums', lengthBeats: 4 }],
   });
 </script>
 ```
@@ -122,7 +123,8 @@ Every error is a `La2lError` with a `code` and a `message` to show as it is.
 | `rate_limited` | Wait `retryAfter` seconds. |
 | `server_full` | The message: often "Click Import in Live first". |
 | `network`, `server` | Try again later. |
-| `import_failed`, `expired` | The message; the package can be sent again. |
+| `import_failed` | The message. The package stays: the next Import in Live tries again, so do not send it again. |
+| `expired` | The message; send the sounds again. |
 
 ## Pitfalls
 
@@ -141,7 +143,7 @@ The test receiver stands in for LA2L in Live and says per sound what Live would 
 npx la2l test-receiver --local
 ```
 
-It prints an address and a code. Point the app at the address with `new LA2L({ appName, server: '<address>' })` (or the button's `server` attribute), pair with the code, send, and read the report in the terminal. A loop must show up as `loop, warped in Beats mode at 120 BPM, 4 beats`, not as `one-shot`. In automated tests, use `startTestReceiver()` from `la2l/testing`: see [assets/check-with-test-receiver.mjs](assets/check-with-test-receiver.mjs). Against the real server, the page https://lloydstellar.nl/la2l/receiver does the same in a browser.
+It prints an address and a code, and runs until Ctrl+C: start it in the background, or in a second terminal, so you can go on. Point the app at the address with `new LA2L({ appName, server: '<address>' })` (or the button's `server` attribute), pair with the code, send, and read the report in the terminal. A loop must show up as `loop, warped in Beats mode at 120 BPM, 4 beats`, not as `one-shot`. In automated tests, use `startTestReceiver()` from `la2l/testing`: see [assets/check-with-test-receiver.mjs](assets/check-with-test-receiver.mjs). Against the real server, the page https://lloydstellar.nl/la2l/receiver does the same in a browser.
 
 ## More
 
@@ -150,4 +152,4 @@ It prints an address and a code. Point the app at the address with `new LA2L({ a
 - [references/web.md](references/web.md): Web Audio, the button, and pages without a build step.
 - [references/android.md](references/android.md): Android, in Kotlin.
 - [assets/web-send.js](assets/web-send.js), [assets/button.html](assets/button.html): complete examples.
-- The full docs: https://lloydstellar.nl/la2l/developers/ and `node_modules/la2l/docs` after `npm install la2l`.
+- The full docs: https://lloydstellar.nl/la2l/developers/ and `node_modules/la2l/docs` after `npm install la2l`. `npx la2l agents-md` writes an index of those docs into the project's `AGENTS.md` and `CLAUDE.md`, so later sessions find them too.

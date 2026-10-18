@@ -47,7 +47,7 @@ const delivery = await la2l.send({
 status.textContent = 'Waiting for Import in Live';
 const result = await delivery.imported();
 status.textContent = result.status === 'imported' ? 'In Live' : 'In Live, partly';</code></pre>
-<p>ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the <a href="button">button</a> from jsDelivr, which carries the same functions.</p>
+<p>ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the <a href="button">button</a> from jsDelivr; that one file also carries <code>LA2L</code>, <code>La2lError</code>, <code>wavFromAudioBuffer</code>, <code>wavFromSamples</code> and <code>toWav</code>.</p>
 <h2 id="pairing">Pairing</h2>
 <p>Show a field for the code once, with this line above it: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot; Case, spaces and dashes do not matter. The SDK keeps the token in <code>localStorage</code> (in Node.js, in a file only the user can read) and sends it only in the <code>Authorization</code> header. Never put it in a URL, a log line or an error report.</p>
 <p>Ask for a code again only when a call fails with the code <code>not_paired</code>: then the user unpaired your app in Live. <code>la2l.me()</code> tells you which computer you are paired with; <code>la2l.unpair()</code> ends the pairing.</p>
@@ -59,7 +59,8 @@ wavFromSamples([left, right], 48000);       // Float32Arrays from -1 to 1
 await toWav(file);                          // mp3, m4a, ogg: decoded by the browser
 await checkWav(file);                       // can LA2L use it? With LA2L's own text if not</code></pre>
 <p>A loop must be a whole number of beats long: one bar of 4/4 lasts <code>4 * 60 / bpm</code> seconds, exactly 2 seconds at 120 BPM. Render it with an <code>OfflineAudioContext</code> of that length plus a tail, and add the tail to the start, so what rings past the end of the bar plays at the start of the next one:</p>
-<pre><code class="language-js">async function renderLoop(bpm, schedule, tailSeconds = 1) {
+<pre><code class="language-js">// One bar of 4/4 at `bpm` as an AudioBuffer: schedule(ctx) starts your sources on the context.
+async function renderLoop(bpm, schedule, tailSeconds = 1) {
   const rate = 48000;
   const bar = Math.round(rate * (60 / bpm) * 4);
   const ctx = new OfflineAudioContext(2, bar + Math.round(rate * tailSeconds), rate);
@@ -70,10 +71,12 @@ await checkWav(file);                       // can LA2L use it? With LA2L's own 
     const from = rendered.getChannelData(c);
     const to = loop.getChannelData(c);
     to.set(from.subarray(0, bar));
-    for (let i = bar; i &lt; from.length; i++) to[i - bar] += from[i];
+    for (let i = bar; i &lt; from.length; i++) to[(i - bar) % bar] += from[i];
   }
-  return wavFromAudioBuffer(loop);
-}</code></pre>
+  return loop;
+}
+
+const wav = wavFromAudioBuffer(await renderLoop(120, schedule));</code></pre>
 <h2 id="following-a-send">Following a send</h2>
 <p><code>send()</code> checks everything before the first byte goes out, with the texts LA2L itself uses, then uploads the files and commits them. It resolves to a <code>Delivery</code>:</p>
 <ul>
@@ -92,7 +95,8 @@ await checkWav(file);                       // can LA2L use it? With LA2L's own 
 <tr><td><code>rate_limited</code></td><td>Wait <code>retryAfter</code> seconds.</td></tr>
 <tr><td><code>server_full</code></td><td>Show the message, often &quot;Click Import in Live first&quot;.</td></tr>
 <tr><td><code>network</code>, <code>server</code></td><td>Try again later.</td></tr>
-<tr><td><code>import_failed</code>, <code>expired</code></td><td>Show the message; the sounds can be sent again.</td></tr>
+<tr><td><code>import_failed</code></td><td>Show the message. The package stays: the next Import in Live tries again, so do not send it again.</td></tr>
+<tr><td><code>expired</code></td><td>Show the message; send the sounds again.</td></tr>
 <tr><td><code>aborted</code></td><td>Your app stopped it, with an <code>AbortSignal</code>.</td></tr>
 </tbody>
 </table></div>

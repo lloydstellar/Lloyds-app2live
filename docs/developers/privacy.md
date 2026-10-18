@@ -6,17 +6,17 @@ LA2L (Lloyd's App2Live) brings sounds from apps into Ableton Live through a serv
 
 ## What the server keeps
 
-**Your computer, when you pair it.** The name of the computer (such as "ERIK-PC"), a random id that LA2L made for it, the version of LA2L and the operating system, and when it last called the server. The apps you pair with see the name, so you know which computer you send to. The server keeps this while the computer is paired, and removes it 30 days after you unpair. A test receiver, which developers use instead of Live, is removed after 7 days without a call.
+**Your computer, when you pair it.** The name of the computer (such as "STUDIO-PC"), a random id that LA2L made for it, the version of LA2L and the operating system, and when it last called the server. The apps you pair with see the name, so you know which computer you send to. The server keeps this while the computer is paired, and removes it 30 days after you unpair. A test receiver, which developers use instead of Live, is removed after 7 days without a call.
 
 **The apps you pair.** The name of each app, the id the app gives itself, which version of the LA2L software it uses, and when it paired and last called. LA2L shows the name in Live ("Paired with Web808"). Kept while the app is paired, and removed 30 days after it is unpaired.
 
 **What you send.** The sound files, and their description: the title, the names of the sounds, their tempo. The files and their description wait until you click Import in Live and are deleted right after, or 24 hours after they were sent if you never import them. Then the server keeps only the title, the names of the sounds and whether each one arrived, for 7 days, so the app can show what is in Live.
 
-**Tokens.** The server keeps only a hash of each token. A new token for a computer waits as it is until LA2L in Live has picked it up, at most 10 minutes after pairing.
+**Tokens.** The server keeps only a hash of each token, except while a computer pairs: then its token waits as it is until LA2L in Live has picked it up, at most about ten minutes, and a minute longer. A nightly backup made in those minutes holds it too.
 
 **IP addresses.** To stop abuse, the server counts calls per IP address. Those counts live only in its memory and are gone within the hour. To limit how much one address can store, the server keeps a hash of the address with each package while it has files; the key of that hash also lives only in memory, so after a restart nobody can tell the address from the hash.
 
-**The log.** Every call is written to a log with the time, the IP address, what was asked, and the answer. The log is for finding faults and abuse, and is kept for [30 days]. The web server of lloydstellar.nl keeps its own log of every visit, with the IP address, for 14 days.
+**The log.** Every call is written to a log with the time, the IP address, what was asked, the answer, and the name and version of the app's LA2L software when the app sends them. The log is for finding faults and abuse. It is kept for [30 days; today the server keeps it by size, not by age: up to 50 MB while the server runs, and the 30 newest logs saved at its updates]. The web server of lloydstellar.nl keeps its own log of every visit, with the IP address, for 14 days.
 
 **Backups.** Every night the server makes a copy of its database (computers, apps and descriptions, never sound files). The newest 30 copies are kept, so something you removed can stay in a copy for up to 30 days.
 

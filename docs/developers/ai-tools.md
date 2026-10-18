@@ -1,6 +1,6 @@
 # AI tools
 
-An AI coding tool can build a Send to Live feature from these pages, and gets it right more often with one of the helpers below. Each one tells the tool the same few things: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
+An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
 
 ## The skill
 
@@ -30,7 +30,7 @@ Paste [the paste text](paste-text.md) into the knowledge of the project: in Lova
 
 ## llms.txt
 
-[llms.txt](../llms.txt) lists these pages for language models, and [llms-full.txt](../llms-full.txt) holds them all in one file. Every page is there as Markdown too: add `.md` to its address.
+[llms.txt](../llms.txt) lists these pages for language models, and [llms-full.txt](../llms-full.txt) holds them all in one file. Every page is there as Markdown too: add `.md` to its address (the start page is `index.md`).
 
 ## Check what the tool built
 

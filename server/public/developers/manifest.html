@@ -39,13 +39,13 @@
     { &quot;id&quot;: &quot;robot&quot;, &quot;file&quot;: &quot;robot.wav&quot;, &quot;bytes&quot;: 420112, &quot;sha256&quot;: &quot;…&quot;, &quot;name&quot;: &quot;Robot hallo&quot;, &quot;kind&quot;: &quot;oneshot&quot;, &quot;role&quot;: &quot;vocal&quot; }
   ]
 }</code></pre>
-<p>In Live this becomes a scene &quot;Treinbeat&quot; with two tracks, &quot;Kick (Web808)&quot; and &quot;Robot hallo (Web808)&quot;. The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.</p>
+<p>In Live this becomes a scene &quot;Treinbeat (Web808)&quot; with two tracks, &quot;Kick (Web808)&quot; and &quot;Robot hallo (Web808)&quot;. The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.</p>
 <h2 id="the-package">The package</h2>
 <div class="table"><table>
 <thead><tr><th>Field</th><th></th></tr></thead>
 <tbody>
 <tr><td><code>schema</code></td><td>Required: <code>&quot;app2live/1&quot;</code>.</td></tr>
-<tr><td><code>title</code></td><td>The name of the scene, and of the folder on disk. Default &quot;Untitled&quot;.</td></tr>
+<tr><td><code>title</code></td><td>The name of the scene, with the app after it, and of the folder on disk. Default &quot;Untitled&quot;.</td></tr>
 <tr><td><code>source.app</code></td><td>Added to every track name: &quot;Kick (Web808)&quot;. Default &quot;App&quot;.</td></tr>
 <tr><td><code>source.app_version</code>, <code>source.platform</code></td><td>For your own use, and for support.</td></tr>
 <tr><td><code>tempo.bpm</code></td><td>20 to 999: the tempo of every loop without a <code>bpm</code> of its own.</td></tr>

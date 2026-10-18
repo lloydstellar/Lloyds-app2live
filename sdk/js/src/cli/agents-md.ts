@@ -94,8 +94,9 @@ export function writeIndex(project: string): IndexResult {
   const skipped: string[] = [];
   const claude = path.join(project, 'CLAUDE.md');
   if (fs.existsSync(claude)) {
-    // Claude Code reads AGENTS.md through an import line: the index would be there twice.
-    if (/^\s*@\.?\/?AGENTS\.md\s*$/m.test(fs.readFileSync(claude, 'utf8'))) skipped.push('CLAUDE.md');
+    // Claude Code reads AGENTS.md when CLAUDE.md imports it (@AGENTS.md, anywhere in the text):
+    // the index would be there twice.
+    if (/(^|\s)@(\.\/)?AGENTS\.md(?=[\s.,;:!?)]|$)/m.test(fs.readFileSync(claude, 'utf8'))) skipped.push('CLAUDE.md');
     else targets.push('CLAUDE.md');
   }
   // Every file is checked before the first is written, so a problem leaves all of them as they were.

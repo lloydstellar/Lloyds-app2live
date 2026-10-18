@@ -48,28 +48,39 @@ fun sha256Hex(bytes: ByteArray): String =
 <h2 id="2-the-calls">2. The calls</h2>
 <pre><code class="language-kotlin">const val BASE = &quot;https://lloydstellar.nl/la2l/api&quot;
 
-fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = &quot;application/json&quot;): Pair&lt;Int, String&gt; {
+class Answer(val status: Int, val json: org.json.JSONObject, val retryAfter: Int?) {
+    fun error(fallback: String) = java.io.IOException(json.optString(&quot;error&quot;).ifEmpty { fallback })
+}
+
+fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = &quot;application/json&quot;): Answer {
     val c = java.net.URL(BASE + path).openConnection() as java.net.HttpURLConnection
+    c.connectTimeout = 15_000
+    c.readTimeout = 60_000
     c.requestMethod = method
     c.setRequestProperty(&quot;X-LA2L-Client&quot;, &quot;my-app/1.0 (My app)&quot;)
     if (token != null) c.setRequestProperty(&quot;Authorization&quot;, &quot;Bearer $token&quot;)
-    if (body != null) {
-        c.doOutput = true
-        c.setRequestProperty(&quot;Content-Type&quot;, type)
-        c.setFixedLengthStreamingMode(body.size)
-        c.outputStream.use { it.write(body) }
+    try {
+        if (body != null) {
+            c.doOutput = true
+            c.setRequestProperty(&quot;Content-Type&quot;, type)
+            c.setFixedLengthStreamingMode(body.size)
+            c.outputStream.use { it.write(body) }
+        }
+        val status = c.responseCode
+        val text = (if (status &lt; 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: &quot;&quot;
+        // An answer that is not JSON, such as an error page of a proxy, counts as an empty one.
+        val json = try { org.json.JSONObject(text) } catch (e: org.json.JSONException) { org.json.JSONObject() }
+        return Answer(status, json, c.getHeaderField(&quot;Retry-After&quot;)?.toIntOrNull())
+    } finally {
+        c.disconnect()
     }
-    val status = c.responseCode
-    val text = (if (status &lt; 400) c.inputStream else c.errorStream)?.bufferedReader()?.readText() ?: &quot;&quot;
-    return status to text
 }
 
 fun pair(code: String, installId: String): String {
     val body = org.json.JSONObject().put(&quot;code&quot;, code).put(&quot;app_name&quot;, &quot;My app&quot;).put(&quot;app_id&quot;, installId)
-    val (status, text) = call(&quot;POST&quot;, &quot;/pair/claim&quot;, null, body.toString().toByteArray())
-    val json = org.json.JSONObject(text)
-    if (status != 200) throw java.io.IOException(json.optString(&quot;error&quot;, &quot;Pairing failed.&quot;))
-    return json.getString(&quot;app_token&quot;) // keep it in SharedPreferences, Context.MODE_PRIVATE
+    val a = call(&quot;POST&quot;, &quot;/pair/claim&quot;, null, body.toString().toByteArray())
+    if (a.status != 200) throw a.error(&quot;Pairing failed.&quot;)
+    return a.json.getString(&quot;app_token&quot;) // keep it in SharedPreferences, Context.MODE_PRIVATE
 }
 
 fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray): String {
@@ -79,19 +90,19 @@ fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray
         .put(&quot;source&quot;, org.json.JSONObject().put(&quot;app&quot;, &quot;My app&quot;).put(&quot;platform&quot;, &quot;android&quot;))
         .put(&quot;tempo&quot;, org.json.JSONObject().put(&quot;bpm&quot;, bpm))
         .put(&quot;items&quot;, org.json.JSONArray().put(item))
-    val (status, text) = call(&quot;POST&quot;, &quot;/packages&quot;, token, manifest.toString().toByteArray())
-    val created = org.json.JSONObject(text)
-    if (status != 201) throw java.io.IOException(created.optString(&quot;error&quot;, &quot;Sending failed.&quot;))
-    val id = created.getString(&quot;package_id&quot;)
-    val put = call(&quot;PUT&quot;, created.getJSONObject(&quot;upload&quot;).getString(&quot;sound.wav&quot;), token, wav, &quot;audio/wav&quot;)
-    if (put.first != 200) throw java.io.IOException(org.json.JSONObject(put.second).optString(&quot;error&quot;, &quot;Upload failed.&quot;))
+    val created = call(&quot;POST&quot;, &quot;/packages&quot;, token, manifest.toString().toByteArray())
+    if (created.status != 201) throw created.error(&quot;Sending failed.&quot;)
+    val id = created.json.getString(&quot;package_id&quot;)
+    val put = call(&quot;PUT&quot;, created.json.getJSONObject(&quot;upload&quot;).getString(&quot;sound.wav&quot;), token, wav, &quot;audio/wav&quot;)
+    if (put.status != 200) throw put.error(&quot;The upload failed.&quot;)
     val commit = call(&quot;POST&quot;, &quot;/packages/$id/commit&quot;, token, &quot;{}&quot;.toByteArray())
-    if (commit.first != 200) throw java.io.IOException(org.json.JSONObject(commit.second).optString(&quot;error&quot;, &quot;Sending failed.&quot;))
+    if (commit.status != 200) throw commit.error(&quot;Sending failed.&quot;)
     return id // then GET /packages/$id/status every few seconds until &quot;imported&quot;
 }</code></pre>
 <ul>
 <li><strong>401</strong> on any call: the user unpaired your app in Live. Forget the token and show the code field again.</li>
-<li><strong>429</strong>: wait the seconds in <code>Retry-After</code>. <strong>5xx</strong> or no connection: try again later.</li>
+<li><strong>429</strong>: wait <code>retryAfter</code> seconds, from the <code>Retry-After</code> header. <strong>5xx</strong> or no connection: try again later.</li>
+<li>A large file does not fit in memory: stream it from disk with <code>setFixedLengthStreamingMode(file.length())</code> and copy a <code>FileInputStream</code> to <code>outputStream</code>.</li>
 <li><strong>422</strong> names the sound and the problem, in plain English: show it.</li>
 <li>The field for the code: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot;</li>
 <li>Never log the token, and never put it in a URL.</li>

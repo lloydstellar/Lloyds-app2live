@@ -5,9 +5,12 @@
 // committed, as server/public/vendor is, so the server needs no build step.
 // Usage: node tools/devpages.js           write the pages
 //        node tools/devpages.js --check   only check that the committed pages are up to date (CI)
-// Only Node is needed. The Markdown it reads is a small part of GitHub's: headings, paragraphs,
-// lists of one level, tables, quotes, fenced code, and inline code, bold and links. Anything
-// else stops it, so a page never shows up different from its source.
+// Only Node is needed. The Markdown it reads is a small part of GitHub's: # to ### headings,
+// paragraphs, "-" and "1." lists of one level, tables, quotes, ``` code blocks, and inline code,
+// **bold**, links and bare https addresses. It stops at what would show up differently: other list
+// marks, deeper headings, ~~~ fences, images, *emphasis*, HTML and HTML comments, a list inside a
+// list, an ordered list that does not start at 1, and links other than http(s), mailto or relative.
+// An underscore is always just an underscore.
 
 const fs = require('fs');
 const path = require('path');
@@ -70,6 +73,7 @@ function inline(s, where, link, inLink = false) {
         if (end < 0) fail(where, 'a link without its )');
         const href = s.slice(close + 2, end);
         if (!href || /\s/.test(href)) fail(where, `a link to "${href}"`);
+        if (/^[a-z][a-z0-9+.-]*:/i.test(href) && !/^(https?|mailto):/i.test(href)) fail(where, `a link to "${href}": only http(s), mailto and relative links`);
         out += `<a href="${esc(link(href))}">${inline(s.slice(i + 1, close), where, link, true)}</a>`;
         i = end + 1;
         continue;
@@ -82,6 +86,8 @@ function inline(s, where, link, inLink = false) {
       i = end + 2;
       continue;
     }
+    if (s[i] === '*') fail(where, 'a single *: use **bold**, or put it in a code span');
+    if (s.startsWith('![', i)) fail(where, 'an image');
     const bare = !inLink && /^https?:\/\/[^\s<>()"'`]+/.exec(s.slice(i));
     if (bare) {
       const href = bare[0].replace(/[.,:;!?]+$/, '');
@@ -89,7 +95,7 @@ function inline(s, where, link, inLink = false) {
       i += href.length;
       continue;
     }
-    if (s[i] === '<' && /^<\/?[a-z]/i.test(s.slice(i))) fail(where, 'HTML outside a code span');
+    if (s[i] === '<' && /^<(\/?[a-z]|!)/i.test(s.slice(i))) fail(where, 'HTML outside a code span');
     out += esc(s[i]);
     i++;
   }
@@ -159,6 +165,8 @@ function markdown(text, file, link = (href) => href) {
       continue;
     }
     let m;
+    const mark = /^([*+] |#{4,} |~~~)/.exec(line);
+    if (mark) fail(where, `"${mark[1].trim()}": use - for lists, # to ### for headings, and \`\`\` for code`);
     if ((m = FENCE.exec(line))) {
       const end = lines.findIndex((l, j) => j > i && /^```\s*$/.test(l));
       if (end < 0) fail(where, 'a code block without its end');
@@ -189,6 +197,7 @@ function markdown(text, file, link = (href) => href) {
       html.push(`<blockquote><p>${inline(quote.join(' '), where, link)}</p></blockquote>`);
     } else if ((m = ITEM.exec(line))) {
       const ordered = m[1] !== '-';
+      if (ordered && m[1] !== '1.') fail(where, 'an ordered list that does not start at 1');
       const items = [];
       while (i < lines.length) {
         const item = ITEM.exec(lines[i]);

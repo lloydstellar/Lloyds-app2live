@@ -46,7 +46,8 @@ BASE=https://lloydstellar.nl/la2l/api
 # 1. Pair once, with the code LA2L shows in Live. Keep app_token like a password.
 curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
   -d '{"code":"K7P 42Q","app_name":"My app","app_id":"a-uuid-made-once"}'
-#   -> {"app_token":"la2la_...","device_name":"ERIK-PC"}
+#   -> {"app_token":"la2la_...","device_name":"STUDIO-PC"}
+TOKEN=la2la_...
 
 # 2. Announce the package: bytes and sha256 of every file.
 curl -sS -X POST $BASE/packages -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
