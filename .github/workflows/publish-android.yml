@@ -1,0 +1,48 @@
+# Builds la2l and la2l-ktx for LA2L's own Maven repository, from a tag android-v<version> only
+# (sdk/BUILD-PROMPT.md, section 13). It tests them, builds the Maven repository with a signature
+# per file when the GitHub secrets SIGNING_KEY and SIGNING_PASSWORD exist, and attaches it to a
+# GitHub release of the tag as la2l-android-maven-<version>.zip. The VPS takes it from there into
+# https://lloydstellar.nl/la2l/maven/; no key to the VPS is stored on GitHub.
+name: Publish la2l for Android
+
+on:
+  push:
+    tags:
+      - 'android-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build la2l for the integration tests
+        run: npm ci && npm run build
+        working-directory: sdk/js
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: 8.14.6
+      - name: The tag is the version of the build
+        run: grep -q "version = \"${GITHUB_REF_NAME#android-v}\"" sdk/android/build.gradle.kts
+      - name: Tests and the Maven repository
+        working-directory: sdk/android
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: gradle --no-daemon :la2l:testDebugUnitTest :la2l-ktx:testDebugUnitTest publishReleasePublicationToLocalRepository
+      - name: The release, with the repository as a ZIP file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#android-v}"
+          (cd sdk/android/build/maven && zip -qr "$GITHUB_WORKSPACE/la2l-android-maven-$version.zip" .)
+          gh release create "$GITHUB_REF_NAME" "la2l-android-maven-$version.zip" --title "la2l for Android $version" --notes "nl.lloydstellar:la2l and nl.lloydstellar:la2l-ktx $version, for https://lloydstellar.nl/la2l/maven/."

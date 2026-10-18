@@ -1,8 +1,42 @@
 # Android
 
-An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L Sender, the installed web app of LA2L, with the description of the sounds in `EXTRA_TEXT`: https://lloydstellar.nl/la2l/developers/sharing An Android SDK (`nl.lloydstellar:la2l`) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+The Android SDK sends sounds to LA2L from Kotlin or Java: `nl.lloydstellar:la2l`, a library without dependencies for Android 7.0 (API 24) and newer, and `nl.lloydstellar:la2l-ktx`, with suspend functions and a builder on top. They are in LA2L's own Maven repository. Without any network code, an app can also share its WAV files with LA2L Sender, the installed web app of LA2L, with the description of the sounds in `EXTRA_TEXT`: `La2lShare.intent` builds that share; https://lloydstellar.nl/la2l/developers/sharing
 
-## 1. A WAV file
+```kotlin
+// settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }
+// app/build.gradle.kts: implementation("nl.lloydstellar:la2l-ktx:0.1.0")
+
+val la2l = La2l(context, "Web808") // Live shows "Paired with Web808"
+if (!la2l.isPaired) la2l.pair(codeFromUser) // "K7P 42Q", from LA2L in Live
+
+val delivery = la2l.send(title = "Treinbeat", bpm = 92.0) {
+    sound("Kick", Wav.fromPcm16(kickSamples, 48000, 2), kind = Kind.LOOP, role = Role.DRUMS)
+    sound("Robot hallo", robotWavFile, kind = Kind.ONESHOT, role = Role.VOCAL)
+}
+delivery.awaitImport() // the user clicked Import in Live
+```
+
+From Java, every call has a variant that reports to a `Callback` on the main thread, and one that returns a `CompletableFuture`:
+
+```java
+La2l la2l = new La2l(context, "Web808");
+la2l.send(new SoundPackage("Treinbeat").bpm(92).add(Sound.loop("Kick", kickWav).role(Role.DRUMS)), new Callback<Delivery>() {
+    @Override public void onSuccess(Delivery delivery) { status.setText("Waiting for Import in Live"); }
+    @Override public void onError(La2lException error) { status.setText(error.getMessage()); }
+});
+```
+
+- **Pairing**: a field for the code with this line above it: "In Live, click Pair app in LA2L and type the code it shows." The token stays in the app's private `SharedPreferences`; never log it. Ask for a code again only after the code `NOT_PAIRED`.
+- **Sounds**: WAV only. `Wav.fromPcm16` and `Wav.fromFloat` make one from interleaved samples, in memory or on disk; `WavCheck.check(file)` says whether LA2L can use a file. Make a loop exactly a whole number of beats long, `sampleRate * 60 / bpm * beats` frames, and give it its BPM.
+- **Errors**: every failure is a `La2lException` with a `code` and a message to show as it is. `RATE_LIMITED` has `getRetryAfter()`; `IMPORT_FAILED` means the package stays and the next Import tries again.
+- **Large uploads**: send from a WorkManager job, so the upload goes on when the user leaves the app. The README of `sdk/android` has the recipe.
+- **Examples**: `examples/android-recorder` records a loop in time after a count-in and sends it; `examples/android-java` does the same with a tone from Java, and shares it with LA2L Sender.
+
+## Without the SDK
+
+The same five HTTPS calls, in Kotlin with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+
+### 1. A WAV file
 
 From 16-bit PCM, as `AudioRecord` gives it or as your audio engine renders it:
 
@@ -24,7 +58,7 @@ fun sha256Hex(bytes: ByteArray): String =
 
 A loop must be a whole number of beats long: `sampleRate * 60 / bpm * beats` frames. An m4a or mp3 must be decoded first (`MediaCodec`): LA2L takes WAV only.
 
-## 2. The calls
+### 2. The calls
 
 ```kotlin
 const val BASE = "https://lloydstellar.nl/la2l/api"
@@ -89,7 +123,7 @@ fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray
 - The field for the code: "In Live, click Pair app in LA2L and type the code it shows."
 - Never log the token, and never put it in a URL.
 
-## 3. Following it
+### 3. Following it
 
 `GET /packages/{id}/status` says `waiting` until the user clicks Import in Live, then `imported`, `partial` (with the result per sound), `failed` or `expired`. While your app is open, ask every few seconds and show "Waiting for Import in Live".
 

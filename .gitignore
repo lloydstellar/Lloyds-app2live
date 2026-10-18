@@ -7,3 +7,7 @@ Thumbs.db
 server/data/
 # Lock files of Claude Code
 .claude/*.lock
+# Gradle and Android Studio, for sdk/android
+.gradle/
+local.properties
+*.iml

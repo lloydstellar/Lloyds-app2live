@@ -95,7 +95,7 @@ public class FixturesTest {
         }
     }
 
-    private static List<String> strings(JSONArray a) {
+    private static List<String> strings(JSONArray a) throws Exception {
         List<String> out = new ArrayList<>();
         for (int i = 0; i < a.length(); i++) out.add(a.getString(i));
         return out;
