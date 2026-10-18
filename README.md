@@ -96,7 +96,7 @@ The same folder holds `la2l.log`, which says what the device did.
 
 ### Privacy
 
-Your sounds pass through the LA2L server only to reach your Live; they are deleted after import, or after 24 hours. Read the [privacy statement](https://lloydstellar.nl/la2l/developers/privacy.html). You can also [run your own server](#run-your-own-server).
+Your sounds pass through the LA2L server only to reach your Live; they are deleted after import, or after 24 hours. Read the [privacy statement](https://lloydstellar.nl/la2l/developers/privacy). You can also [run your own server](#run-your-own-server).
 
 ## For app developers
 
