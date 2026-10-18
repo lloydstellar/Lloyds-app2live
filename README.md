@@ -6,7 +6,7 @@ Lloyd's App2Live is a free, open source Max for Live device. Make a beat, a loop
 
 ![The LA2L device in Live, paired with an app and ready to import](docs/screenshots/mainscreen-paired.png)
 
-**[Download Lloyd's App2Live](https://lloydstellar.nl/la2l/lloyds-app2live.zip)** · Ableton Live 12.4 or newer with Max for Live · Windows and Mac
+**[Download Lloyd's App2Live](https://github.com/lloydstellar/Lloyds-app2live/raw/main/devices/release/lloyds-app2live.zip)** · Ableton Live 12.4 or newer with Max for Live · Windows and Mac
 
 ## How it works
 
@@ -23,8 +23,8 @@ You pair an app only once, with a code the device shows. After that, the app can
 
 You need Ableton Live 12.4 or newer with Max for Live: Live Suite, or Live Standard with the Max for Live add-on.
 
-1. Download [lloyds-app2live.zip](https://lloydstellar.nl/la2l/lloyds-app2live.zip).
-2. Unzip it. Inside is one file: `Lloyds App2Live.amxd`.
+1. Download [lloyds-app2live.zip](https://github.com/lloydstellar/Lloyds-app2live/raw/main/devices/release/lloyds-app2live.zip).
+2. Unzip it. Inside is one file: the device, `Lloyds App2Live 0.2.2.amxd`.
 3. Put that file somewhere it can stay. Your User Library is a good place, for example `User Library/Presets/Audio Effects/Max Audio Effect`. Live's browser then shows it under **User Library**.
 4. Drag **Lloyds App2Live** onto an audio track. The sound of the track passes through it unchanged.
 
@@ -151,6 +151,7 @@ Restart Live after every build: Live keeps a loaded device in memory. Never save
 | `tools/` | The patch generator and the build. |
 | `tests/` | Tests with a simulated Live (`mock-live.js`) and a simulated server (`mock-server.js`). |
 | `devices/la2l/` | The built device. |
+| `devices/release/` | The frozen device for download, in one zip. |
 | `server/` | The server and LA2L Sender. |
 | `sdk/`, `examples/`, `skills/` | The developer kit. |
 | `docs/` | The server API, the package format, the design notes and the test card. |
