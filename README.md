@@ -1,88 +1,165 @@
 # Lloyd's App2Live (LA2L)
 
-Lloyd's App2Live is an open source connection between Ableton Live and phone or web apps. An app (Android or web) sends a package of WAV files with a short description to a server. You click **Import** in the Max for Live device, and every sound lands on its own new audio track: named, coloured, and warped to the tempo the app gave.
+**Send sounds from your phone or web apps straight into Ableton Live.**
 
-This repository holds both ends of that chain: the Max for Live device (the root of the repository) and the server, `la2l-server` (in [`server/`](server/)). It also holds the developer kit for the apps (in [`sdk/`](sdk/)): `@lloydstellar/la2l` for JavaScript and TypeScript, with a Send to Live button, a command line and a test receiver that stands in for Live; the Android SDK `nl.lloydstellar:la2l` and `la2l-ktx` (in [`sdk/android/`](sdk/android/)) with two example apps; an example at `https://lloydstellar.nl/la2l/examples/drum-machine/`; the API for machines in [`docs/openapi.yaml`](docs/openapi.yaml); the developer pages at `https://lloydstellar.nl/la2l/developers/` (sources in [`docs/developers/`](docs/developers/)); and a skill for AI coding tools in [`skills/`](skills/).
+Lloyd's App2Live is a free, open source Max for Live device. Make a beat, a loop or a sample in an app, send it, and click **Import** in Live. Every sound lands on its own new audio track: named, coloured, and warped to the tempo the app made it in.
 
-The device is at version 0.2.2. It is tested against a simulated Live and a simulated server, and in Live 12.4.6 on Windows, with the real server too. The server runs at `https://lloydstellar.nl/la2l/`. Apps send to it with the developer kit; LA2L Sender on that address pairs with the device and sends WAV files from a browser. **Settings > Test import** places a test loop without a server, so the Live side can also be tested on its own.
+![The LA2L device in Live, paired with an app and ready to import](docs/screenshots/mainscreen-paired.png)
 
-## What the device does
+**[Download Lloyd's App2Live](https://github.com/lloydstellar/Lloyds-app2live/raw/main/devices/release/lloyds-app2live.zip)** · Ableton Live 12.4 or newer with Max for Live · Windows and Mac
 
-- **Pair app** shows a six-character code. You type it in the app once; from then on that app can send sounds to this computer. **Copy code** puts the code on the clipboard, for an app on the same computer. The device says which apps are paired, and asks the server again when Live starts, after Import, in Self test and every 15 seconds while an app is paired, so an app that unpaired itself drops out; with no app left it shows Pair app again. *(needs the server)*
-- **Import** gets every package that is waiting on the server, downloads the WAV files, checks their size and checksum, and puts each sound on a new audio track. By default the clips go into the Arrangement at 1.1.1, its start, wherever the playhead is. In Session mode each package gets its own new scene at the top of the Session.
-- **Loops** are warped to the tempo the app sent. The warp mode follows what the sound is: Beats for drums, Tones for bass, Complex Pro for melodic parts and vocals. **One-shots** play exactly as the app made them: warp off, loop off.
-- When a package has a different tempo than the Set, a **Use 92 BPM** button appears. The device never changes the Set tempo by itself.
-- **Settings**: where new sounds go (Arrangement or Session), where new tracks go (after this track or at the end), Test import, Self test, Open folder, Add app, Unpair.
+## How it works
 
-## Requirements
+![1. Your app (Android or web) sends WAV files and their tempo. 2. The LA2L server keeps them until you import. 3. In Live you click Import in the LA2L device. 4. Every sound becomes a new audio track: named, coloured and warped. Once, you type the code LA2L shows into your app.](docs/screenshots/how-it-works.svg)
 
-Ableton Live 12.4 or newer with Max for Live (Live Suite, or Live Standard with Max for Live), on Windows or Mac.
+1. **Your app** sends its sounds: WAV files, plus a short note per sound with its name, its tempo and whether it is a loop or a one-shot.
+2. **The LA2L server** keeps them for you until you are ready, for up to 24 hours.
+3. **In Live** you click **Import** in the LA2L device.
+4. **Every sound becomes a new audio track.** Loops are warped to the app's tempo, one-shots play exactly as the app made them.
 
-## Trying it in Live
+You pair an app only once, with a code the device shows. After that, the app can send to your computer whenever you like. Nothing reaches Live until you click Import.
 
-1. Restart Live. Live keeps a loaded device and its scripts in memory, so a new version only shows after a restart.
-2. Drag `devices/la2l/Lloyds App2Live.amxd` onto an audio track. The other files in `devices/la2l` must stay next to it. A group track, a return track or the Main track works too, and the sound passes through unchanged: on a group track new tracks go to the top of that group, on a return or the Main track after all other tracks.
-3. Click **Settings**, then **Test import**.
+## Install
 
-The full test, with what you should see at every step, is in [docs/test-card-en.md](docs/test-card-en.md).
+You need Ableton Live 12.4 or newer with Max for Live: Live Suite, or Live Standard with the Max for Live add-on.
 
-## Files on your computer
+1. Download [lloyds-app2live.zip](https://github.com/lloydstellar/Lloyds-app2live/raw/main/devices/release/lloyds-app2live.zip).
+2. Unzip it. Inside is one file: the device, `Lloyds App2Live 0.2.2.amxd`.
+3. Put that file somewhere it can stay. Your User Library is a good place, for example `User Library/Presets/Audio Effects/Max Audio Effect`. Live's browser then shows it under **User Library**.
+4. Drag **Lloyds App2Live** onto an audio track. The sound of the track passes through it unchanged.
 
-LA2L keeps its settings and log per computer, not in the Live Set, in `Documents/Lloyds App2Live`:
+A group track, a return track or the Main track works too. On a group track new tracks go to the top of that group; on a return or the Main track they go after all other tracks.
 
-| File | What it is |
+## Use it
+
+### 1. Pair your app, once
+
+![The device before pairing, with the Pair app button](docs/screenshots/mainscreen-unpaired.png)
+
+Click **Pair app**. The device shows a code:
+
+![The device showing the pairing code WST 2T8](docs/screenshots/mainscreen-pairingcode.png)
+
+Type that code in your app. The code works for 10 minutes. Is the app in a browser on the same computer? Click **Copy code** and paste it.
+
+When the app has the code, the device says **Paired with** and the name of the app. You do this once for every app.
+
+### 2. Send a sound from your app
+
+Make something in the app and send it to Live. The app's own button or menu says how, for example **Send to Live**.
+
+For example [Lloyd's Online 808 Drummachine](https://lloydstellar.nl/808/): make a beat in your browser and click its LA2L button. The first time, it asks for the code from step 1; the device then says **Paired with Lloyd's 808**, like in the screenshot at the top.
+
+### 3. Click Import
+
+Click **Import**, the button you saw at the top of this page. The device gets everything your apps sent and puts every sound on a new audio track:
+
+- In the **Arrangement**, the clips start at 1.1.1, wherever the playhead is.
+- In the **Session**, every package gets its own new scene at the top.
+- **Loops** are warped to the app's tempo. The warp mode fits the sound: Beats for drums, Tones for bass, Complex Pro for melodies and vocals.
+- **One-shots** play exactly as the app made them: no warp, no loop.
+- Did the app use another tempo than your Set? A button like **Use 92 BPM** appears. LA2L never changes the tempo of your Set by itself.
+
+The sounds are saved with your Set, in its project folder under `Samples/LA2L`, so **Collect All and Save** works as usual. Sounds imported into a Set you have not saved yet wait in `Documents/Lloyds App2Live/Inbox`.
+
+### No app yet? Try it
+
+- **[Lloyd's Online 808 Drummachine](https://lloydstellar.nl/808/)** is a drum machine in your browser with an LA2L button: the quickest way to hear LA2L work.
+- **LA2L Sender** at [lloydstellar.nl/la2l](https://lloydstellar.nl/la2l/) is a web page that pairs like an app and sends WAV, mp3 or m4a files from your browser or phone. On Android, installed from Chrome, it also shows up in the share menu of other apps.
+- **Web808** at [lloydstellar.nl/la2l/examples/drum-machine](https://lloydstellar.nl/la2l/examples/drum-machine/) is the small example drum machine of the developer kit; its code is in [examples/web-drum-machine](examples/web-drum-machine/).
+- **Settings > Test import** puts a test loop in your Set without any app.
+
+### Settings
+
+![The settings of the device](docs/screenshots/settings-screen.png)
+
+| | |
 |---|---|
-| `settings.json` | Settings, the pairing token and the list of imported packages. |
-| `la2l.log` | What the device did, including the warp markers Live reported. Older lines move to `la2l.log.old` at 1 MB. |
-| `Inbox/` | Sounds imported into a Set that was not saved yet. |
+| **New sounds go to** | **Arrangement** or **Session**. |
+| **New tracks go** | **After this track** (the track the device is on) or **At the end**. |
+| **Test import** | Places a test loop, to check that LA2L works in your Live. |
+| **Self test** | Checks the connection with the server and the paired apps. |
+| **Open folder** | Opens `Documents/Lloyds App2Live`: the settings, the log and the Inbox. |
+| **Add app** | Pairs one more app with this computer. |
+| **Unpair** | Disconnects all apps from this computer. Click it twice to be sure. |
 
-Sounds imported into a saved Set go to the project folder of that Set: `Samples/LA2L/<date> <time> <title>/`. Collect All and Save then works as usual.
-
-**Settings > Open folder** opens this folder. The settings that have no button are in `settings.json`. LA2L reads that file again at every click, so a change made by hand works from the next click on:
+LA2L keeps its settings per computer, in `Documents/Lloyds App2Live/settings.json`, not in your Set. The settings without a button can be changed there by hand. LA2L reads the file again at every click.
 
 | Setting | Default | |
 |---|---|---|
-| `serverUrl` | `https://lloydstellar.nl/la2l/api` | Only `https://`, except `http://localhost` for testing. |
+| `serverUrl` | `https://lloydstellar.nl/la2l/api` | The server. Only `https://`, except `http://localhost` for testing. |
 | `appNameInTrackName` | `true` | "Kick (Web808)" instead of "Kick". |
-| `testUrl` | `http://lloydstellar.nl/test/test-file-voor-max.wav` | The file Test import downloads. Any web address works here. |
+| `testUrl` | a snare loop on lloydstellar.nl | The file Test import downloads. When it cannot, Test import uses a loop built into the device. |
 | `testName`, `testBpm`, `testKind`, `testRole` | `Snare`, `135`, `loop`, `drums` | How Test import places that file. |
 
-When the test file cannot be downloaded, Test import uses a loop built into the device (a snare on 2 and 4 at the test tempo), and the status line says so.
+The same folder holds `la2l.log`, which says what the device did.
 
-## Building
+### Privacy
 
-Only Node.js 18 or newer is needed; there are no npm packages.
+Your sounds pass through the LA2L server only to reach your Live; they are deleted after import, or after 24 hours. Read the [privacy statement](https://lloydstellar.nl/la2l/developers/privacy.html). You can also [run your own server](#run-your-own-server).
+
+## For app developers
+
+Want your app to send to Live? There is no API key and no developer account: the user pairs your app with the code LA2L shows, and that code is the consent.
+
+```js
+import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
+
+const la2l = new LA2L({ appName: 'Web808' });
+if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows, like "K7P 42Q"
+await la2l.send({
+  title: 'Treinbeat',
+  bpm: 92,
+  sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(loopBuffer), kind: 'loop', role: 'drums' }],
+});
+```
+
+| Your app | Use |
+|---|---|
+| A web app | `npm install @lloydstellar/la2l`, or the ready-made **Send to Live** button without a build step ([sdk/js](sdk/js/)) |
+| An Android app | `nl.lloydstellar:la2l-ktx` (Kotlin) or `nl.lloydstellar:la2l` (Java) from `https://lloydstellar.nl/la2l/maven/` ([sdk/android](sdk/android/)), or share WAV files with LA2L Sender without any network code |
+| A script, or any other language | `npx @lloydstellar/la2l send`, or five HTTPS calls ([docs/openapi.yaml](docs/openapi.yaml)) |
+| Built with an AI coding tool | The skill in [skills/](skills/), or the paste text for Lovable and Bolt |
+
+- **Start here:** the developer pages at [lloydstellar.nl/la2l/developers](https://lloydstellar.nl/la2l/developers/) (sources in [docs/developers/](docs/developers/)).
+- **Test without Ableton:** the [test receiver](https://lloydstellar.nl/la2l/receiver) stands in for LA2L in Live, as a page, on the command line and in your own tests.
+- **Examples:** [examples/](examples/) has the Web808 drum machine and two Android apps.
+- **The package format:** [docs/manifest.md](docs/manifest.md) and [docs/app2live-1.schema.json](docs/app2live-1.schema.json).
+
+## Run your own server
+
+LA2L uses the server at `https://lloydstellar.nl/la2l/` by default. You can run `la2l-server` yourself: Node.js in one Docker container, no npm packages, behind a web server that does HTTPS.
+
+- [server/README.md](server/README.md): install, settings, update, backup and restore.
+- [docs/server-api.md](docs/server-api.md): the API between the apps, the server and the device.
+- [server/BUILD-PROMPT.md](server/BUILD-PROMPT.md) and [sdk/BUILD-PROMPT.md](sdk/BUILD-PROMPT.md): the briefs the server and the developer kit were built from.
+
+To point the device at your server, click **Settings > Open folder** and set `serverUrl` in `settings.json` to your server's address, for example `https://example.com/la2l/api`. The apps need the same address; the SDKs take it as an option.
+
+## Work on the device
+
+The device itself lives in this repository too. It needs only Node.js 18 or newer; there are no npm packages.
 
 ```
-node tools/build.js      # writes devices/la2l
-npm test                 # runs the device tests (tests/*.test.js)
+node tools/build.js      # builds devices/la2l
+npm test                 # runs the device tests against a simulated Live and server
 ```
 
-Never save the device from the Max editor. The patch is generated by `tools/gen-patch.js`; change that file or the code in `src/` and build again.
-
-## Folder layout
+Restart Live after every build: Live keeps a loaded device in memory. Never save the device from the Max editor; `tools/gen-patch.js` generates the patch. The test to run in Live, with what you should see at every step, is [docs/test-card-en.md](docs/test-card-en.md).
 
 | Path | |
 |---|---|
 | `src/node/` | The Node for Max part: server, downloads, WAV check, manifest, settings, and the controller `app.js`. |
 | `src/live/la2l-live.js` | The Live part, a `[v8]` script: new tracks, clips, warp, loop, names, colours. |
-| `src/ui/` | The logos. |
-| `tools/gen-patch.js` | Generates and checks the Max patch. |
-| `tools/build.js` | Builds `devices/la2l`: the `.amxd`, the bundled `la2l-node.js`, the v8 script and the logos. |
-| `tests/` | Tests for every part, with a simulated Live (`mock-live.js`) and a simulated server (`mock-server.js`). |
-| `docs/` | Server API, manifest format, design notes and the test card. |
+| `tools/` | The patch generator and the build. |
+| `tests/` | Tests with a simulated Live (`mock-live.js`) and a simulated server (`mock-server.js`). |
 | `devices/la2l/` | The built device. |
-| `server/` | The App2Live server (`la2l-server`) and LA2L Sender. [server/README.md](server/README.md) says how to run, update and back it up. |
+| `devices/release/` | The frozen device for download, in one zip. |
+| `server/` | The server and LA2L Sender. |
+| `sdk/`, `examples/`, `skills/` | The developer kit. |
+| `docs/` | The server API, the package format, the design notes and the test card. |
 
-## How it fits together
-
-The device has three parts:
-
-- **The Max patch** is the interface: the logo, the code, the buttons and the status line. It shows one view at a time (not paired, showing a code, paired, settings).
-- **Node for Max** (`la2l-node.js`) does the network, the files, the settings and all decisions. It only uses Node's built-in modules, because Freeze does not pack npm packages, and it is bundled into one file, because Freeze does not follow `require()`.
-- **The v8 script** (`la2l-live.js`) is the only part that can use the Live API. Node sends it one request per package; it answers with progress and a result per sound.
-
-More in [docs/design-notes.md](docs/design-notes.md). The server contract is in [docs/server-api.md](docs/server-api.md) and the package format in [docs/manifest.md](docs/manifest.md).
+How the parts of the device fit together, and what real Live does through its API, is in [docs/design-notes.md](docs/design-notes.md).
 
 ## License
 

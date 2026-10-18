@@ -27,6 +27,7 @@ The contract between the two is [docs/server-api.md](docs/server-api.md); the pa
 - Live keeps a loaded device in memory, so Erik restarts Live after every new build.
 - `docs/design-notes.md` explains the device and lists what real Live does through the API ("Proven and not yet proven"). Read it before you touch `src/live/la2l-live.js`; `tests/mock-live.js` must keep matching real Live.
 - `docs/test-card-en.md` is the test Erik runs in Live. Update it with every version.
+- `devices/release/lloyds-app2live.zip` is the download for Live users, linked from the README: one frozen `.amxd`, frozen by Erik in Max. When a new version is released, Erik freezes it, the zip is replaced, and the file name in the README's Install steps changes with it.
 
 ## The server
 
