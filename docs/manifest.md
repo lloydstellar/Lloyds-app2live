@@ -84,7 +84,7 @@ Made with Web808
 {"schema": "app2live/1", "tempo": {"bpm": 92}, "items": [{"file": "beat.wav", "name": "Beat", "kind": "loop", "role": "drums"}]}
 ```
 
-An app without any network code can pass on its tempo and its loops this way: the files in `EXTRA_STREAM`, the manifest in `EXTRA_TEXT`. LA2L Sender also takes mp3, m4a and other files the browser can decode (it makes them WAV) and ZIP files of them, and splits more than 32 sounds or 200 MB over several packages, "Title (1 of 2)". The Android SDK will build such a share for an app (`La2lShare`, phase 5 of `sdk/BUILD-PROMPT.md`). The developer page: https://lloydstellar.nl/la2l/developers/sharing
+An app without any network code can pass on its tempo and its loops this way: the files in `EXTRA_STREAM`, the manifest in `EXTRA_TEXT`. LA2L Sender also takes mp3, m4a and other files the browser can decode (it makes them WAV) and ZIP files of them, and splits more than 32 sounds or 200 MB over several packages, "Title (1 of 2)". The Android SDK builds such a share for an app (`La2lShare.intent`, in `sdk/android`). The developer page: https://lloydstellar.nl/la2l/developers/sharing
 
 ## Files
 

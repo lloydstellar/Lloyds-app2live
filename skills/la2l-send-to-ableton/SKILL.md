@@ -22,7 +22,7 @@ Do the steps below in order. Prefer the SDK over raw HTTP: ten lines instead of 
 | A web app with npm and a bundler (React, Vue, Svelte, Next.js, Vite) | `npm install la2l`: the client, or the button from `la2l/button` |
 | A web page without a build step | The button from jsDelivr (one `<script type="module">`) |
 | A script (Python, shell, anything that can run a command) | `npx la2l pair` and `npx la2l send` |
-| Android (Kotlin or Java) | The REST API: [references/android.md](references/android.md) |
+| Android (Kotlin or Java) | The REST API from Kotlin, or a share with LA2L Sender: [references/android.md](references/android.md). The Android SDK is not published yet |
 | Anything else | The REST API: [references/api.md](references/api.md) |
 
 ## 2. Install
@@ -150,6 +150,6 @@ It prints an address and a code, and runs until Ctrl+C: start it in the backgrou
 - [references/api.md](references/api.md): the client API, and the five HTTP calls for any language.
 - [references/manifest.md](references/manifest.md): every field of the description, and what LA2L does with it.
 - [references/web.md](references/web.md): Web Audio, the button, and pages without a build step.
-- [references/android.md](references/android.md): Android, in Kotlin.
+- [references/android.md](references/android.md): Android: the SDK, a share with LA2L Sender, and the REST calls in Kotlin.
 - [assets/web-send.js](assets/web-send.js), [assets/button.html](assets/button.html): complete examples.
 - The full docs: https://lloydstellar.nl/la2l/developers/ and `node_modules/la2l/docs` after `npm install la2l`. `npx la2l agents-md` writes an index of those docs into the project's `AGENTS.md` and `CLAUDE.md`, so later sessions find them too.

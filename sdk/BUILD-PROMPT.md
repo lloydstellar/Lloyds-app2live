@@ -449,6 +449,8 @@ delivery.awaitImport()
 
 Erik decided in phase 0: Android builds run only in GitHub Actions, never on the VPS (it has 3.8 GB of memory and serves other sites). GitHub's Ubuntu runners have a JDK 17 and the Android SDK, so CI needs nothing extra. An APK for Erik to install comes from CI as an artifact.
 
+As built: Gradle 8.14 through `gradle/actions/setup-gradle` (no wrapper in the repository yet), the Android Gradle Plugin 8.13 and Kotlin 2.3, the last versions whose build files are well known; moving to the Android Gradle Plugin 9 is a later step. The Java library calls return a `CompletableFuture` (`pairAsync`, `sendAsync`) and have a `Callback` variant; in Kotlin, `la2l-ktx` gives `pair`, `send { }` and `awaitImport()` as suspend functions. A Java constructor cannot take named arguments, so the shape of 12.1 reads `La2l(context, "Web808")` and `Wav.fromPcm16(samples, 48000, 2)` in Kotlin.
+
 ---
 
 ## 13. Publishing and versions

@@ -1,6 +1,6 @@
 # Sharing to LA2L Sender
 
-An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a description of the sounds in the text of the share. LA2L Sender shows them with loop or one-shot, BPM and role filled in, and the user taps Send.
+An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a description of the sounds in the text of the share. The Android SDK, once published, does it in one call, `La2lShare.intent(context, soundPackage)`; below is what it does. LA2L Sender shows them with loop or one-shot, BPM and role filled in, and the user taps Send.
 
 The user installs LA2L Sender once from Chrome (any phone) or Samsung Internet (Samsung phones), at `https://lloydstellar.nl/la2l/`, opens it once and pairs it with Live. From then on it is in the share menu. Android only: not Firefox, not iOS.
 

@@ -1,0 +1,72 @@
+# Builds la2l and la2l-ktx for LA2L's own Maven repository, from a tag android-v<version> only
+# (sdk/BUILD-PROMPT.md, section 13). The first job tests them and builds the Maven repository,
+# signed when the GitHub secrets SIGNING_KEY and SIGNING_PASSWORD exist, with read rights only;
+# the signing key is in the one step that signs, never in a step that runs tests or npm. The
+# second job attaches the repository to a GitHub release of the tag as
+# la2l-android-maven-<version>.zip. The VPS takes it from there into
+# https://lloydstellar.nl/la2l/maven/; no key to the VPS is stored on GitHub.
+# Every action is pinned to a commit, with its release in the comment; update the two together.
+name: Publish la2l for Android
+
+on:
+  push:
+    tags:
+      - 'android-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Build la2l for the integration tests
+        run: npm ci && npm run build
+        working-directory: sdk/js
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: 8.14.6
+      - name: The tag is the version of the build
+        run: grep -q "version = \"${GITHUB_REF_NAME#android-v}\"" sdk/android/build.gradle.kts
+      - name: Tests
+        working-directory: sdk/android
+        run: gradle --no-daemon :la2l:testDebugUnitTest :la2l-ktx:testDebugUnitTest
+      - name: The Maven repository, signed when the key is there
+        working-directory: sdk/android
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: gradle --no-daemon publishReleasePublicationToLocalRepository
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maven
+          path: sdk/android/build/maven/
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: maven
+          path: maven
+      - name: The release, with the repository as a ZIP file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${GITHUB_REF_NAME#android-v}"
+          (cd maven && zip -qr "../la2l-android-maven-$version.zip" .)
+          gh release create "$GITHUB_REF_NAME" "la2l-android-maven-$version.zip" --title "la2l for Android $version" --notes "nl.lloydstellar:la2l and nl.lloydstellar:la2l-ktx $version, for https://lloydstellar.nl/la2l/maven/."

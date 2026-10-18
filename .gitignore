@@ -24,3 +24,7 @@ server/data/
 *~
 # Claude Code keeps its own files here
 .claude/
+# Gradle and Android Studio, for sdk/android
+.gradle/
+local.properties
+*.iml
