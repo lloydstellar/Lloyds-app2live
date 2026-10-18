@@ -14,6 +14,7 @@ import { defaultStorage, fileStorage, memoryStorage, type La2lStorage } from '..
 import { TestReceiver, type ReceiverReport } from '../receiver.js';
 import { startTestReceiver } from '../testing/index.js';
 import { VERSION } from '../version.js';
+import { writeIndex } from './agents-md.js';
 
 const HELP = `la2l ${VERSION}: send sounds to Ableton Live with LA2L.
 
@@ -35,6 +36,10 @@ const HELP = `la2l ${VERSION}: send sounds to Ableton Live with LA2L.
       --local                   An LA2L server in memory on 127.0.0.1, without
                                 internet: point your app at the address it shows.
       --port <n>                The port of --local. Default: any free port.
+  la2l agents-md [folder]       Write an index of the la2l docs into AGENTS.md, and into
+                                CLAUDE.md when there is one, so AI coding agents read
+                                them. Run it in the root of your project, after
+                                npm install la2l; a new run replaces the index.
 
   Every command takes --server <address> (default ${DEFAULT_SERVER},
   or LA2L_SERVER) and --app-name <name> (default "la2l command line", or LA2L_APP_NAME).
@@ -269,9 +274,21 @@ function stopOnSignal(stop: () => Promise<void>): Promise<void> {
   });
 }
 
+// ---- the docs index for AI coding agents ----
+
+async function agentsMd(args: Args): Promise<void> {
+  if (args.positional.length > 1) throw new Usage('Name one folder: la2l agents-md [folder]');
+  const project = path.resolve(args.positional[0] || '.');
+  if (!fs.existsSync(project) || !fs.statSync(project).isDirectory()) throw new Usage(`There is no folder ${project}.`);
+  const r = writeIndex(project);
+  out(`Wrote the index of the la2l docs (${(r.bytes / 1024).toFixed(1)} KB) to ${r.written.join(' and ')}. It points to ${r.docs}`);
+  for (const name of r.skipped) out(`${name} reads AGENTS.md already (@AGENTS.md), so it was left as it was.`);
+  if (!r.local) out('la2l is not installed in this folder, so the index points to the docs online. After npm install la2l, run this again to point it at node_modules/la2l/docs/.');
+}
+
 // ---- main ----
 
-const COMMANDS: Record<string, (args: Args) => Promise<void>> = { pair, send, status, unpair, 'test-receiver': testReceiver };
+const COMMANDS: Record<string, (args: Args) => Promise<void>> = { pair, send, status, unpair, 'test-receiver': testReceiver, 'agents-md': agentsMd };
 
 export async function main(argv: string[]): Promise<number> {
   let args: Args;

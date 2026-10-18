@@ -60,6 +60,7 @@
   "devDependencies": {
     "@redocly/cli": "2.64.1",
     "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "esbuild": "0.28.2",

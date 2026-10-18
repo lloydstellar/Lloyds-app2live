@@ -1,0 +1,16 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "LA2L (Lloyd's App2Live)",
+  "description": "Send sounds from web and Android apps to Ableton Live: the npm package la2l (a client, WAV files from Web Audio, a Send to Live web component, a test receiver), the REST API and the app2live/1 package description.",
+  "folders": ["docs/developers", "sdk/js/docs", "skills"],
+  "excludeFolders": [],
+  "excludeFiles": ["privacy.md", "ai-test.md"],
+  "rules": [
+    "Give every sound kind: 'loop' or kind: 'oneshot'. A loop without kind: 'loop' arrives in Live as a one-shot, out of time.",
+    "Send WAV only. Make it with wavFromAudioBuffer, wavFromSamples or toWav from 'la2l'.",
+    "Render a loop a whole number of beats long, and give its bpm.",
+    "Pair once, with the code the user reads in Live. Ask for a code again only after the error code not_paired.",
+    "Never put the app token in a URL, a log line or an error report.",
+    "Test without Ableton: npx la2l test-receiver --local, or startTestReceiver() from 'la2l/testing'."
+  ]
+}

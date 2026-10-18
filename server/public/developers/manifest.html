@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The package description: LA2L for developers</title>
+<meta name="description" content="Every package carries a short JSON description of its sounds, app2live/1. The SDKs write it from what you pass to send(); with the REST API you send it to POST…">
+<link rel="alternate" type="text/markdown" href="manifest.md">
+<link rel="icon" href="../logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="./"><img src="../logo.png" alt="" width="40" height="40"> LA2L for developers</a>
+  <nav aria-label="Pages">
+  <ul>
+    <li><a href="./">Start</a></li>
+    <li><a href="web">Web apps</a></li>
+    <li><a href="button">The button</a></li>
+    <li><a href="android">Android</a></li>
+    <li><a href="rest-api">REST API</a></li>
+    <li><a href="manifest" aria-current="page">Package description</a></li>
+    <li><a href="testing">Testing</a></li>
+    <li><a href="ai-tools">AI tools</a></li>
+  </ul>
+  </nav>
+</header>
+<main>
+<h1 id="the-package-description">The package description</h1>
+<p>Every package carries a short JSON description of its sounds, <code>app2live/1</code>. The SDKs write it from what you pass to <code>send()</code>; with the REST API you send it to <code>POST /packages</code> yourself.</p>
+<pre><code class="language-json">{
+  &quot;schema&quot;: &quot;app2live/1&quot;,
+  &quot;title&quot;: &quot;Treinbeat&quot;,
+  &quot;source&quot;: { &quot;app&quot;: &quot;Web808&quot;, &quot;app_version&quot;: &quot;1.0.0&quot;, &quot;platform&quot;: &quot;web&quot; },
+  &quot;tempo&quot;: { &quot;bpm&quot;: 92 },
+  &quot;items&quot;: [
+    { &quot;id&quot;: &quot;kick&quot;, &quot;file&quot;: &quot;kick.wav&quot;, &quot;bytes&quot;: 1693484, &quot;sha256&quot;: &quot;…&quot;, &quot;name&quot;: &quot;Kick&quot;, &quot;kind&quot;: &quot;loop&quot;, &quot;role&quot;: &quot;drums&quot;, &quot;length_beats&quot;: 16 },
+    { &quot;id&quot;: &quot;robot&quot;, &quot;file&quot;: &quot;robot.wav&quot;, &quot;bytes&quot;: 420112, &quot;sha256&quot;: &quot;…&quot;, &quot;name&quot;: &quot;Robot hallo&quot;, &quot;kind&quot;: &quot;oneshot&quot;, &quot;role&quot;: &quot;vocal&quot; }
+  ]
+}</code></pre>
+<p>In Live this becomes a scene &quot;Treinbeat&quot; with two tracks, &quot;Kick (Web808)&quot; and &quot;Robot hallo (Web808)&quot;. The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.</p>
+<h2 id="the-package">The package</h2>
+<div class="table"><table>
+<thead><tr><th>Field</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>schema</code></td><td>Required: <code>&quot;app2live/1&quot;</code>.</td></tr>
+<tr><td><code>title</code></td><td>The name of the scene, and of the folder on disk. Default &quot;Untitled&quot;.</td></tr>
+<tr><td><code>source.app</code></td><td>Added to every track name: &quot;Kick (Web808)&quot;. Default &quot;App&quot;.</td></tr>
+<tr><td><code>source.app_version</code>, <code>source.platform</code></td><td>For your own use, and for support.</td></tr>
+<tr><td><code>tempo.bpm</code></td><td>20 to 999: the tempo of every loop without a <code>bpm</code> of its own.</td></tr>
+<tr><td><code>items</code></td><td>1 to 32 sounds, 200 MB together.</td></tr>
+</tbody>
+</table></div>
+<h2 id="a-sound">A sound</h2>
+<div class="table"><table>
+<thead><tr><th>Field</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>file</code></td><td>Required. A letter or digit first, then letters, digits, space, <code>.</code>, <code>_</code> or <code>-</code>, ending in <code>.wav</code>, at most 100 characters, unique in the package.</td></tr>
+<tr><td><code>bytes</code>, <code>sha256</code></td><td>Required by the server: the exact size of the file, and its SHA-256 in hex.</td></tr>
+<tr><td><code>kind</code></td><td><code>&quot;loop&quot;</code> or <code>&quot;oneshot&quot;</code>. Without it the sound is a one-shot, so always send it for a loop.</td></tr>
+<tr><td><code>name</code></td><td>The track name, at most 40 characters: letters of any language, digits, space and <code>_ - ( ) . ' &amp; + # !</code>. Default &quot;Sound 1&quot;, by position.</td></tr>
+<tr><td><code>role</code></td><td><code>drums</code>, <code>bass</code>, <code>melodic</code>, <code>vocal</code>, <code>texture</code> or <code>fx</code>: it picks the warp mode of a loop.</td></tr>
+<tr><td><code>bpm</code></td><td>The tempo of this loop, when it differs from <code>tempo.bpm</code>.</td></tr>
+<tr><td><code>length_beats</code></td><td>The length of the loop in beats.</td></tr>
+<tr><td><code>warp_mode</code></td><td>Overrides the role: <code>beats</code>, <code>tones</code>, <code>texture</code>, <code>repitch</code>, <code>complex</code> or <code>complex_pro</code>.</td></tr>
+<tr><td><code>color</code></td><td><code>&quot;#RRGGBB&quot;</code>; Live takes the nearest colour of its palette. Without it, all tracks of a package share one colour, and the next package gets the next one.</td></tr>
+<tr><td><code>gain_db</code></td><td>The clip gain in dB, from -70 to +24.</td></tr>
+<tr><td><code>id</code></td><td>Your own id, sent back with the result of this sound. Default: the position, from 1.</td></tr>
+</tbody>
+</table></div>
+<h2 id="what-la2l-does-with-it">What LA2L does with it</h2>
+<ul>
+<li>A <strong>one-shot</strong> plays as it is: warp off, loop off.</li>
+<li>A <strong>loop</strong> is warped and loops over its whole length. The warp mode follows the role: drums Beats, bass Tones, melodic and vocal Complex Pro, texture Texture, fx and no role Complex.</li>
+<li>The tempo of a loop is its <code>bpm</code>, else <code>tempo.bpm</code>, else what <code>length_beats</code> and the length of the file give. Its length is <code>length_beats</code>, else what the tempo and the length of the file give, rounded to a whole beat when it is within 0.1 beat of one. Without any of these, Live guesses the tempo.</li>
+<li>What LA2L does not know, it ignores, and says so in <code>warnings</code>: an unknown role, or a <code>bpm</code> on a one-shot. The package still goes through.</li>
+</ul>
+<p><a href="app2live-1.schema.json">app2live-1.schema.json</a> is the JSON Schema of a description as an app sends it.</p>
+</main>
+<footer class="foot">
+  <p><a href="manifest.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
+</footer>
+</body>
+</html>

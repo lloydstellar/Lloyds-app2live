@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The REST API: LA2L for developers</title>
+<meta name="description" content="Every SDK makes the same five kinds of calls, and any language can make them: pair once, announce a package, upload its files, commit, and follow it. JSON in…">
+<link rel="alternate" type="text/markdown" href="rest-api.md">
+<link rel="icon" href="../logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="./"><img src="../logo.png" alt="" width="40" height="40"> LA2L for developers</a>
+  <nav aria-label="Pages">
+  <ul>
+    <li><a href="./">Start</a></li>
+    <li><a href="web">Web apps</a></li>
+    <li><a href="button">The button</a></li>
+    <li><a href="android">Android</a></li>
+    <li><a href="rest-api" aria-current="page">REST API</a></li>
+    <li><a href="manifest">Package description</a></li>
+    <li><a href="testing">Testing</a></li>
+    <li><a href="ai-tools">AI tools</a></li>
+  </ul>
+  </nav>
+</header>
+<main>
+<h1 id="the-rest-api">The REST API</h1>
+<p>Every SDK makes the same five kinds of calls, and any language can make them: pair once, announce a package, upload its files, commit, and follow it. JSON in and out, over HTTPS, without an API key.</p>
+<p>Base address: <code>https://lloydstellar.nl/la2l/api</code></p>
+<p>For machines: <a href="openapi.yaml">openapi.yaml</a> (OpenAPI 3.1) describes every call, answer and error text, and <a href="app2live-1.schema.json">app2live-1.schema.json</a> (JSON Schema) the package description.</p>
+<h2 id="from-a-script">From a script</h2>
+<p>With Node.js 22.12 or newer, the command line of <code>la2l</code> does it all:</p>
+<pre><code class="language-bash">npx la2l pair K7P42Q
+npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title &quot;Beat&quot; --wait
+npx la2l status</code></pre>
+<p><code>--oneshot</code> for sounds that play as they are. It keeps the token in a file only the user can read, or takes it from <code>LA2L_TOKEN</code>.</p>
+<h2 id="the-five-calls-with-curl">The five calls, with curl</h2>
+<pre><code class="language-bash">BASE=https://lloydstellar.nl/la2l/api
+
+# 1. Pair, with the code LA2L shows in Live. Keep app_token like a password.
+curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
+  -d '{&quot;code&quot;:&quot;K7P 42Q&quot;,&quot;app_name&quot;:&quot;curl test&quot;,&quot;app_id&quot;:&quot;curl-1&quot;}'
+#   -&gt; {&quot;app_token&quot;:&quot;la2la_...&quot;,&quot;device_name&quot;:&quot;ERIK-PC&quot;}
+TOKEN=la2la_...
+
+# 2. Announce the package, with bytes and sha256 of every file
+BYTES=$(stat -c %s kick.wav); SHA=$(sha256sum kick.wav | cut -d' ' -f1)
+curl -sS -X POST $BASE/packages -H &quot;Authorization: Bearer $TOKEN&quot; -H 'Content-Type: application/json' -d '{
+  &quot;schema&quot;: &quot;app2live/1&quot;, &quot;title&quot;: &quot;Curl test&quot;, &quot;source&quot;: {&quot;app&quot;: &quot;curl test&quot;}, &quot;tempo&quot;: {&quot;bpm&quot;: 120},
+  &quot;items&quot;: [{&quot;id&quot;: &quot;kick&quot;, &quot;file&quot;: &quot;kick.wav&quot;, &quot;name&quot;: &quot;Kick&quot;, &quot;kind&quot;: &quot;loop&quot;, &quot;role&quot;: &quot;drums&quot;,
+             &quot;bytes&quot;: '&quot;$BYTES&quot;', &quot;sha256&quot;: &quot;'&quot;$SHA&quot;'&quot;}]}'
+#   -&gt; {&quot;package_id&quot;:&quot;&lt;id&gt;&quot;,&quot;upload&quot;:{&quot;kick.wav&quot;:&quot;/packages/&lt;id&gt;/files/kick.wav&quot;},...}
+
+# 3. Upload, 4. commit, 5. follow
+curl -sS -X PUT &quot;$BASE/packages/&lt;id&gt;/files/kick.wav&quot; -H &quot;Authorization: Bearer $TOKEN&quot; --data-binary @kick.wav
+curl -sS -X POST &quot;$BASE/packages/&lt;id&gt;/commit&quot; -H &quot;Authorization: Bearer $TOKEN&quot;
+curl -sS &quot;$BASE/packages/&lt;id&gt;/status&quot; -H &quot;Authorization: Bearer $TOKEN&quot;
+#   -&gt; {&quot;status&quot;:&quot;waiting&quot;,...} until Import in Live, then {&quot;status&quot;:&quot;imported&quot;,...}</code></pre>
+<h2 id="rules-for-every-call">Rules for every call</h2>
+<ul>
+<li>The token goes in <code>Authorization: Bearer &lt;app_token&gt;</code>, never in a URL or a cookie.</li>
+<li><strong>401</strong> means the token is unknown or revoked: the user unpaired your app in Live. Forget the token and ask for a code again. No other problem answers 401.</li>
+<li>Errors are <code>{&quot;error&quot;: &quot;short plain English&quot;}</code>, at most 80 characters: show the text as it is.</li>
+<li><strong>429</strong>: too many calls. <code>Retry-After</code> says how many seconds to wait. At most 600 calls a minute per token, 30 packages an hour per app, and 10 pairing tries a minute from one address.</li>
+<li><strong>507</strong>: no room. Often &quot;Click Import in Live first&quot;: the computer has a lot waiting already.</li>
+<li><strong>5xx</strong>, or no answer: try again later. The SDKs retry a few times by themselves.</li>
+<li>Every answer allows any origin (CORS), so a web page anywhere can call the API, and read <code>Retry-After</code>.</li>
+<li><code>X-LA2L-Client: my-app/1.0 (My app)</code> is optional: it says which app and version make the call.</li>
+</ul>
+<h2 id="the-calls">The calls</h2>
+<div class="table"><table>
+<thead><tr><th>Call</th><th>Does</th></tr></thead>
+<tbody>
+<tr><td><code>POST /pair/claim</code></td><td><code>{&quot;code&quot;, &quot;app_name&quot;, &quot;app_id&quot;}</code>: trades the code from Live for <code>{&quot;app_token&quot;, &quot;device_name&quot;}</code>. A wrong, used or expired code: 404.</td></tr>
+<tr><td><code>GET /app/me</code></td><td><code>{&quot;device_name&quot;, &quot;app_name&quot;, &quot;paired_at&quot;}</code>: which computer this app is paired with.</td></tr>
+<tr><td><code>POST /app/unpair</code></td><td>Revokes this token.</td></tr>
+<tr><td><code>POST /packages</code></td><td>The package description, with <code>bytes</code> and <code>sha256</code> of every file. 201 with <code>package_id</code>, the <code>upload</code> path per file and <code>warnings</code>. 422 with the reason when LA2L would refuse it.</td></tr>
+<tr><td><code>PUT /packages/{id}/files/{file}</code></td><td>The bytes of one WAV file, up to 200 MB. Checked against its size, checksum and WAV header.</td></tr>
+<tr><td><code>POST /packages/{id}/commit</code></td><td>Every file is there: from now on Live sees the package. 409 names the files still missing.</td></tr>
+<tr><td><code>GET /packages/{id}/status</code></td><td><code>uploading</code>, <code>waiting</code>, <code>imported</code>, <code>partial</code>, <code>failed</code> or <code>expired</code>, with the result per sound after Import.</td></tr>
+<tr><td><code>DELETE /packages/{id}</code></td><td>Takes a package back, until it is in Live.</td></tr>
+</tbody>
+</table></div>
+<p>Upload the files and commit within an hour. A package waits 24 hours for Import; then it is deleted, imported or not. Its status stays readable for 7 days.</p>
+<p>The package description itself: <a href="manifest">The package description</a>.</p>
+</main>
+<footer class="foot">
+  <p><a href="rest-api.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
+</footer>
+</body>
+</html>

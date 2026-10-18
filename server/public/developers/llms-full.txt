@@ -1,0 +1,694 @@
+<!-- https://lloydstellar.nl/la2l/developers/index.md -->
+
+# LA2L for developers
+
+LA2L (Lloyd's App2Live) is a Max for Live device that brings sounds from apps into Ableton Live. Your app sends WAV files with a short description of each sound. In Live the user clicks **Import**, and every sound becomes an audio track, named after your app, coloured, and warped to your tempo.
+
+There is no API key and no developer account. The user pairs your app once with a code that LA2L shows in Live, and that code is the consent.
+
+```js
+import { LA2L, wavFromAudioBuffer } from 'la2l';
+
+const la2l = new LA2L({ appName: 'Web808' }); // Live shows "Paired with Web808"
+if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows, like "K7P 42Q"
+
+const delivery = await la2l.send({
+  title: 'Treinbeat',
+  bpm: 92,
+  sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(loopBuffer), kind: 'loop', role: 'drums' }],
+});
+await delivery.imported(); // the user clicked Import in Live
+```
+
+## Pick your way in
+
+| Your app | Use | Read |
+|---|---|---|
+| A web app | `npm install la2l`, or the Send to Live button without a build step | [Web apps](https://lloydstellar.nl/la2l/developers/web.md), [The button](https://lloydstellar.nl/la2l/developers/button.md) |
+| An Android app | Five HTTPS calls from Kotlin or Java | [Android](https://lloydstellar.nl/la2l/developers/android.md) |
+| A script, or any other language | `npx la2l send`, or the same five calls | [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) |
+| Built with an AI tool | The LA2L skill, or the paste text for Lovable and Bolt | [AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md) |
+
+## What happens
+
+1. **Pairing.** In Live, the user clicks **Pair app** in LA2L. It shows a code like `K7P 42Q`, valid for 10 minutes. The user types it into your app, and your app trades it for a token that it keeps.
+2. **Sending.** Your app sends a package: one to 32 WAV files, and per sound whether it is a loop or a one-shot, what it plays (drums, bass, a vocal) and its tempo.
+3. **Import.** The next time the user clicks Import in LA2L, every sound becomes a track. A loop is warped to the tempo you gave and loops; a one-shot plays exactly as your app rendered it. Your app sees that it arrived.
+
+The description is what puts a sound in time. A loop sent without `kind: 'loop'` arrives as a one-shot, without warp. [The package description](https://lloydstellar.nl/la2l/developers/manifest.md) has every field.
+
+## Limits
+
+- WAV only: PCM 16 or 24 bit (8 and 32 work too) or float 32 or 64 bit, mono or stereo, 8 to 192 kHz. The SDK turns Web Audio and mp3 or m4a files into WAV.
+- 32 sounds and 200 MB per package, and 30 packages an hour per app.
+- A package waits 24 hours for Import. Its result stays readable for your app for 7 days.
+
+## Test without Ableton
+
+The test receiver stands in for LA2L in Live: it shows a code, imports what you send, and says per sound what Live would do. It runs as a page, in a terminal, and inside your own tests, without internet. See [Testing](https://lloydstellar.nl/la2l/developers/testing.md).
+
+## All pages
+
+- [Web apps](https://lloydstellar.nl/la2l/developers/web.md): the npm package, Web Audio to WAV, following a send.
+- [The button](https://lloydstellar.nl/la2l/developers/button.md): `<la2l-send-button>`, and how to name LA2L and Ableton.
+- [Android](https://lloydstellar.nl/la2l/developers/android.md): sending from Kotlin or Java.
+- [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md): the five calls, the command line, and the OpenAPI file.
+- [The package description](https://lloydstellar.nl/la2l/developers/manifest.md): every field, and what LA2L does with it.
+- [Testing](https://lloydstellar.nl/la2l/developers/testing.md): the test receiver.
+- [AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md): the skill, the docs index for agents, the paste text, and `llms.txt`.
+
+Every page is also there as Markdown: add `.md` to its address. All pages in one file: [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt).
+
+<!-- https://lloydstellar.nl/la2l/developers/web.md -->
+
+# Web apps
+
+The npm package `la2l` pairs, checks, uploads and follows a send. It has no dependencies, and comes with types and its own docs.
+
+```bash
+npm install la2l
+```
+
+```js
+import { LA2L, wavFromAudioBuffer } from 'la2l';
+
+const la2l = new LA2L({ appName: 'Web808' });
+if (!la2l.paired) await la2l.pair(codeFromUser);
+
+const delivery = await la2l.send({
+  title: 'Treinbeat',
+  bpm: 92,
+  sounds: [
+    { name: 'Beat', audio: wavFromAudioBuffer(loopBuffer), kind: 'loop', role: 'drums', lengthBeats: 4 },
+    { name: 'Robot hallo', audio: voiceWav, kind: 'oneshot', role: 'vocal' },
+  ],
+  onProgress: (share) => (bar.value = share), // 0 to 1
+});
+status.textContent = 'Waiting for Import in Live';
+const result = await delivery.imported();
+status.textContent = result.status === 'imported' ? 'In Live' : 'In Live, partly';
+```
+
+ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the [button](https://lloydstellar.nl/la2l/developers/button.md) from jsDelivr, which carries the same functions.
+
+## Pairing
+
+Show a field for the code once, with this line above it: "In Live, click Pair app in LA2L and type the code it shows." Case, spaces and dashes do not matter. The SDK keeps the token in `localStorage` (in Node.js, in a file only the user can read) and sends it only in the `Authorization` header. Never put it in a URL, a log line or an error report.
+
+Ask for a code again only when a call fails with the code `not_paired`: then the user unpaired your app in Live. `la2l.me()` tells you which computer you are paired with; `la2l.unpair()` ends the pairing.
+
+## Making WAV files
+
+```js
+import { wavFromAudioBuffer, wavFromSamples, toWav, checkWav } from 'la2l';
+
+wavFromAudioBuffer(buffer);                 // an AudioBuffer, 16 bit; { bits: 24 } or { bits: 32 } (float)
+wavFromSamples([left, right], 48000);       // Float32Arrays from -1 to 1
+await toWav(file);                          // mp3, m4a, ogg: decoded by the browser
+await checkWav(file);                       // can LA2L use it? With LA2L's own text if not
+```
+
+A loop must be a whole number of beats long: one bar of 4/4 lasts `4 * 60 / bpm` seconds, exactly 2 seconds at 120 BPM. Render it with an `OfflineAudioContext` of that length plus a tail, and add the tail to the start, so what rings past the end of the bar plays at the start of the next one:
+
+```js
+async function renderLoop(bpm, schedule, tailSeconds = 1) {
+  const rate = 48000;
+  const bar = Math.round(rate * (60 / bpm) * 4);
+  const ctx = new OfflineAudioContext(2, bar + Math.round(rate * tailSeconds), rate);
+  schedule(ctx); // start your sources at step * 60 / bpm / 4
+  const rendered = await ctx.startRendering();
+  const loop = new AudioBuffer({ numberOfChannels: 2, length: bar, sampleRate: rate });
+  for (let c = 0; c < 2; c++) {
+    const from = rendered.getChannelData(c);
+    const to = loop.getChannelData(c);
+    to.set(from.subarray(0, bar));
+    for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+  }
+  return wavFromAudioBuffer(loop);
+}
+```
+
+## Following a send
+
+`send()` checks everything before the first byte goes out, with the texts LA2L itself uses, then uploads the files and commits them. It resolves to a `Delivery`:
+
+- `delivery.imported()` waits until the user clicked Import, and resolves to the status: `imported`, or `partial` with the result per sound. It rejects when the package failed or expired.
+- `delivery.status()` asks once; `delivery.cancel()` takes the package back until it is in Live.
+- `delivery.warnings` names what LA2L will ignore, such as an unknown role. Show them to yourself, not to the user.
+
+## Errors
+
+Every error is a `La2lError` with a `code` and a `message` that you can show as it is.
+
+| `code` | What to do |
+|---|---|
+| `not_paired` | Show the code field again. |
+| `bad_code` | Show the message, and ask for the code again. |
+| `bad_wav`, `bad_package` | Show the message: it names the sound and what is wrong. |
+| `rate_limited` | Wait `retryAfter` seconds. |
+| `server_full` | Show the message, often "Click Import in Live first". |
+| `network`, `server` | Try again later. |
+| `import_failed`, `expired` | Show the message; the sounds can be sent again. |
+| `aborted` | Your app stopped it, with an `AbortSignal`. |
+
+## Content-Security-Policy
+
+A page with a CSP must allow the LA2L server: `connect-src https://lloydstellar.nl`. The button shows the LA2L logo as a `data:` image, so it also needs `img-src data:`.
+
+## Server-side rendering
+
+`la2l` and `la2l/button` can be imported where a page is rendered on a server (Next.js, Nuxt, SvelteKit): there the button does nothing. Call `send()` in the browser.
+
+## An example
+
+[Web808](https://lloydstellar.nl/la2l/examples/drum-machine/), a drum machine of four sounds and 16 steps, sends its loop and every sound as a one-shot. Its source is in `examples/web-drum-machine` of the LA2L repository.
+
+## The full docs
+
+The package carries its docs, for the version you installed, in `node_modules/la2l/docs`: getting started, the API, Web Audio, the button, testing and errors. `npx la2l agents-md` points AI coding agents to them ([AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md)).
+
+<!-- https://lloydstellar.nl/la2l/developers/button.md -->
+
+# The button
+
+`<la2l-send-button>` is a Send to Live button with the LA2L logo. The first click asks for the code that LA2L shows in Live; after that one click sends, and the button says what happens: "Sending 2 sounds… 45%", "Waiting for Import in Live", "In Live".
+
+## Without a build step
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-DCfxAXK3uQxg3OATJBKMk0VOSXgO6PJAiyd+1SpwzTWa6Gbvc9GFc+kx1DhcRxGr" crossorigin="anonymous"></script>
+<la2l-send-button app-name="Web808"></la2l-send-button>
+<script type="module">
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  document.querySelector('la2l-send-button').sounds = async () => ({
+    title: 'Treinbeat',
+    bpm: 92,
+    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop()), kind: 'loop', role: 'drums' }],
+  });
+</script>
+```
+
+The one file has the whole SDK in it, so the page imports the WAV helpers from the same address. `renderLoop()` is yours: [Web apps](https://lloydstellar.nl/la2l/developers/web.md) shows one.
+
+## With a bundler
+
+```js
+import 'la2l/button';
+import { wavFromAudioBuffer } from 'la2l';
+```
+
+## Giving it the sounds
+
+Set `sounds` to a function. The button calls it at the click, so it sends what the user has at that moment. It may return a promise, the options of `send()` (`title`, `bpm`, `sounds`), or only the list of sounds. A framework that cannot set a property can listen for the `la2l-request` event instead and call `event.detail.provide(value)` in it.
+
+## In React, Vue, Svelte and Angular
+
+The button is a custom element, so every framework can use it. Give it `sounds` as a property, not as an attribute. In React, through a ref (React 18 passes only strings to a custom element), with one declaration per project so that TypeScript knows the element:
+
+```tsx
+import { useEffect, useRef } from 'react';
+import 'la2l/button';
+import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'la2l-send-button': React.DetailedHTMLProps<React.HTMLAttributes<La2lSendButton>, La2lSendButton> & { 'app-name'?: string; server?: string; 'app-id'?: string };
+    }
+  }
+}
+
+export function SendToLive({ sounds }: { sounds: SoundsProvider }) {
+  const ref = useRef<La2lSendButton>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.sounds = sounds;
+  }, [sounds]);
+  return <la2l-send-button ref={ref} app-name="Web808" />;
+}
+```
+
+- Vue: tell the compiler it is not a Vue component, in the Vue plugin of `vite.config`: `template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('la2l-') } }`. Then `<la2l-send-button app-name="Web808" :sounds.prop="sounds" />`.
+- Svelte: `<la2l-send-button app-name="Web808" sounds={sounds}></la2l-send-button>`.
+- Angular: add `CUSTOM_ELEMENTS_SCHEMA` to the `schemas` of the component, then `<la2l-send-button app-name="Web808" [sounds]="sounds"></la2l-send-button>`.
+
+## Attributes, events, texts and looks
+
+| Attribute | |
+|---|---|
+| `app-name` | The name Live shows: "Paired with Web808", and "Kick (Web808)" in every track name. Default: the page title. |
+| `server` | Another LA2L server, such as a local test receiver. |
+| `app-id` | Your own id for this installation. Default: one made once. |
+
+| Event | `detail` |
+|---|---|
+| `la2l-paired` | `{ deviceName }` |
+| `la2l-sent` | the `Delivery` |
+| `la2l-imported` | the status, with the result per sound |
+| `la2l-error` | the `La2lError` |
+
+Another language: `button.texts = { send: 'Naar Live sturen', waiting: 'Wacht op Import in Live' }`. Every text you leave out stays English.
+
+The looks follow CSS custom properties on the element: `--la2l-accent`, `--la2l-accent-text`, `--la2l-radius`, `--la2l-font`, `--la2l-text`, `--la2l-muted`, `--la2l-bad`, `--la2l-focus`, `--la2l-line`, `--la2l-dialog-background`, `--la2l-dialog-text` and `--la2l-color-scheme`.
+
+```css
+la2l-send-button { --la2l-accent: #2a6df4; --la2l-radius: 8px; }
+```
+
+## The brand
+
+- Call it **Send to Live**, with the LA2L logo, as the button does. Use the LA2L logo as it is: [logo.png](https://lloydstellar.nl/la2l/logo.png).
+- Never use the Ableton logo, and do not make it look like a feature of Ableton. Ableton and Live are trademarks of Ableton AG, and LA2L is not made by Ableton.
+- In your own words: "Sends your sounds to Ableton Live with LA2L."
+
+<!-- https://lloydstellar.nl/la2l/developers/android.md -->
+
+# Android
+
+An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. An Android SDK (`nl.lloydstellar:la2l`) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: `HttpURLConnection`, `org.json` and `MessageDigest`. Run them off the main thread.
+
+## 1. A WAV file
+
+From 16-bit PCM, as `AudioRecord` gives it or as your audio engine renders it:
+
+```kotlin
+fun wav16(pcm: ShortArray, sampleRate: Int, channels: Int): ByteArray {
+    val data = pcm.size * 2
+    val b = java.nio.ByteBuffer.allocate(44 + data).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+    b.put("RIFF".toByteArray()).putInt(36 + data).put("WAVE".toByteArray())
+    b.put("fmt ".toByteArray()).putInt(16).putShort(1).putShort(channels.toShort())
+    b.putInt(sampleRate).putInt(sampleRate * channels * 2).putShort((channels * 2).toShort()).putShort(16)
+    b.put("data".toByteArray()).putInt(data)
+    pcm.forEach { b.putShort(it) }
+    return b.array()
+}
+
+fun sha256Hex(bytes: ByteArray): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+```
+
+A loop must be a whole number of beats long: `sampleRate * 60 / bpm * beats` frames. An m4a or mp3 must be decoded first (`MediaCodec`): LA2L takes WAV only.
+
+## 2. The calls
+
+```kotlin
+const val BASE = "https://lloydstellar.nl/la2l/api"
+
+fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = "application/json"): Pair<Int, String> {
+    val c = java.net.URL(BASE + path).openConnection() as java.net.HttpURLConnection
+    c.requestMethod = method
+    c.setRequestProperty("X-LA2L-Client", "my-app/1.0 (My app)")
+    if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
+    if (body != null) {
+        c.doOutput = true
+        c.setRequestProperty("Content-Type", type)
+        c.setFixedLengthStreamingMode(body.size)
+        c.outputStream.use { it.write(body) }
+    }
+    val status = c.responseCode
+    val text = (if (status < 400) c.inputStream else c.errorStream)?.bufferedReader()?.readText() ?: ""
+    return status to text
+}
+
+fun pair(code: String, installId: String): String {
+    val body = org.json.JSONObject().put("code", code).put("app_name", "My app").put("app_id", installId)
+    val (status, text) = call("POST", "/pair/claim", null, body.toString().toByteArray())
+    val json = org.json.JSONObject(text)
+    if (status != 200) throw java.io.IOException(json.optString("error", "Pairing failed."))
+    return json.getString("app_token") // keep it in SharedPreferences, Context.MODE_PRIVATE
+}
+
+fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray): String {
+    val item = org.json.JSONObject().put("file", "sound.wav").put("name", name).put("kind", "loop")
+        .put("role", "drums").put("bytes", wav.size).put("sha256", sha256Hex(wav))
+    val manifest = org.json.JSONObject().put("schema", "app2live/1").put("title", title)
+        .put("source", org.json.JSONObject().put("app", "My app").put("platform", "android"))
+        .put("tempo", org.json.JSONObject().put("bpm", bpm))
+        .put("items", org.json.JSONArray().put(item))
+    val (status, text) = call("POST", "/packages", token, manifest.toString().toByteArray())
+    val created = org.json.JSONObject(text)
+    if (status != 201) throw java.io.IOException(created.optString("error", "Sending failed."))
+    val id = created.getString("package_id")
+    val put = call("PUT", created.getJSONObject("upload").getString("sound.wav"), token, wav, "audio/wav")
+    if (put.first != 200) throw java.io.IOException(org.json.JSONObject(put.second).optString("error", "Upload failed."))
+    val commit = call("POST", "/packages/$id/commit", token, "{}".toByteArray())
+    if (commit.first != 200) throw java.io.IOException(org.json.JSONObject(commit.second).optString("error", "Sending failed."))
+    return id // then GET /packages/$id/status every few seconds until "imported"
+}
+```
+
+- **401** on any call: the user unpaired your app in Live. Forget the token and show the code field again.
+- **429**: wait the seconds in `Retry-After`. **5xx** or no connection: try again later.
+- **422** names the sound and the problem, in plain English: show it.
+- The field for the code: "In Live, click Pair app in LA2L and type the code it shows."
+- Never log the token, and never put it in a URL.
+
+## 3. Following it
+
+`GET /packages/{id}/status` says `waiting` until the user clicks Import in Live, then `imported`, `partial` (with the result per sound), `failed` or `expired`. While your app is open, ask every few seconds and show "Waiting for Import in Live".
+
+A large upload that must go on when the user leaves the app belongs in a WorkManager job.
+
+Every call and field: [The REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) and [The package description](https://lloydstellar.nl/la2l/developers/manifest.md).
+
+<!-- https://lloydstellar.nl/la2l/developers/rest-api.md -->
+
+# The REST API
+
+Every SDK makes the same five kinds of calls, and any language can make them: pair once, announce a package, upload its files, commit, and follow it. JSON in and out, over HTTPS, without an API key.
+
+Base address: `https://lloydstellar.nl/la2l/api`
+
+For machines: [openapi.yaml](https://lloydstellar.nl/la2l/developers/openapi.yaml) (OpenAPI 3.1) describes every call, answer and error text, and [app2live-1.schema.json](https://lloydstellar.nl/la2l/developers/app2live-1.schema.json) (JSON Schema) the package description.
+
+## From a script
+
+With Node.js 22.12 or newer, the command line of `la2l` does it all:
+
+```bash
+npx la2l pair K7P42Q
+npx la2l send kick.wav snare.wav --loop --bpm 92 --role drums --title "Beat" --wait
+npx la2l status
+```
+
+`--oneshot` for sounds that play as they are. It keeps the token in a file only the user can read, or takes it from `LA2L_TOKEN`.
+
+## The five calls, with curl
+
+```bash
+BASE=https://lloydstellar.nl/la2l/api
+
+# 1. Pair, with the code LA2L shows in Live. Keep app_token like a password.
+curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
+  -d '{"code":"K7P 42Q","app_name":"curl test","app_id":"curl-1"}'
+#   -> {"app_token":"la2la_...","device_name":"ERIK-PC"}
+TOKEN=la2la_...
+
+# 2. Announce the package, with bytes and sha256 of every file
+BYTES=$(stat -c %s kick.wav); SHA=$(sha256sum kick.wav | cut -d' ' -f1)
+curl -sS -X POST $BASE/packages -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
+  "schema": "app2live/1", "title": "Curl test", "source": {"app": "curl test"}, "tempo": {"bpm": 120},
+  "items": [{"id": "kick", "file": "kick.wav", "name": "Kick", "kind": "loop", "role": "drums",
+             "bytes": '"$BYTES"', "sha256": "'"$SHA"'"}]}'
+#   -> {"package_id":"<id>","upload":{"kick.wav":"/packages/<id>/files/kick.wav"},...}
+
+# 3. Upload, 4. commit, 5. follow
+curl -sS -X PUT "$BASE/packages/<id>/files/kick.wav" -H "Authorization: Bearer $TOKEN" --data-binary @kick.wav
+curl -sS -X POST "$BASE/packages/<id>/commit" -H "Authorization: Bearer $TOKEN"
+curl -sS "$BASE/packages/<id>/status" -H "Authorization: Bearer $TOKEN"
+#   -> {"status":"waiting",...} until Import in Live, then {"status":"imported",...}
+```
+
+## Rules for every call
+
+- The token goes in `Authorization: Bearer <app_token>`, never in a URL or a cookie.
+- **401** means the token is unknown or revoked: the user unpaired your app in Live. Forget the token and ask for a code again. No other problem answers 401.
+- Errors are `{"error": "short plain English"}`, at most 80 characters: show the text as it is.
+- **429**: too many calls. `Retry-After` says how many seconds to wait. At most 600 calls a minute per token, 30 packages an hour per app, and 10 pairing tries a minute from one address.
+- **507**: no room. Often "Click Import in Live first": the computer has a lot waiting already.
+- **5xx**, or no answer: try again later. The SDKs retry a few times by themselves.
+- Every answer allows any origin (CORS), so a web page anywhere can call the API, and read `Retry-After`.
+- `X-LA2L-Client: my-app/1.0 (My app)` is optional: it says which app and version make the call.
+
+## The calls
+
+| Call | Does |
+|---|---|
+| `POST /pair/claim` | `{"code", "app_name", "app_id"}`: trades the code from Live for `{"app_token", "device_name"}`. A wrong, used or expired code: 404. |
+| `GET /app/me` | `{"device_name", "app_name", "paired_at"}`: which computer this app is paired with. |
+| `POST /app/unpair` | Revokes this token. |
+| `POST /packages` | The package description, with `bytes` and `sha256` of every file. 201 with `package_id`, the `upload` path per file and `warnings`. 422 with the reason when LA2L would refuse it. |
+| `PUT /packages/{id}/files/{file}` | The bytes of one WAV file, up to 200 MB. Checked against its size, checksum and WAV header. |
+| `POST /packages/{id}/commit` | Every file is there: from now on Live sees the package. 409 names the files still missing. |
+| `GET /packages/{id}/status` | `uploading`, `waiting`, `imported`, `partial`, `failed` or `expired`, with the result per sound after Import. |
+| `DELETE /packages/{id}` | Takes a package back, until it is in Live. |
+
+Upload the files and commit within an hour. A package waits 24 hours for Import; then it is deleted, imported or not. Its status stays readable for 7 days.
+
+The package description itself: [The package description](https://lloydstellar.nl/la2l/developers/manifest.md).
+
+<!-- https://lloydstellar.nl/la2l/developers/manifest.md -->
+
+# The package description
+
+Every package carries a short JSON description of its sounds, `app2live/1`. The SDKs write it from what you pass to `send()`; with the REST API you send it to `POST /packages` yourself.
+
+```json
+{
+  "schema": "app2live/1",
+  "title": "Treinbeat",
+  "source": { "app": "Web808", "app_version": "1.0.0", "platform": "web" },
+  "tempo": { "bpm": 92 },
+  "items": [
+    { "id": "kick", "file": "kick.wav", "bytes": 1693484, "sha256": "…", "name": "Kick", "kind": "loop", "role": "drums", "length_beats": 16 },
+    { "id": "robot", "file": "robot.wav", "bytes": 420112, "sha256": "…", "name": "Robot hallo", "kind": "oneshot", "role": "vocal" }
+  ]
+}
+```
+
+In Live this becomes a scene "Treinbeat" with two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.
+
+## The package
+
+| Field | |
+|---|---|
+| `schema` | Required: `"app2live/1"`. |
+| `title` | The name of the scene, and of the folder on disk. Default "Untitled". |
+| `source.app` | Added to every track name: "Kick (Web808)". Default "App". |
+| `source.app_version`, `source.platform` | For your own use, and for support. |
+| `tempo.bpm` | 20 to 999: the tempo of every loop without a `bpm` of its own. |
+| `items` | 1 to 32 sounds, 200 MB together. |
+
+## A sound
+
+| Field | |
+|---|---|
+| `file` | Required. A letter or digit first, then letters, digits, space, `.`, `_` or `-`, ending in `.wav`, at most 100 characters, unique in the package. |
+| `bytes`, `sha256` | Required by the server: the exact size of the file, and its SHA-256 in hex. |
+| `kind` | `"loop"` or `"oneshot"`. Without it the sound is a one-shot, so always send it for a loop. |
+| `name` | The track name, at most 40 characters: letters of any language, digits, space and `_ - ( ) . ' & + # !`. Default "Sound 1", by position. |
+| `role` | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`: it picks the warp mode of a loop. |
+| `bpm` | The tempo of this loop, when it differs from `tempo.bpm`. |
+| `length_beats` | The length of the loop in beats. |
+| `warp_mode` | Overrides the role: `beats`, `tones`, `texture`, `repitch`, `complex` or `complex_pro`. |
+| `color` | `"#RRGGBB"`; Live takes the nearest colour of its palette. Without it, all tracks of a package share one colour, and the next package gets the next one. |
+| `gain_db` | The clip gain in dB, from -70 to +24. |
+| `id` | Your own id, sent back with the result of this sound. Default: the position, from 1. |
+
+## What LA2L does with it
+
+- A **one-shot** plays as it is: warp off, loop off.
+- A **loop** is warped and loops over its whole length. The warp mode follows the role: drums Beats, bass Tones, melodic and vocal Complex Pro, texture Texture, fx and no role Complex.
+- The tempo of a loop is its `bpm`, else `tempo.bpm`, else what `length_beats` and the length of the file give. Its length is `length_beats`, else what the tempo and the length of the file give, rounded to a whole beat when it is within 0.1 beat of one. Without any of these, Live guesses the tempo.
+- What LA2L does not know, it ignores, and says so in `warnings`: an unknown role, or a `bpm` on a one-shot. The package still goes through.
+
+[app2live-1.schema.json](https://lloydstellar.nl/la2l/developers/app2live-1.schema.json) is the JSON Schema of a description as an app sends it.
+
+<!-- https://lloydstellar.nl/la2l/developers/testing.md -->
+
+# Testing
+
+The test receiver stands in for LA2L in Ableton Live, for whoever has no Ableton at hand: you, your CI, or an AI agent. It shows a code, imports every package you send as LA2L in Live would, and acks it, so your app sees the same status as with Live. Per sound it says what Live would do:
+
+```
+Beat test (Web808): imported 2 of 2 sounds
+  Beat (Web808): loop, warped in Beats mode at 120 BPM, 4 beats. 48 kHz, 16-bit, stereo, 2 s
+  Hit (Web808): one-shot, plays as it is. 48 kHz, 16-bit, mono, 0.1 s
+```
+
+A loop that shows up as a one-shot lacks `kind: 'loop'`. A loop at an odd length, such as 4.37 beats, is not rendered a whole number of beats long.
+
+## In a browser
+
+Open [the test receiver](https://lloydstellar.nl/la2l/receiver). It shows a code; pair your app with it as you would with Live, and send. Each package gets a report on the page. It works against the real server, so your app needs no change at all.
+
+## In a terminal
+
+```bash
+npx la2l test-receiver
+```
+
+The same, in a terminal. With `--local` it starts an LA2L server in memory on `127.0.0.1` as well: no internet and no rate limits. Point your app at the address it prints:
+
+```bash
+npx la2l test-receiver --local
+#   LA2L test receiver, with an LA2L server in memory: http://127.0.0.1:41234/api
+#   In your app, use that address as the server and pair with code K7P 42Q.
+```
+
+```js
+const la2l = new LA2L({ appName: 'Web808', server: 'http://127.0.0.1:41234/api' });
+```
+
+The button takes it as an attribute: `<la2l-send-button server="http://127.0.0.1:41234/api">`.
+
+## In your tests
+
+`startTestReceiver()` from `la2l/testing` does the same inside a test, in Node.js:
+
+```js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { LA2L, memoryStorage } from 'la2l';
+import { startTestReceiver } from 'la2l/testing';
+
+test('the beat arrives in Live as a loop of one bar', async () => {
+  const receiver = await startTestReceiver();
+  try {
+    const la2l = new LA2L({ appName: 'Web808', server: receiver.server, storage: memoryStorage() });
+    await la2l.pair(receiver.code);
+    const delivery = await la2l.send({ title: 'Beat', bpm: 120, sounds: [{ name: 'Beat', audio: renderBeat(), kind: 'loop', role: 'drums' }] });
+    await delivery.imported();
+    const { plan } = (await receiver.nextReport()).sounds[0];
+    assert.deepEqual([plan.warp, plan.bpm, plan.lengthBeats], [true, 120, 4]);
+  } finally {
+    await receiver.close();
+  }
+});
+```
+
+`nextReport()` resolves to the next report; `reports` holds them all. Each sound has its `plan` (the track name, warp, warp mode, tempo and length in beats), the `info` of its WAV header, or the `error` Live would give.
+
+## By hand
+
+The five calls of [the REST API](https://lloydstellar.nl/la2l/developers/rest-api.md) work against the test receiver too. With `--local`, use the address it prints as the base address.
+
+<!-- https://lloydstellar.nl/la2l/developers/ai-tools.md -->
+
+# AI tools
+
+An AI coding tool can build a Send to Live feature from these pages, and gets it right more often with one of the helpers below. Each one tells the tool the same few things: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
+
+## The skill
+
+`la2l-send-to-ableton` is an Agent Skill: the steps, the pitfalls, the API, and examples that are tested against the SDK.
+
+| Tool | How |
+|---|---|
+| Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI | `npx skills add lloydstellar/Lloyds-app2live` |
+| Claude Code, as a plugin | `/plugin marketplace add lloydstellar/Lloyds-app2live`, then `/plugin install la2l@la2l` |
+| Lovable, Bolt, Replit | Import the skill from GitHub: `https://github.com/lloydstellar/Lloyds-app2live/tree/main/skills/la2l-send-to-ableton` |
+| claude.ai | Upload a ZIP of that folder as a skill of your own. |
+
+Agents leave a skill unused more often than you would think. Name it in your prompt: "Add a Send to Live button with LA2L. Use the la2l-send-to-ableton skill."
+
+## A docs index in AGENTS.md
+
+```bash
+npm install la2l
+npx la2l agents-md
+```
+
+This writes an index of the docs in `node_modules/la2l/docs` into `AGENTS.md`, and into `CLAUDE.md` when the project has one, with the rules that matter most. Agents read `AGENTS.md` at every task, so they find the docs of the version you installed instead of guessing. A new run, after an update of `la2l`, replaces the index.
+
+## Lovable, Bolt and other builders without a terminal
+
+Paste [the paste text](https://lloydstellar.nl/la2l/developers/paste-text.md) into the knowledge of the project: in Lovable under Knowledge, in Bolt in the project's knowledge or system prompt. It works on its own: installing, the button, rendering a loop, the pitfalls, and where the docs are. Copy it from [its Markdown version](https://lloydstellar.nl/la2l/developers/paste-text.md) to keep the formatting.
+
+## llms.txt
+
+[llms.txt](https://lloydstellar.nl/la2l/llms.txt) lists these pages for language models, and [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt) holds them all in one file. Every page is there as Markdown too: add `.md` to its address.
+
+## Check what the tool built
+
+Open [the test receiver](https://lloydstellar.nl/la2l/receiver) in a second tab, pair the app with the code it shows, and send. The report says per sound what Live would do. A loop must show up as a loop at the tempo of the app, such as "Loop, warped in Beats mode at 120 BPM, 4 beats". When it says "One-shot", the app forgot `kind: 'loop'`. An agent that can run commands can test its own work: `npx la2l test-receiver --local` ([Testing](https://lloydstellar.nl/la2l/developers/testing.md)).
+
+<!-- https://lloydstellar.nl/la2l/developers/paste-text.md -->
+
+# LA2L: Send to Live
+
+This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package `la2l`. Follow these notes whenever you build or change that part. Full docs: https://lloydstellar.nl/la2l/llms-full.txt
+
+## How it works
+
+The user has LA2L, a Max for Live device, in Ableton Live. They click Pair app in it once and type the six-character code it shows into this app. After that the app sends WAV files with a description of each sound. When the user clicks Import in LA2L, each sound becomes a track in Live, warped to the tempo the app gave. No API key, no account.
+
+## Install
+
+```bash
+npm install la2l
+```
+
+## The button
+
+`<la2l-send-button>` asks for the code the first time, sends, and shows the status. Give it a function that returns the sounds at the moment of the click. In React with TypeScript:
+
+```tsx
+import { useEffect, useRef } from 'react';
+import 'la2l/button';
+import type { La2lSendButton } from 'la2l/button';
+import { wavFromAudioBuffer } from 'la2l';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'la2l-send-button': React.DetailedHTMLProps<React.HTMLAttributes<La2lSendButton>, La2lSendButton> & { 'app-name'?: string; server?: string };
+    }
+  }
+}
+
+export function SendToLive({ bpm, render }: { bpm: number; render: () => Promise<AudioBuffer> }) {
+  const ref = useRef<La2lSendButton>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.sounds = async () => ({
+      title: `Beat at ${bpm} BPM`,
+      bpm,
+      sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await render()), kind: 'loop', role: 'drums', lengthBeats: 4 }],
+    });
+  }, [bpm, render]);
+  return <la2l-send-button ref={ref} app-name="My app" />;
+}
+```
+
+Set `sounds` through a ref as above; React 18 cannot pass a function to a custom element as a prop. In Vue, tell the compiler about the element: `isCustomElement: (tag) => tag.startsWith('la2l-')`.
+
+## Without the button
+
+```ts
+import { LA2L, La2lError, wavFromAudioBuffer } from 'la2l';
+
+const la2l = new LA2L({ appName: 'My app' }); // Live shows "Paired with My app"
+// Pair once, from a field with this line above it:
+// "In Live, click Pair app in LA2L and type the code it shows."
+await la2l.pair(code);
+const delivery = await la2l.send({ title: 'Beat', bpm: 120, sounds: [{ name: 'Beat', audio: wav, kind: 'loop', role: 'drums' }] });
+// show "Waiting for Import in Live", then:
+await delivery.imported(); // show "In Live"
+```
+
+Every error is a `La2lError` with a `code` and a `message` to show as it is. On the code `not_paired`, show the code field again.
+
+## Rendering a loop
+
+Render with an `OfflineAudioContext` exactly a whole number of beats: one bar of 4/4 is `4 * 60 / bpm` seconds, so `Math.round(48000 * 240 / bpm)` frames at 48 kHz. Render a second more, and add what rings past the end of the bar to its start, so the loop has no click and no gap:
+
+```ts
+const rate = 48000;
+const bar = Math.round(rate * 240 / bpm);
+const ctx = new OfflineAudioContext(2, bar + rate, rate);
+// schedule every hit at step * 60 / bpm / 4 seconds, connected to ctx.destination
+const out = await ctx.startRendering();
+const loop = new AudioBuffer({ numberOfChannels: 2, length: bar, sampleRate: rate });
+for (let c = 0; c < 2; c++) {
+  const from = out.getChannelData(c), to = loop.getChannelData(c);
+  to.set(from.subarray(0, bar));
+  for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+}
+const wav = wavFromAudioBuffer(loop);
+```
+
+## Rules
+
+- Every sound needs `kind`: `'loop'` is warped to the tempo and loops, `'oneshot'` plays as it is. A loop without `kind: 'loop'` arrives as a one-shot, out of time.
+- Give loops a `bpm` (for the whole package, or per sound) and `lengthBeats` when you know it.
+- `role` picks how Live warps a loop: `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`.
+- WAV only: `wavFromAudioBuffer`, `wavFromSamples`, or `toWav` for an mp3 or m4a. Never send an mp3 as if it were WAV.
+- Names have at most 40 characters. At most 32 sounds and 200 MB per package.
+- Pair once. Never put the token in a URL, a log line or an error report.
+- A page with a Content-Security-Policy needs `connect-src https://lloydstellar.nl` and `img-src data:`.
+- Call it "Send to Live", with the LA2L logo the button has. Never use the Ableton logo.
+
+## Testing it
+
+Open https://lloydstellar.nl/la2l/receiver in another tab: it stands in for Live. Pair the app with the code it shows and send. The report must say "Loop, warped in Beats mode at 120 BPM, 4 beats" for a loop of one bar at 120 BPM, not "One-shot".

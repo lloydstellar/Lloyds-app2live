@@ -8,7 +8,8 @@
 //                              la2l-receiver.js (the test receiver of the page), committed, so the
 //                              server's Docker image needs no npm
 //   docs/*.md, README.md,      the version and the integrity hash of dist/button.min.js in every
-//   examples/*/                jsDelivr address
+//   examples/*/, skills/,      jsDelivr address
+//   ../../docs/developers/
 //
 //   npm run build           build everything
 //   npm run check:vendor    only check that the committed copies are what a fresh build makes (CI)
@@ -65,8 +66,16 @@ async function outputs() {
 const integrity = (text) => 'sha384-' + crypto.createHash('sha384').update(text).digest('base64');
 function docsWithIntegrity(hash) {
   const md = (dir) => fs.readdirSync(dir).filter((f) => /\.(md|html)$/.test(f)).map((f) => path.join(dir, f));
-  const examples = path.join(HERE, '..', '..', 'examples');
-  const files = [path.join(HERE, 'README.md'), ...md(path.join(HERE, 'docs')), ...fs.readdirSync(examples).flatMap((d) => md(path.join(examples, d)))];
+  const all = (dir) => fs.readdirSync(dir, { recursive: true }).filter((f) => /\.(md|html|m?js)$/.test(f)).map((f) => path.join(dir, f));
+  const repo = path.join(HERE, '..', '..');
+  const examples = path.join(repo, 'examples');
+  const files = [
+    path.join(HERE, 'README.md'),
+    ...md(path.join(HERE, 'docs')),
+    ...fs.readdirSync(examples).flatMap((d) => md(path.join(examples, d))),
+    ...md(path.join(repo, 'docs', 'developers')),
+    ...all(path.join(repo, 'skills')),
+  ];
   const out = {};
   for (const file of files) {
     const text = fs.readFileSync(file, 'utf8');

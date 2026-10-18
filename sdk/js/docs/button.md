@@ -48,6 +48,36 @@ Or answer the `la2l-request` event. The listener must call `event.detail.provide
 button.addEventListener('la2l-request', (event) => event.detail.provide(renderSend()));
 ```
 
+## In React, Vue, Svelte and Angular
+
+The button is a custom element, so every framework can use it. Give it `sounds` as a property, not as an attribute. In React, through a ref (React 18 passes only strings to a custom element), with one declaration per project so that TypeScript knows the element:
+
+```tsx
+import { useEffect, useRef } from 'react';
+import 'la2l/button';
+import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'la2l-send-button': React.DetailedHTMLProps<React.HTMLAttributes<La2lSendButton>, La2lSendButton> & { 'app-name'?: string; server?: string; 'app-id'?: string };
+    }
+  }
+}
+
+export function SendToLive({ sounds }: { sounds: SoundsProvider }) {
+  const ref = useRef<La2lSendButton>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.sounds = sounds;
+  }, [sounds]);
+  return <la2l-send-button ref={ref} app-name="Web808" />;
+}
+```
+
+- Vue: tell the compiler it is not a Vue component, in the Vue plugin of `vite.config`: `template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('la2l-') } }`. Then `<la2l-send-button app-name="Web808" :sounds.prop="sounds" />`.
+- Svelte: `<la2l-send-button app-name="Web808" sounds={sounds}></la2l-send-button>`.
+- Angular: add `CUSTOM_ELEMENTS_SCHEMA` to the `schemas` of the component, then `<la2l-send-button app-name="Web808" [sounds]="sounds"></la2l-send-button>`.
+
 ## Attributes, events, texts and looks
 
 - Attributes: `app-name` (the name Live shows; without it, the page title), `server`, `app-id`: as the options of `new LA2L` ([api.md](api.md)).
