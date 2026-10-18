@@ -32,4 +32,10 @@ The phase passes when at least four of the five runs pass for each tool.
 
 | Date | Tool and version | Run | Passed | What went wrong |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-18 | Claude Code 2.1.292 (claude-opus-5-5) | 1 | Yes | Nothing that fails the check. The track names carry the app twice, "Kick (Web808) (Web808)": the run named its sounds "Kick (Web808)", as the `name` row of SKILL.md shows, and LA2L adds the app's name again. It also took the example's app name, Web808. |
+| 2026-10-18 | Claude Code 2.1.292 (claude-opus-5-5) | 2 | Yes | The same as run 1. |
+| 2026-10-18 | Claude Code 2.1.292 (claude-opus-5-5) | 3 | Yes | The same as run 1. |
+| 2026-10-18 | Claude Code 2.1.292 (claude-opus-5-5) | 4 | Yes | Nothing. Its app is called "Web Drums". |
+| 2026-10-18 | Claude Code 2.1.292 (claude-opus-5-5) | 5 | Yes | Nothing. Its app is called "Web Drums". |
+
+Claude Code on 2026-10-18: five of five passed. Each run started in an empty folder with `npx skills add lloydstellar/Lloyds-app2live --skill la2l-send-to-ableton --agent claude-code --copy -y` (the flags make it run without questions), then `claude -p` with the prompt, without the user's settings, memory or MCP servers (`--setting-sources project --strict-mcp-config`). Edits were allowed, Bash only for npm, npx, node, ls, mkdir, cat and cd. Each run took 90 to 145 seconds and built one `index.html` with the button from jsDelivr, its integrity hash and `wavFromAudioBuffer`: one loop of 4 beats per row. None could open a browser there, so each checked its script with Node; runs 4 and 5 also sent through `startTestReceiver()`, none asked the live server for a code. The check ran in headless Chromium against the live test receiver: clear the pattern where the app has a Clear button, click steps in all four rows, Send to Live, type the code. Every run arrived as loops in Beats mode at 120 BPM, and again at 97 BPM after the app's tempo was changed (an extra check, outside the protocol).
