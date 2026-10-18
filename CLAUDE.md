@@ -30,7 +30,12 @@ The contract between the two is [docs/server-api.md](docs/server-api.md); the pa
 
 ## The server
 
-See [server/CLAUDE.md](server/CLAUDE.md). In short: Node.js in Docker on the VPS, behind the web server that already serves lloydstellar.nl. It reuses `src/node/manifest.js` and `src/node/wav.js` from the device, so both sides check a package the same way. What the server build changed for the device side, what Erik tested, and the open device points: [docs/server-handoff.md](docs/server-handoff.md).
+See [server/CLAUDE.md](server/CLAUDE.md). In short: Node.js in Docker on the VPS, behind the web server that already serves lloydstellar.nl. It reuses `src/node/manifest.js`, `src/node/wav.js` and `src/node/text.js` from the device, so both sides check a package the same way. Where the device and the server touch:
+
+- A change to those three files changes the server too: deploy it, and update `docs/server-api.md` when the server's answers change. Their ports in `sdk/js` and `sdk/android` and the fixtures in `sdk/fixtures` change in the same branch ([sdk/CLAUDE.md](sdk/CLAUDE.md)).
+- `server/Dockerfile` copies `src/node/` and `src/ui/la2l-logo-big.png` into the image; moving or renaming them breaks the build.
+- `server/test/device-e2e.test.js` runs the device's controller against the real server, and checks some device texts word for word: the Self test line, `This code works for 10:00`, `Click Unpair again`. Change that test in the same branch as such a text.
+- The open points of the device are under "Next steps" in `docs/design-notes.md`.
 
 ## Git
 
