@@ -12,13 +12,13 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 | The test receiver | the page `../server/public/receiver.html` (on `js/src/receiver.ts`, served as `vendor/la2l-receiver.js`), `npx la2l test-receiver [--local]`, `startTestReceiver()` from `la2l/testing` | Phases 1 and 2 |
 | LA2L Sender on the SDK | `../server/public/sender.js`, on `vendor/la2l.js` | Phase 2 |
 | Web808, the drum machine example | `../examples/web-drum-machine`, served at `https://lloydstellar.nl/la2l/examples/drum-machine/` | Phase 2 |
-| The server changes | `../server`, la2l-server 0.7.0 (API), 0.8.0 (pages), 0.9.0 (the developer pages) and 0.10.0 (LA2L Sender as a share target) | Phases 1 to 4 |
+| The server changes | `../server`, la2l-server 0.7.0 (API), 0.8.0 (pages), 0.9.0 (the developer pages), 0.10.0 (LA2L Sender as a share target) and 0.11.0 (the developer pages on the Android SDK) | Phases 1 to 5 |
 | The skill `la2l-send-to-ableton` | `../skills/la2l-send-to-ableton`; `../skills` is the root of its Claude Code plugin, listed in `../.claude-plugin/marketplace.json` | Phase 3. `npx skills add` and the plugin work once the repository is public |
 | The developer pages | Sources in `../docs/developers/*.md`; `../tools/devpages.js` makes `../server/public/developers` (committed): a page and a `.md` twin each, `llms.txt`, `llms-full.txt`, and copies of the OpenAPI file and the schema. Served at `/la2l/developers/`, `/la2l/llms.txt` and `/la2l/llms-full.txt`, with `X-Robots-Tag: noindex` until the launch | Phase 3 |
 | The paste text for Lovable and Bolt, the AI test, Context7 | `../docs/developers/paste-text.md` (also a page), `../docs/developers/ai-test.md` (the record, not a page), `../context7.json` | Phase 3. The AI test and Context7 wait for npm and a public repository |
 | The privacy statement | `../docs/developers/privacy.md`: a draft, not served until Erik approves it; then it goes to `/la2l/privacy` | Phase 3 |
 | LA2L Sender as a share target on Android | `../server/public/manifest.webmanifest`, `sw.js` (takes a share into IndexedDB), `share.js` (the description in the shared text), `zip.js` (ZIP files in the browser), `share.html` (a share that reaches the server), the icons (made by `../tools/pwa-icons.py`); the developer page `../docs/developers/sharing.md` | Phase 4 |
-| The Android SDK | | Phase 5 |
+| The Android SDK, 0.1.0 | `android/`: `la2l` (Java, no dependencies, minSdk 24) and `la2l-ktx` (Kotlin, suspend functions and a builder), with `La2lShare` and its own file provider; the examples `../examples/android-recorder` (Kotlin) and `../examples/android-java` | Phase 5. Built and tested only in GitHub Actions (job `android`). Not published: the Maven repository at https://lloydstellar.nl/la2l/maven/ waits for Erik's yes, a signing key and the way the files reach the VPS |
 
 ## Read first
 
@@ -41,6 +41,20 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 | `src/cli/main.ts`, `src/cli/agents-md.ts` | `npx la2l`; `agents-md` writes the docs index for AI coding agents into `AGENTS.md` and `CLAUDE.md` |
 | `docs/` | The manual in the package. The build writes the integrity hash of `dist/button.js` into it and into `README.md` |
 
+## The Android SDK in `android/`
+
+| Source | Is |
+|---|---|
+| `la2l/src/main/java/nl/lloydstellar/la2l/La2l.java`, `Http.java`, `Delivery.java`, `Storage.java` | The client, as the web client does it: pairing, sending with checks, retries and progress, following a package; the token in private `SharedPreferences`. Every call returns a `CompletableFuture` (`pairAsync`, `sendAsync`, ...) and has a `Callback` variant on the main thread |
+| `WavCheck.java`, `ManifestCheck.java`, `Text.java` | The checks of the device, ported with the same texts; `FixturesTest` holds them to `../fixtures/expected.json` |
+| `Wav.java` | WAV files from 16-bit or float samples, in memory or on disk |
+| `La2lShare.java`, `La2lFileProvider.java` | A share for LA2L Sender with the description in `EXTRA_TEXT`, and the provider that lets the picked app read the files |
+| `la2l-ktx/src/main/kotlin/.../La2lKtx.kt` | `pair`, `me`, `unpair`, `send { sound(...) }`, `status`, `awaitImport`, `cancel` as suspend functions |
+| `la2l/src/test`, `la2l-ktx/src/test` | JVM tests; `ClientTest` and `La2lKtxTest` run against the real server of `../../server` and the test receiver of `js/` (Node and a build of `js/` needed) |
+| `publish.gradle.kts`, `../../.github/workflows/publish-android.yml` | A Maven repository in `build/maven`, signed when the secrets are there; a tag `android-v<version>` attaches it to a GitHub release |
+
+The versions of Gradle (8.14), the Android Gradle Plugin (8.13) and Kotlin (2.3) are set in `android/build.gradle.kts` and in the workflows; `la2l-ktx` is compiled for Kotlin 2.1 and newer. The example apps target API 34: from 35 Android draws them under the system bars, which their small layouts do not handle.
+
 ## Commands
 
 | Command | Where | Does |
@@ -56,6 +70,7 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 | `npm test` | repository root and `server/` | The device and the server tests; both run the fixtures. The server's also check the developer pages and every link on them |
 | `node tools/devpages.js` | repository root | Makes the developer pages from `docs/developers` into `server/public/developers`; `--check` only checks them (CI). Run it after `npm run build` in `sdk/js`, which writes the version and the integrity hash into the sources |
 | `claude plugin validate ./skills`, `claude plugin validate .` | repository root | Checks the plugin and the marketplace entry of the skill |
+| `gradle :la2l:testDebugUnitTest :la2l-ktx:testDebugUnitTest ...` | `sdk/android`, in GitHub Actions only | The Android tests, libraries, example apps and Maven repository; see the job `android` in `.github/workflows/test.yml`. Never on the VPS (Erik's decision): push, and read the result of the job. The example apps come out as the artifact `la2l-android` |
 
 The VPS has Node 22; the SDK supports 22.12 and newer, so its tests run there as they are. CI runs them on every Node.js version that still gets security fixes.
 

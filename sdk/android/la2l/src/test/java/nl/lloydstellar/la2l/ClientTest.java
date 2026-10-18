@@ -75,8 +75,14 @@ public class ClientTest {
             e = refused(la2l.sendAsync(many));
             assertEquals(La2lException.Code.BAD_PACKAGE, e.getCode());
             assertEquals("The package has 33 sounds. LA2L takes 32 at most. Send them in more packages.", e.getMessage());
-            e = refused(la2l.sendAsync(new SoundPackage("Slow").bpm(5).add(Sound.loop("Beat", bar()))));
-            assertEquals(La2lException.Code.BAD_PACKAGE, e.getCode());
+            // What LA2L takes but ignores comes back as a warning, as from the server.
+            Delivery slow = get(la2l.sendAsync(new SoundPackage("Slow").bpm(5).add(Sound.loop("Beat", bar()))));
+            assertEquals(java.util.Arrays.asList("tempo.bpm is not a number from 20 to 999"), slow.getWarnings());
+            try {
+                get(slow.cancelAsync());
+            } catch (La2lException x) {
+                assertEquals("This package is already in Live.", x.getMessage());
+            }
 
             // A loop and a one-shot, into "Live".
             final List<Double> shares = new ArrayList<>();

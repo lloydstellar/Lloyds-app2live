@@ -29,7 +29,7 @@
 </header>
 <main>
 <h1 id="sharing-to-la2l-sender">Sharing to LA2L Sender</h1>
-<p>An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a description of the sounds in the text of the share. LA2L Sender shows them with loop or one-shot, BPM and role filled in, and the user taps Send.</p>
+<p>An Android app can send sounds to Live without any network code: it shares the WAV files with LA2L Sender, the installed web app of LA2L, and puts a description of the sounds in the text of the share. With the Android SDK that is one call, <code>La2lShare.intent(context, soundPackage)</code>; below is what it does, for an app without the SDK. LA2L Sender shows them with loop or one-shot, BPM and role filled in, and the user taps Send.</p>
 <p>The user installs LA2L Sender once from Chrome (any phone) or Samsung Internet (Samsung phones), at <code>https://lloydstellar.nl/la2l/</code>, opens it once and pairs it with Live. From then on it is in the share menu. Android only: not Firefox, not iOS.</p>
 <h2 id="the-share">The share</h2>
 <pre><code class="language-kotlin">val manifest = org.json.JSONObject()

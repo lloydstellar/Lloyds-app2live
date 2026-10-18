@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Android: LA2L for developers</title>
-<meta name="description" content="An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L…">
+<meta name="description" content="The Android SDK sends sounds to LA2L from Kotlin or Java: nl.lloydstellar:la2l, a library without dependencies for Android 7.0 (API 24) and newer, and…">
 <link rel="alternate" type="text/markdown" href="android.md">
 <link rel="icon" href="../logo.png">
 <link rel="stylesheet" href="style.css">
@@ -29,8 +29,34 @@
 </header>
 <main>
 <h1 id="android">Android</h1>
-<p>An Android app sends to LA2L with five HTTPS calls, the same ones every SDK makes. Without any network code, an app can also share its WAV files with LA2L Sender: see <a href="sharing">Sharing</a>. An Android SDK (<code>nl.lloydstellar:la2l</code>) is being built; until it is released, this page shows the calls in Kotlin, with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
-<h2 id="1-a-wav-file">1. A WAV file</h2>
+<p>The Android SDK sends sounds to LA2L from Kotlin or Java: <code>nl.lloydstellar:la2l</code>, a library without dependencies for Android 7.0 (API 24) and newer, and <code>nl.lloydstellar:la2l-ktx</code>, with suspend functions and a builder on top. They are in LA2L's own Maven repository. Without any network code, an app can also share its WAV files with LA2L Sender: see <a href="sharing">Sharing</a>.</p>
+<pre><code class="language-kotlin">// settings.gradle.kts: dependencyResolutionManagement { repositories { maven(&quot;https://lloydstellar.nl/la2l/maven/&quot;) } }
+// app/build.gradle.kts: implementation(&quot;nl.lloydstellar:la2l-ktx:0.1.0&quot;)
+
+val la2l = La2l(context, &quot;Web808&quot;) // Live shows &quot;Paired with Web808&quot;
+if (!la2l.isPaired) la2l.pair(codeFromUser) // &quot;K7P 42Q&quot;, from LA2L in Live
+
+val delivery = la2l.send(title = &quot;Treinbeat&quot;, bpm = 92.0) {
+    sound(&quot;Kick&quot;, Wav.fromPcm16(kickSamples, 48000, 2), kind = Kind.LOOP, role = Role.DRUMS)
+    sound(&quot;Robot hallo&quot;, robotWavFile, kind = Kind.ONESHOT, role = Role.VOCAL)
+}
+delivery.awaitImport() // the user clicked Import in Live</code></pre>
+<p>From Java, every call has a variant that reports to a <code>Callback</code> on the main thread, and one that returns a <code>CompletableFuture</code>:</p>
+<pre><code class="language-java">La2l la2l = new La2l(context, &quot;Web808&quot;);
+la2l.send(new SoundPackage(&quot;Treinbeat&quot;).bpm(92).add(Sound.loop(&quot;Kick&quot;, kickWav).role(Role.DRUMS)), new Callback&lt;Delivery&gt;() {
+    @Override public void onSuccess(Delivery delivery) { status.setText(&quot;Waiting for Import in Live&quot;); }
+    @Override public void onError(La2lException error) { status.setText(error.getMessage()); }
+});</code></pre>
+<ul>
+<li><strong>Pairing</strong>: a field for the code with this line above it: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot; The token stays in the app's private <code>SharedPreferences</code>; never log it. Ask for a code again only after the code <code>NOT_PAIRED</code>.</li>
+<li><strong>Sounds</strong>: WAV only. <code>Wav.fromPcm16</code> and <code>Wav.fromFloat</code> make one from interleaved samples, in memory or on disk; <code>WavCheck.check(file)</code> says whether LA2L can use a file. Make a loop exactly a whole number of beats long, <code>sampleRate * 60 / bpm * beats</code> frames, and give it its BPM.</li>
+<li><strong>Errors</strong>: every failure is a <code>La2lException</code> with a <code>code</code> and a message to show as it is. <code>RATE_LIMITED</code> has <code>getRetryAfter()</code>; <code>IMPORT_FAILED</code> means the package stays and the next Import tries again.</li>
+<li><strong>Large uploads</strong>: send from a WorkManager job, so the upload goes on when the user leaves the app. The README of <code>sdk/android</code> has the recipe.</li>
+<li><strong>Examples</strong>: <code>examples/android-recorder</code> records a loop in time after a count-in and sends it; <code>examples/android-java</code> does the same with a tone from Java, and shares it with LA2L Sender.</li>
+</ul>
+<h2 id="without-the-sdk">Without the SDK</h2>
+<p>The same five HTTPS calls, in Kotlin with nothing but the Android platform: <code>HttpURLConnection</code>, <code>org.json</code> and <code>MessageDigest</code>. Run them off the main thread.</p>
+<h3 id="1-a-wav-file">1. A WAV file</h3>
 <p>From 16-bit PCM, as <code>AudioRecord</code> gives it or as your audio engine renders it:</p>
 <pre><code class="language-kotlin">fun wav16(pcm: ShortArray, sampleRate: Int, channels: Int): ByteArray {
     val data = pcm.size * 2
@@ -46,7 +72,7 @@
 fun sha256Hex(bytes: ByteArray): String =
     java.security.MessageDigest.getInstance(&quot;SHA-256&quot;).digest(bytes).joinToString(&quot;&quot;) { &quot;%02x&quot;.format(it) }</code></pre>
 <p>A loop must be a whole number of beats long: <code>sampleRate * 60 / bpm * beats</code> frames. An m4a or mp3 must be decoded first (<code>MediaCodec</code>): LA2L takes WAV only.</p>
-<h2 id="2-the-calls">2. The calls</h2>
+<h3 id="2-the-calls">2. The calls</h3>
 <pre><code class="language-kotlin">const val BASE = &quot;https://lloydstellar.nl/la2l/api&quot;
 
 class Answer(val status: Int, val json: org.json.JSONObject, val retryAfter: Int?) {
@@ -108,7 +134,7 @@ fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray
 <li>The field for the code: &quot;In Live, click Pair app in LA2L and type the code it shows.&quot;</li>
 <li>Never log the token, and never put it in a URL.</li>
 </ul>
-<h2 id="3-following-it">3. Following it</h2>
+<h3 id="3-following-it">3. Following it</h3>
 <p><code>GET /packages/{id}/status</code> says <code>waiting</code> until the user clicks Import in Live, then <code>imported</code>, <code>partial</code> (with the result per sound), <code>failed</code> or <code>expired</code>. While your app is open, ask every few seconds and show &quot;Waiting for Import in Live&quot;.</p>
 <p>A large upload that must go on when the user leaves the app belongs in a WorkManager job.</p>
 <p>Every call and field: <a href="rest-api">The REST API</a> and <a href="manifest">The package description</a>.</p>
