@@ -148,4 +148,51 @@ async function sendPackage(s, appToken, sounds, o = {}) {
   return { packageId, upload, created: created.json };
 }
 
-module.exports = { startServer, request, fakeClock, pairStart, pairDevice, sha256, loopWav, shotWav, compressedWav, packageManifest, sendPackage };
+// A ZIP archive, as a music app would share it: entries of { name, data, method } where method 0
+// stores and 8 deflates. `flags` sets the general purpose flags (default: UTF-8 names).
+function makeZip(entries) {
+  const zlib = require('zlib');
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  for (const e of entries) {
+    const name = Buffer.from(e.name);
+    const method = e.method === undefined ? 8 : e.method;
+    const packed = method === 8 ? zlib.deflateRawSync(e.data) : e.data;
+    const crc = zlib.crc32(e.data);
+    const flags = e.flags === undefined ? 0x800 : e.flags;
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(flags, 6);
+    local.writeUInt16LE(method, 8);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(packed.length, 18);
+    local.writeUInt32LE(e.data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    parts.push(local, name, packed);
+    const c = Buffer.alloc(46);
+    c.writeUInt32LE(0x02014b50, 0);
+    c.writeUInt16LE(20, 4);
+    c.writeUInt16LE(20, 6);
+    c.writeUInt16LE(flags, 8);
+    c.writeUInt16LE(method, 10);
+    c.writeUInt32LE(crc, 16);
+    c.writeUInt32LE(e.packedSize === undefined ? packed.length : e.packedSize, 20);
+    c.writeUInt32LE(e.size === undefined ? e.data.length : e.size, 24);
+    c.writeUInt16LE(name.length, 28);
+    c.writeUInt32LE(offset, 42);
+    central.push(c, name);
+    offset += 30 + name.length + packed.length;
+  }
+  const dir = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(dir.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...parts, dir, end]);
+}
+
+module.exports = { startServer, request, fakeClock, pairStart, pairDevice, sha256, loopWav, shotWav, compressedWav, packageManifest, sendPackage, makeZip };

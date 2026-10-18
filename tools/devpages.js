@@ -26,6 +26,7 @@ const PAGES = [
   ['web', 'Web apps', 'The npm package la2l: pairing, WAV files from Web Audio, sending and following a package, errors'],
   ['button', 'The button', 'The <la2l-send-button> web component, in a page or a framework, and the brand rules'],
   ['android', 'Android', 'Sending from Kotlin or Java with the REST API'],
+  ['sharing', 'Sharing', 'An Android app shares WAV files with LA2L Sender, the installed web app, with the description in the text'],
   ['rest-api', 'REST API', 'The five HTTPS calls, with curl; the command line npx la2l; the rules for errors and limits'],
   ['manifest', 'Package description', 'Every field of the app2live/1 description, and what LA2L does with it'],
   ['testing', 'Testing', 'The test receiver: a page, a terminal command, and startTestReceiver() for automated tests'],

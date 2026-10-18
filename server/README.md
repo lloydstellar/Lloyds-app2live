@@ -127,7 +127,7 @@ Between the requests are the events:
 
 | Line | Means |
 |---|---|
-| `la2l-server 0.9.0 listening on ...` | The server started. |
+| `la2l-server 0.10.0 listening on ...` | The server started. |
 | `state: 1 computer(s) and 2 app(s) paired, 0 package(s) waiting` | Right after the start: what the database holds. With `; test receivers: 3 with 4 app(s)` when there are test receivers, which are not counted as computers. |
 | `pairing started: new computer` | Pair app in Live. `Add app for device 7`: Settings > Add app. `new test receiver`: a test receiver, such as the page `/la2l/receiver`. |
 | `pairing claimed: app 8 on new device 7` | Someone typed the code. |

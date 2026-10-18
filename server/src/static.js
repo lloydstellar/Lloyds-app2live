@@ -30,6 +30,18 @@ const FILES = {
   '/vendor/la2l.js': ['vendor/la2l.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-button.js': ['vendor/la2l-button.js', 'text/javascript; charset=utf-8'],
   '/vendor/la2l-receiver.js': ['vendor/la2l-receiver.js', 'text/javascript; charset=utf-8'],
+  // LA2L Sender as an installed web app, and a share target on Android (sdk/BUILD-PROMPT.md,
+  // section 11): the manifest, the service worker that takes a share, the ZIP reader, the icons,
+  // and the page for a share that reaches the server.
+  '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json; charset=utf-8'],
+  '/sw.js': ['sw.js', 'text/javascript; charset=utf-8'],
+  '/share.js': ['share.js', 'text/javascript; charset=utf-8'],
+  '/zip.js': ['zip.js', 'text/javascript; charset=utf-8'],
+  '/share': ['share.html', 'text/html; charset=utf-8'],
+  '/icon-192.png': ['icon-192.png', 'image/png'],
+  '/icon-512.png': ['icon-512.png', 'image/png'],
+  '/icon-maskable-192.png': ['icon-maskable-192.png', 'image/png'],
+  '/icon-maskable-512.png': ['icon-maskable-512.png', 'image/png'],
 };
 
 // Examples of the developer kit, from a folder of the repository (in the image: /app/examples).
@@ -116,7 +128,14 @@ class StaticFiles {
     }
     const f = this.files.get(urlPath);
     if (!f) return this.plain(res, 404, 'Not found.');
-    if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
+    // A share from Android reaches the server only when the service worker of LA2L Sender did not
+    // take it: LA2L Sender has not run since it was installed. The page says what to do. The body
+    // is let through unread.
+    if (urlPath === '/share' && req.method === 'POST') {
+      req.resume();
+      return answer(res, 200, Object.assign({ 'Content-Type': f.type, 'Content-Length': f.body.length, 'Cache-Control': 'no-store' }, HEADERS), f.body);
+    }
+    if (req.method !== 'GET' && req.method !== 'HEAD') return this.plain(res, 405, 'Method not allowed.', { Allow: urlPath === '/share' ? 'GET, HEAD, POST' : 'GET, HEAD' });
     // no-cache: the browser keeps the file but asks every time, so a new version shows at once.
     const headers = Object.assign({ 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: f.etag }, HEADERS, f.extra);
     if (req.headers['if-none-match'] === f.etag) return answer(res, 304, headers);

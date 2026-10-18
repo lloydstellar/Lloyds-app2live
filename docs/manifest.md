@@ -71,20 +71,20 @@ A problem with the package as a whole (no schema, no sounds, too many, too large
 
 The tempo of a loop is the sound's `bpm`, else `tempo.bpm`, else `60 × length_beats / seconds`. The length is `length_beats`, else `seconds × bpm / 60`. A length within 0.1 beat of a whole number is rounded to it, because an app that renders 4 beats means 4 beats. The device makes Live play the file at that tempo with warp markers (see [design-notes.md](design-notes.md)), so the loop stays in time whatever the Set tempo is. A loop without any tempo is warped and looped as Live itself guesses it.
 
-## Sharing to LA2L Sender on Android (planned)
+## Sharing to LA2L Sender on Android
 
-LA2L Sender becomes an app that can be installed from Chrome on Android and shows up in the share menu of other apps. Android hands such a web app only the shared files, a title and a text, so an app that shares sounds with LA2L Sender can describe them with a manifest in the text:
+LA2L Sender is a web app that can be installed from Chrome or Samsung Internet on Android, and then shows up in the share menu of other apps (la2l-server 0.10.0). Android hands such a web app only the shared files, a title and a text, so an app that shares sounds with LA2L Sender can describe them with a manifest in the text:
 
 - The text holds one JSON object with `"schema": "app2live/1"`. LA2L Sender reads from the first `{` to the last `}`, so the app may put a line of its own around it, for example "Made with Web808".
 - `items[].file` is the name of a shared file. `package_id`, `bytes` and `sha256` may be left out: LA2L Sender fills them in.
-- A shared file without an item gets the defaults, which the user can change before sending. The shared title becomes the package's `title` when the manifest has none.
+- A shared file without an item gets the defaults (a one-shot), which the user can change before sending. The shared title (`EXTRA_SUBJECT` on Android) becomes the package's `title` when the manifest has none.
 
 ```text
 Made with Web808
 {"schema": "app2live/1", "tempo": {"bpm": 92}, "items": [{"file": "beat.wav", "name": "Beat", "kind": "loop", "role": "drums"}]}
 ```
 
-An app without any network code can pass on its tempo and its loops this way. This is planned for LA2L Sender (phase 4 of `sdk/BUILD-PROMPT.md`) and for the Android SDK (`La2lShare`, phase 5); until then, LA2L Sender does not read shared files.
+An app without any network code can pass on its tempo and its loops this way: the files in `EXTRA_STREAM`, the manifest in `EXTRA_TEXT`. LA2L Sender also takes mp3, m4a and other files the browser can decode (it makes them WAV) and ZIP files of them, and splits more than 32 sounds or 200 MB over several packages, "Title (1 of 2)". The Android SDK will build such a share for an app (`La2lShare`, phase 5 of `sdk/BUILD-PROMPT.md`). The developer page: https://lloydstellar.nl/la2l/developers/sharing
 
 ## Files
 
