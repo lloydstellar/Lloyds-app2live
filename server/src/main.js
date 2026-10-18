@@ -43,7 +43,7 @@ async function start(config, opts = {}) {
   deviceRoutes(router, deps);
   appRoutes(router, deps);
   packageRoutes(router, deps);
-  const pages = new StaticFiles();
+  const pages = new StaticFiles({ mavenDir: config.mavenDir });
   const sweeper = setInterval(() => limits.sweep(), 5 * 60000);
   sweeper.unref();
   const cleanup = makeCleanup(deps);
@@ -78,7 +78,7 @@ async function start(config, opts = {}) {
     try {
       if (urlPath !== '/api' && !urlPath.startsWith('/api/')) {
         ctx.route = pages.routeName(req.method, urlPath);
-        pages.serve(req, res, urlPath);
+        await pages.serve(req, res, urlPath);
         return;
       }
       for (const [name, value] of Object.entries(CORS)) res.setHeader(name, value);

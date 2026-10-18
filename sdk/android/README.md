@@ -25,6 +25,8 @@ dependencies {
 }
 ```
 
+Every file is signed. The key is [signing-key.asc](signing-key.asc), also at https://lloydstellar.nl/la2l/maven/signing-key.asc once the repository is online; its fingerprint is `D38E 63C1 D254 89FF 5AAB 9442 D117 2ECD 7AAE 8584`.
+
 la2l adds the `INTERNET` permission to your app. The token stays in a private file in the app's no-backup folder, so Auto Backup does not copy it to another phone.
 
 ## Kotlin

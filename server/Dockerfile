@@ -10,7 +10,9 @@ COPY server/src ./server/src
 COPY server/public ./server/public
 COPY examples/web-drum-machine ./examples/web-drum-machine
 WORKDIR /app/server
-RUN mkdir -p /data && chown node:node /data
+# A new volume takes the owner of its folder from the image: the server writes /data, and
+# deploy/maven-sync.sh fills /maven as this user too.
+RUN mkdir -p /data /maven && chown node:node /data /maven
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
