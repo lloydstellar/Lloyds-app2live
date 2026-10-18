@@ -76,7 +76,7 @@ The tempo of a loop is the sound's `bpm`, else `tempo.bpm`, else `60 × length_b
 LA2L Sender is a web app that can be installed from Chrome or Samsung Internet on Android, and then shows up in the share menu of other apps (la2l-server 0.10.0). Android hands such a web app only the shared files, a title and a text, so an app that shares sounds with LA2L Sender can describe them with a manifest in the text:
 
 - The text holds one JSON object with `"schema": "app2live/1"`. LA2L Sender reads from the first `{` to the last `}`, so the app may put a line of its own around it, for example "Made with Web808".
-- `items[].file` is the name of a shared file. `package_id`, `bytes` and `sha256` may be left out: LA2L Sender fills them in.
+- `items[].file` is the name of a shared file, or of a file in a shared ZIP file, without its folder. `package_id`, `bytes` and `sha256` may be left out: LA2L Sender fills them in. `source.app` names the tracks, as in any package.
 - A shared file without an item gets the defaults (a one-shot), which the user can change before sending. The shared title (`EXTRA_SUBJECT` on Android) becomes the package's `title` when the manifest has none.
 
 ```text

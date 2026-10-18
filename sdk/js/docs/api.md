@@ -24,7 +24,7 @@ ESM, with type definitions. Browsers, Node.js 22.12 and newer, Deno and Bun.
 
 ## Sending
 
-`await la2l.send({ title, bpm, timeSignature, sounds, onProgress, signal })` checks everything before the first byte goes out, with the texts of the server and of LA2L: the sounds, every WAV header, the limits. Then it works out `bytes` and `sha256`, announces the package, uploads the files one by one, and commits. It resolves to a `Delivery`.
+`await la2l.send({ title, bpm, timeSignature, sounds, onProgress, signal, appName })` checks everything before the first byte goes out, with the texts of the server and of LA2L: the sounds, every WAV header, the limits. Then it works out `bytes` and `sha256`, announces the package, uploads the files one by one, and commits. It resolves to a `Delivery`.
 
 A sound:
 
@@ -38,6 +38,8 @@ A sound:
 | `warpMode`, `color`, `gainDb`, `id` | See the manifest: https://github.com/lloydstellar/Lloyds-app2live/blob/main/docs/manifest.md |
 | `file` | The file name on the server. Default: made from the name. |
 | `sha256` | The checksum, when you know it, so a large file is not read twice. |
+
+`appName` sets the app name of this package, and so of its track names, for a send on behalf of another app, as LA2L Sender does with what an app shares. Without it, the client's own.
 
 `onProgress(share, { stage, sound, soundShare })`: `share` is the part of all bytes uploaded, from 0 to 1.
 

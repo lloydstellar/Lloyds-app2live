@@ -35,6 +35,7 @@
 <pre><code class="language-kotlin">val manifest = org.json.JSONObject()
     .put(&quot;schema&quot;, &quot;app2live/1&quot;)
     .put(&quot;title&quot;, &quot;Treinbeat&quot;)
+    .put(&quot;source&quot;, org.json.JSONObject().put(&quot;app&quot;, &quot;Web808&quot;)) // the tracks: &quot;Kick (Web808)&quot;
     .put(&quot;tempo&quot;, org.json.JSONObject().put(&quot;bpm&quot;, 92))
     .put(&quot;items&quot;, org.json.JSONArray()
         .put(org.json.JSONObject().put(&quot;file&quot;, &quot;kick.wav&quot;).put(&quot;name&quot;, &quot;Kick&quot;).put(&quot;kind&quot;, &quot;loop&quot;).put(&quot;role&quot;, &quot;drums&quot;).put(&quot;length_beats&quot;, 16))
@@ -66,11 +67,13 @@ context.startActivity(android.content.Intent.createChooser(share, &quot;Send to 
 <li><code>items[].file</code> is the name of a shared file. Leave out <code>package_id</code>, <code>bytes</code> and <code>sha256</code>: LA2L Sender fills them in.</li>
 <li>A shared file without an item gets the defaults, a one-shot, which the user can change before sending.</li>
 <li>The title of the share (<code>EXTRA_SUBJECT</code>) becomes the title of the package when the description has none.</li>
-<li>Android passes on only the files, the title and the text. Every other extra is dropped, so the description must be in <code>EXTRA_TEXT</code>.</li>
+<li>Chrome passes on only the files, the title (<code>EXTRA_SUBJECT</code>) and one text (<code>EXTRA_TEXT</code>, a single string). Every other extra is dropped, so the description must be in <code>EXTRA_TEXT</code>.</li>
+<li>A file whose type, as your provider reports it, is not <code>audio/*</code>, <code>.wav</code> or a ZIP file is dropped without a word. The name LA2L Sender matches with <code>items[].file</code> is the provider's <code>DISPLAY_NAME</code>.</li>
+<li>The tracks carry the app name of the description, <code>source.app</code>: &quot;Kick (Web808)&quot;. Without it, they carry &quot;LA2L Sender&quot;.</li>
 </ul>
 <h2 id="what-la2l-sender-takes">What LA2L Sender takes</h2>
 <ul>
-<li>WAV files; mp3, m4a and other sound files the phone's browser can play, which become WAV; and a ZIP file of them.</li>
+<li>WAV files; mp3, m4a and other sound files the phone's browser can play, up to 10 MB each, which become WAV; and a ZIP file of them, up to 256 files. For a file in a ZIP, <code>items[].file</code> is its name without its folder. Not ZIP64, and no ZIP with a password.</li>
 <li>More than 32 sounds or 200 MB: LA2L Sender sends several packages, &quot;Treinbeat (1 of 2)&quot; and so on.</li>
 <li>One file: <code>ACTION_SEND</code> with one <code>EXTRA_STREAM</code> works the same way.</li>
 </ul>

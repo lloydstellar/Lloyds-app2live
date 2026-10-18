@@ -149,28 +149,38 @@ async function sendPackage(s, appToken, sounds, o = {}) {
 }
 
 // A ZIP archive, as a music app would share it: entries of { name, data, method } where method 0
-// stores and 8 deflates. `flags` sets the general purpose flags (default: UTF-8 names).
-function makeZip(entries) {
+// stores and 8 deflates. `flags` sets the general purpose flags (default: UTF-8 names); `rawName`
+// gives the name as bytes; `descriptor` puts sizes and CRC after the data, as streaming writers
+// do; `size`, `packedSize` and `crc` lie in the central directory. `comment` goes at the end.
+function makeZip(entries, comment = '') {
   const zlib = require('zlib');
   const parts = [];
   const central = [];
   let offset = 0;
   for (const e of entries) {
-    const name = Buffer.from(e.name);
+    const name = e.rawName || Buffer.from(e.name);
     const method = e.method === undefined ? 8 : e.method;
     const packed = method === 8 ? zlib.deflateRawSync(e.data) : e.data;
-    const crc = zlib.crc32(e.data);
-    const flags = e.flags === undefined ? 0x800 : e.flags;
+    const crc = e.crc === undefined ? zlib.crc32(e.data) : e.crc;
+    const flags = (e.flags === undefined ? 0x800 : e.flags) | (e.descriptor ? 0x08 : 0);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
     local.writeUInt16LE(flags, 6);
     local.writeUInt16LE(method, 8);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(packed.length, 18);
-    local.writeUInt32LE(e.data.length, 22);
+    local.writeUInt32LE(e.descriptor ? 0 : crc, 14);
+    local.writeUInt32LE(e.descriptor ? 0 : packed.length, 18);
+    local.writeUInt32LE(e.descriptor ? 0 : e.data.length, 22);
     local.writeUInt16LE(name.length, 26);
     parts.push(local, name, packed);
+    if (e.descriptor) {
+      const d = Buffer.alloc(16);
+      d.writeUInt32LE(0x08074b50, 0);
+      d.writeUInt32LE(crc, 4);
+      d.writeUInt32LE(packed.length, 8);
+      d.writeUInt32LE(e.data.length, 12);
+      parts.push(d);
+    }
     const c = Buffer.alloc(46);
     c.writeUInt32LE(0x02014b50, 0);
     c.writeUInt16LE(20, 4);
@@ -183,7 +193,7 @@ function makeZip(entries) {
     c.writeUInt16LE(name.length, 28);
     c.writeUInt32LE(offset, 42);
     central.push(c, name);
-    offset += 30 + name.length + packed.length;
+    offset += 30 + name.length + packed.length + (e.descriptor ? 16 : 0);
   }
   const dir = Buffer.concat(central);
   const end = Buffer.alloc(22);
@@ -192,7 +202,8 @@ function makeZip(entries) {
   end.writeUInt16LE(entries.length, 10);
   end.writeUInt32LE(dir.length, 12);
   end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...parts, dir, end]);
+  end.writeUInt16LE(Buffer.byteLength(comment), 20);
+  return Buffer.concat([...parts, dir, end, Buffer.from(comment)]);
 }
 
 module.exports = { startServer, request, fakeClock, pairStart, pairDevice, sha256, loopWav, shotWav, compressedWav, packageManifest, sendPackage, makeZip };

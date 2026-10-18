@@ -60,7 +60,7 @@ test('the service worker, the share helpers and the ZIP reader are served as scr
   assert.doesNotMatch(sw, /caches\./);
 });
 
-test('a share that reaches the server gets a page that says what to do, also a large one', async () => {
+test('a share that reaches the server gets a page that says what to do, also with a body of megabytes', async () => {
   for (const method of ['GET', 'POST']) {
     const body = method === 'POST' ? Buffer.concat([Buffer.from('--x\r\nContent-Disposition: form-data; name="files"; filename="big.wav"\r\n\r\n'), Buffer.alloc(3 * 1048576, 7), Buffer.from('\r\n--x--\r\n')]) : undefined;
     const r = await s.request(method, '/share', { body, headers: body ? { 'Content-Type': 'multipart/form-data; boundary=x' } : {} });
@@ -115,4 +115,38 @@ test('the ZIP reader refuses what it cannot read, with a text that says why', as
   bad.fill(0xff, 40, 80);
   cases.push([bad, 'a.wav in the ZIP file is damaged.']);
   for (const [archive, message] of cases) await assert.rejects(readZip(blob(archive)), { message });
+});
+
+test('the ZIP reader: a data descriptor, an archive comment, and an old name in code page 437', async () => {
+  const { readZip } = await zip();
+  const shot = shotWav();
+  const archive = makeZip(
+    [
+      { name: 'Streamed.wav', data: shot, method: 8, descriptor: true },
+      { name: 'old', rawName: Buffer.from([0x47, 0x72, 0x81, 0xe1, 0x65, 0x2e, 0x77, 0x61, 0x76]), data: shot, method: 0, flags: 0 },
+    ],
+    'Made with n-Track'
+  );
+  const { files } = await readZip(blob(archive));
+  assert.deepEqual(files.map((f) => f.name), ['Streamed.wav', 'Grüße.wav']);
+  assert.deepEqual(Buffer.from(await files[0].arrayBuffer()), shot);
+});
+
+test('the ZIP reader stops a ZIP bomb, a damaged byte and too much, before it fills the memory', async () => {
+  const { readZip, LIMITS } = await zip();
+  // 50 MB of silence that says it is 1 KB: stopped at the first piece past 1 KB.
+  const silence = Buffer.alloc(50 * 1048576);
+  const started = Date.now();
+  await assert.rejects(readZip(blob(makeZip([{ name: 'bomb.wav', data: silence, size: 1024 }]))), { message: 'bomb.wav in the ZIP file is damaged.' });
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+  // A stored sound with one byte changed: its CRC-32 tells.
+  const shot = shotWav();
+  const stored = makeZip([{ name: 'a.wav', data: shot, method: 0 }]);
+  stored[30 + 5 + 100] ^= 0xff;
+  await assert.rejects(readZip(blob(stored)), { message: 'a.wav in the ZIP file is damaged.' });
+  // What an entry says it holds decides before a byte is unpacked.
+  await assert.rejects(readZip(blob(makeZip([{ name: 'huge.wav', data: shot, size: 300 * 1048576 }]))), { message: 'huge.wav is 300 MB. LA2L takes 200 MB per package at most.' });
+  const many = [];
+  for (let i = 0; i <= LIMITS.entries; i++) many.push({ name: `s${i}.wav`, data: Buffer.from('x'), method: 0 });
+  await assert.rejects(readZip(blob(makeZip(many))), { message: `This ZIP file holds ${LIMITS.entries + 1} files. LA2L Sender reads ${LIMITS.entries} at most.` });
 });
