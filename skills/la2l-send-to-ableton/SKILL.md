@@ -45,7 +45,7 @@ Show a field for the code once, with exactly this line above it: "In Live, click
 ```js
 import { LA2L } from '@lloydstellar/la2l';
 
-const la2l = new LA2L({ appName: 'Web808' }); // Live shows "Paired with Web808"
+const la2l = new LA2L({ appName: 'Web808' }); // your app's name; Live shows "Paired with Web808"
 if (!la2l.paired) await la2l.pair(codeFromUser); // "K7P 42Q": case, spaces and dashes do not matter
 ```
 
@@ -70,7 +70,7 @@ const wav3 = await toWav(mp3File);                             // mp3 or m4a, in
 | Field | |
 |---|---|
 | `kind` | **Required.** `'loop'`: warped to the tempo and looped. `'oneshot'`: plays exactly as it is. A loop without `kind: 'loop'` arrives as a one-shot, out of time. |
-| `name` | The track name in Live, at most 40 characters: "Kick (Web808)". |
+| `name` | The name of the sound, at most 40 characters: "Kick". Live adds the app name to the track: "Kick" becomes "Kick (Web808)", so never add it yourself. |
 | `role` | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`. It picks the warp mode of a loop: drums Beats, bass Tones, melodic and vocal Complex Pro. |
 | `bpm` | The tempo, for the whole package (`send({ bpm })`) or per loop. A one-shot ignores it. |
 | `lengthBeats` | The loop length in beats. Without it LA2L works it out from the file length and the tempo. |

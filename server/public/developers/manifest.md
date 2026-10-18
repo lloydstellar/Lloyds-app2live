@@ -35,7 +35,7 @@ In Live this becomes a scene "Treinbeat (Web808)" with two tracks, "Kick (Web808
 | `file` | Required. A letter or digit first, then letters, digits, space, `.`, `_` or `-`, ending in `.wav`, at most 100 characters, unique in the package. |
 | `bytes`, `sha256` | Required by the server: the exact size of the file, and its SHA-256 in hex. |
 | `kind` | `"loop"` or `"oneshot"`. Without it the sound is a one-shot, so always send it for a loop. |
-| `name` | The track name, at most 40 characters: letters of any language, digits, space and `_ - ( ) . ' & + # !`. Default "Sound 1", by position. |
+| `name` | The name of the sound, at most 40 characters: letters of any language, digits, space and `_ - ( ) . ' & + # !`. Live adds the app name to the track: "Kick" becomes "Kick (Web808)", so never add it yourself. Default "Sound 1", by position. |
 | `role` | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`: it picks the warp mode of a loop. |
 | `bpm` | The tempo of this loop, when it differs from `tempo.bpm`. |
 | `length_beats` | The length of the loop in beats. |

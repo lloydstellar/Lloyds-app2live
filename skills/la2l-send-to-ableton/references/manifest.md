@@ -34,7 +34,7 @@ This becomes two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is
 | `file` | Required. A letter or digit first, then letters, digits, space, `.`, `_` or `-`, ending in `.wav`, at most 100 characters. Unique in the package. |
 | `bytes`, `sha256` | Required by the server: the exact size, and the SHA-256 in hex. |
 | `kind` | `loop` or `oneshot`. Without it the sound is a one-shot: always send it for a loop. |
-| `name` | At most 40 characters; letters of any language, digits, space and `_ - ( ) . ' & + # !`. |
+| `name` | The name of the sound, at most 40 characters; letters of any language, digits, space and `_ - ( ) . ' & + # !`. Live adds the app name to the track: "Kick" becomes "Kick (Web808)", so never add it yourself. |
 | `role` | `drums`, `bass`, `melodic`, `vocal`, `texture` or `fx`. |
 | `bpm` | This loop's tempo, when it differs from `tempo.bpm`. |
 | `length_beats` | The loop length in beats. |

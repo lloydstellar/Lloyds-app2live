@@ -60,7 +60,7 @@
 <tr><td><code>file</code></td><td>Required. A letter or digit first, then letters, digits, space, <code>.</code>, <code>_</code> or <code>-</code>, ending in <code>.wav</code>, at most 100 characters, unique in the package.</td></tr>
 <tr><td><code>bytes</code>, <code>sha256</code></td><td>Required by the server: the exact size of the file, and its SHA-256 in hex.</td></tr>
 <tr><td><code>kind</code></td><td><code>&quot;loop&quot;</code> or <code>&quot;oneshot&quot;</code>. Without it the sound is a one-shot, so always send it for a loop.</td></tr>
-<tr><td><code>name</code></td><td>The track name, at most 40 characters: letters of any language, digits, space and <code>_ - ( ) . ' &amp; + # !</code>. Default &quot;Sound 1&quot;, by position.</td></tr>
+<tr><td><code>name</code></td><td>The name of the sound, at most 40 characters: letters of any language, digits, space and <code>_ - ( ) . ' &amp; + # !</code>. Live adds the app name to the track: &quot;Kick&quot; becomes &quot;Kick (Web808)&quot;, so never add it yourself. Default &quot;Sound 1&quot;, by position.</td></tr>
 <tr><td><code>role</code></td><td><code>drums</code>, <code>bass</code>, <code>melodic</code>, <code>vocal</code>, <code>texture</code> or <code>fx</code>: it picks the warp mode of a loop.</td></tr>
 <tr><td><code>bpm</code></td><td>The tempo of this loop, when it differs from <code>tempo.bpm</code>.</td></tr>
 <tr><td><code>length_beats</code></td><td>The length of the loop in beats.</td></tr>
