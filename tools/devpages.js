@@ -22,8 +22,8 @@ const OUT = path.join(ROOT, 'server', 'public', 'developers');
 const SITE = 'https://lloydstellar.nl/la2l/';
 const BASE = SITE + 'developers/';
 
-// The pages in the order of the menu: source, label in the menu, line in llms.txt. A source that
-// is not here is not published: privacy.md waits for Erik's approval (sdk/BUILD-PROMPT.md, 10.4).
+// The pages in the order of the menu: source, label in the menu (none: not in the menu), line in
+// llms.txt. A source that is not here is not published.
 const PAGES = [
   ['index', 'Start', 'What LA2L does, the ways in, how pairing and sending go, the limits'],
   ['web', 'Web apps', 'The npm package @lloydstellar/la2l: pairing, WAV files from Web Audio, sending and following a package, errors'],
@@ -35,6 +35,7 @@ const PAGES = [
   ['testing', 'Testing', 'The test receiver: a page, a terminal command, and startTestReceiver() for automated tests'],
   ['ai-tools', 'AI tools', 'The skill la2l-send-to-ableton, npx @lloydstellar/la2l agents-md, the paste text, llms.txt'],
   ['paste-text', null, 'A text to paste into the knowledge of Lovable or Bolt: the rules and examples on one page'],
+  ['privacy', null, 'What the LA2L server keeps about the people who use it, why, and for how long'],
 ];
 const COPIES = [
   [path.join(ROOT, 'docs', 'openapi.yaml'), 'openapi.yaml'],
@@ -282,7 +283,7 @@ ${menu}
 ${html}
 </main>
 <footer class="foot">
-  <p><a href="${name}.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a></p>
+  <p><a href="${name}.md">This page as Markdown</a> · <a href="../llms.txt">llms.txt</a> · <a href="../receiver">Test receiver</a> · <a href="privacy">Privacy</a></p>
   <p>LA2L is open source under the Apache License 2.0. Ableton and Live are trademarks of Ableton AG; LA2L is not made by Ableton.</p>
 </footer>
 </body>

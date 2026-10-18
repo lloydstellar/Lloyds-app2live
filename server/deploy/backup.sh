@@ -12,6 +12,10 @@
 # The copy is made by deploy/copy-db.js in a short-lived container of the server's image, with
 # the server's volume, so it works whether the server runs, is stopped, or keeps restarting.
 # deploy/restore.sh puts a backup back.
+#
+# Because it runs every night, it also removes the logs that deploy/update.sh saved in
+# ~/la2l-server-logs (LA2L_LOG_DIR) once they are older than 30 days, as the privacy statement
+# says. That happens first, so it happens also when there is nothing to back up.
 
 if [ -z "${BASH_VERSION:-}" ]; then
   echo "Run this script with bash: bash deploy/backup.sh" >&2
@@ -24,7 +28,12 @@ umask 077
 DEPLOY="$(cd "$(dirname "$0")" && pwd)"
 CONTAINER="${LA2L_CONTAINER:-la2l-server}"
 BACKUPS="${LA2L_BACKUP_DIR:-$HOME/la2l-server-backups}"
+LOGS="${LA2L_LOG_DIR:-$HOME/la2l-server-logs}"
 KEEP=30
+
+if [ -d "$LOGS" ]; then
+  find "$LOGS" -maxdepth 1 -name 'la2l-server-*.log' -type f -mtime +29 -delete
+fi
 
 if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
   echo "There is no container $CONTAINER, so there is no database to back up." >&2

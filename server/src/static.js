@@ -75,7 +75,8 @@ const DEVELOPER_TYPES = Object.assign({}, TYPES, {
 const DEVELOPER_PAGES_INDEXED = false;
 
 // A folder without its "/" goes to the folder, so the relative addresses in its page work.
-const REDIRECTS = { '/examples/drum-machine': 'drum-machine/', '/developers': 'developers/' };
+// /privacy is the short address of the privacy statement, one of the developer pages.
+const REDIRECTS = { '/examples/drum-machine': 'drum-machine/', '/developers': 'developers/', '/privacy': 'developers/privacy' };
 
 const HEADERS = {
   'Content-Security-Policy':

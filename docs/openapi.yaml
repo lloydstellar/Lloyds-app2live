@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LA2L app API
-  version: 0.11.0
+  version: 0.11.1
   summary: Send sounds from an app to Ableton Live, through LA2L.
   description: |
     The app side of the App2Live server (la2l-server). An app pairs once with the code that
@@ -81,7 +81,7 @@ paths:
                     examples: [la2l-server]
                   version:
                     type: string
-                    examples: [0.11.0]
+                    examples: [0.11.1]
         '503':
           description: The server runs, but cannot store sounds right now.
           content:

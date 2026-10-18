@@ -21,7 +21,7 @@ For machines: the app side is also [openapi.yaml](openapi.yaml) (OpenAPI 3.1), a
 No token. Used by Self test.
 
 ```json
-{ "ok": true, "name": "la2l-server", "version": "0.11.0" }
+{ "ok": true, "name": "la2l-server", "version": "0.11.1" }
 ```
 
 The device only looks at `"ok": true`. When the server cannot store sounds (for example when its data folder is not writable), it answers `503` with `{"ok": false, "error": "The server cannot store sounds right now."}`.
