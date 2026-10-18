@@ -5,8 +5,8 @@
 ## Without a build step
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
-        integrity="sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl" crossorigin="anonymous"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-A/Nu56J/Oh1+eLYYZgGeFUEk9dgZSWIanzPgaba1I1IjsXk2135KwQ4TYD940D0C" crossorigin="anonymous"></script>
 <la2l-send-button app-name="Web808"></la2l-send-button>
 ```
 
@@ -14,7 +14,7 @@
 
 ```html
 <script type="module">
-  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js';
 </script>
 ```
 
@@ -23,10 +23,10 @@ The hash belongs to this version: take the line from the docs of the version you
 ## With a bundler
 
 ```js
-import { wavFromAudioBuffer } from 'la2l/button'; // also registers <la2l-send-button>
+import { wavFromAudioBuffer } from '@lloydstellar/la2l/button'; // also registers <la2l-send-button>
 ```
 
-With a bundler the button shares the client with `import ... from 'la2l'`, so the SDK is in your app once. The module can be imported on a server too (pre-rendering in Next.js, Nuxt or SvelteKit): there it does nothing.
+With a bundler the button shares the client with `import ... from '@lloydstellar/la2l'`, so the SDK is in your app once. The module can be imported on a server too (pre-rendering in Next.js, Nuxt or SvelteKit): there it does nothing.
 
 ## Giving it the sounds
 
@@ -54,8 +54,8 @@ The button is a custom element, so every framework can use it. Give it `sounds` 
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton, SoundsProvider } from 'la2l/button';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton, SoundsProvider } from '@lloydstellar/la2l/button';
 
 declare module 'react' {
   namespace JSX {

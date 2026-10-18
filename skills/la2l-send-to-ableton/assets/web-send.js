@@ -1,6 +1,6 @@
-// A complete send from a web app, with the la2l package: pair once, then send a rendered loop
+// A complete send from a web app, with the @lloydstellar/la2l package: pair once, then send a rendered loop
 // and a one-shot, and follow them into Live. Adapt the names, the sounds and the elements.
-import { LA2L, La2lError, wavFromAudioBuffer, wavFromSamples } from 'la2l';
+import { LA2L, La2lError, wavFromAudioBuffer, wavFromSamples } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'My app' }); // Live shows "Paired with My app"
 

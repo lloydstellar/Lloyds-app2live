@@ -1,5 +1,5 @@
 {
-  "name": "la2l",
+  "name": "@lloydstellar/la2l",
   "version": "0.1.0",
   "description": "Send sounds from your app to Ableton Live with LA2L (Lloyd's App2Live).",
   "license": "Apache-2.0",
@@ -42,6 +42,9 @@
     "directory": "sdk/js"
   },
   "homepage": "https://lloydstellar.nl/la2l/",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "ableton",
     "ableton-live",

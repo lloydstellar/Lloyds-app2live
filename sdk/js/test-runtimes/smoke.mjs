@@ -1,5 +1,5 @@
 // A smoke test for Deno and Bun: the public API of la2l, against the local test receiver of
-// la2l/testing. Pair, send a loop, and wait until it is imported. Prints OK or throws.
+// @lloydstellar/la2l/testing. Pair, send a loop, and wait until it is imported. Prints OK or throws.
 //   deno run -A test-runtimes/smoke.mjs      bun test-runtimes/smoke.mjs
 import { LA2L, memoryStorage, wavFromSamples, checkWav, sha256, VERSION } from '../dist/index.js';
 import { startTestReceiver } from '../dist/testing/index.js';

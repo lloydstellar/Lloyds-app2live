@@ -1,4 +1,4 @@
-// la2l 0.1.0: the test receiver of the page /la2l/receiver.
+// @lloydstellar/la2l 0.1.0: the test receiver of the page /la2l/receiver.
 // SPDX-License-Identifier: Apache-2.0. https://github.com/lloydstellar/Lloyds-app2live
 // Built from sdk/js with "npm run build". Do not edit: CI compares it with a fresh build.
 var __defProp = Object.defineProperty;

@@ -17,6 +17,7 @@ import { VERSION } from '../version.js';
 import { writeIndex } from './agents-md.js';
 
 const HELP = `la2l ${VERSION}: send sounds to Ableton Live with LA2L.
+Without npm install @lloydstellar/la2l, type npx @lloydstellar/la2l where it says la2l.
 
   la2l pair [code]              Pair with LA2L in Live. In Live, click Pair app in LA2L
                                 and type the code it shows.
@@ -39,7 +40,8 @@ const HELP = `la2l ${VERSION}: send sounds to Ableton Live with LA2L.
   la2l agents-md [folder]       Write an index of the la2l docs into AGENTS.md, and into
                                 CLAUDE.md when there is one, so AI coding agents read
                                 them. Run it in the root of your project, after
-                                npm install la2l; a new run replaces the index.
+                                npm install @lloydstellar/la2l; a new run replaces
+                                the index.
 
   Every command takes --server <address> (default ${DEFAULT_SERVER},
   or LA2L_SERVER) and --app-name <name> (default "la2l command line", or LA2L_APP_NAME).
@@ -283,7 +285,7 @@ async function agentsMd(args: Args): Promise<void> {
   const r = writeIndex(project);
   out(`Wrote the index of the la2l docs (${(r.bytes / 1024).toFixed(1)} KB) to ${r.written.join(' and ')}. It points to ${r.docs}`);
   for (const name of r.skipped) out(`${name} reads AGENTS.md already (@AGENTS.md), so it was left as it was.`);
-  if (!r.local) out('la2l is not installed in this folder, so the index points to the docs online. After npm install la2l, run this again to point it at node_modules/la2l/docs/.');
+  if (!r.local) out('@lloydstellar/la2l is not installed in this folder, so the index points to the docs online. After npm install @lloydstellar/la2l, run this again to point it at node_modules/@lloydstellar/la2l/docs/.');
 }
 
 // ---- main ----
@@ -329,7 +331,7 @@ export async function main(argv: string[]): Promise<number> {
   }
 }
 
-// Run when started as a program (npx la2l, node dist/cli/main.js), not when imported.
+// Run when started as a program (la2l, npx @lloydstellar/la2l, node dist/cli/main.js), not when imported.
 const self = process.argv[1] ? fs.realpathSync(process.argv[1]) : '';
 if (self && import.meta.url === pathToFileURL(self).href) {
   main(process.argv.slice(2)).then((code) => {

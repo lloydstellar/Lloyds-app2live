@@ -1,6 +1,6 @@
 // The examples of the skill la2l-send-to-ableton in headless Chromium, as an app would use them:
 // assets/button.html with the button from jsDelivr (served here from dist/button.min.js, so its
-// integrity hash is checked too), and assets/web-send.js with an import map for 'la2l'. Both send
+// integrity hash is checked too), and assets/web-send.js with an import map for '@lloydstellar/la2l'. Both send
 // to a test receiver against the real server, started in this process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -61,7 +61,7 @@ test('assets/button.html: one bar of four kicks arrives as a loop of 4 beats at 
   const c = await computer();
   try {
     const html = pointed('button.html', '<la2l-send-button app-name="My app">', `<la2l-send-button app-name="My app" server="${s.base}">`);
-    const cdn = html.match(/src="(https:\/\/cdn\.jsdelivr\.net\/npm\/la2l@[\d.]+\/dist\/button\.min\.js)"/)[1];
+    const cdn = html.match(/src="(https:\/\/cdn\.jsdelivr\.net\/npm\/@lloydstellar\/la2l@[\d.]+\/dist\/button\.min\.js)"/)[1];
     const page = await pageWith({ [s.origin + '/skill/button.html']: html, [cdn]: fs.readFileSync(path.join(HERE, '..', 'dist', 'button.min.js'), 'utf8') });
     await page.goto(s.origin + '/skill/button.html');
     await page.click('la2l-send-button >> button.send');
@@ -81,10 +81,10 @@ test('assets/button.html: one bar of four kicks arrives as a loop of 4 beats at 
 test('renderLoop of the Web apps page: one bar as an AudioBuffer, a tail longer than a bar folded in, a WAV of 2 seconds', async () => {
   const md = fs.readFileSync(path.join(ROOT, 'docs', 'developers', 'web.md'), 'utf8');
   const fn = md.match(/async function renderLoop[\s\S]*?\n}\n/)[0];
-  const page = await pageWith({ [s.origin + '/skill/render.html']: `<!doctype html><script type="importmap">{"imports":{"la2l":"/vendor/la2l.js"}}</script><p>render</p>` });
+  const page = await pageWith({ [s.origin + '/skill/render.html']: `<!doctype html><script type="importmap">{"imports":{"@lloydstellar/la2l":"/vendor/la2l.js"}}</script><p>render</p>` });
   await page.goto(s.origin + '/skill/render.html');
   const out = await page.evaluate(async (fn) => {
-    const { wavFromAudioBuffer, checkWav } = await import('la2l');
+    const { wavFromAudioBuffer, checkWav } = await import('@lloydstellar/la2l');
     const renderLoop = new Function(`return (${fn})`)();
     // A click on every beat, ringing for 3 seconds: at 240 BPM that is three bars of tail.
     const schedule = (bpm) => (ctx) => {
@@ -110,7 +110,7 @@ test('assets/web-send.js: pairs, sends a loop and a one-shot, and reports In Liv
   const c = await computer();
   try {
     const page = await pageWith({
-      [s.origin + '/skill/web-send.html']: `<!doctype html><script type="importmap">{"imports":{"la2l":"/vendor/la2l.js"}}</script><p>web-send</p>`,
+      [s.origin + '/skill/web-send.html']: `<!doctype html><script type="importmap">{"imports":{"@lloydstellar/la2l":"/vendor/la2l.js"}}</script><p>web-send</p>`,
       [s.origin + '/skill/web-send.js']: pointed('web-send.js', "new LA2L({ appName: 'My app' })", `new LA2L({ appName: 'My app', server: '${s.base}' })`),
     });
     await page.goto(s.origin + '/skill/web-send.html');

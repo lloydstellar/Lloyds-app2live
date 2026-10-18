@@ -5,7 +5,7 @@ LA2L (Lloyd's App2Live) is a Max for Live device that brings sounds from apps in
 There is no API key and no developer account. The user pairs your app once with a code that LA2L shows in Live, and that code is the consent.
 
 ```js
-import { LA2L, wavFromAudioBuffer } from 'la2l';
+import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' }); // Live shows "Paired with Web808"
 if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows, like "K7P 42Q"
@@ -22,9 +22,9 @@ await delivery.imported(); // the user clicked Import in Live
 
 | Your app | Use | Read |
 |---|---|---|
-| A web app | `npm install la2l`, or the Send to Live button without a build step | [Web apps](web.md), [The button](button.md) |
+| A web app | `npm install @lloydstellar/la2l`, or the Send to Live button without a build step | [Web apps](web.md), [The button](button.md) |
 | An Android app | Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later | [Android](android.md), [Sharing](sharing.md) |
-| A script, or any other language | `npx la2l send`, or the same five calls | [The REST API](rest-api.md) |
+| A script, or any other language | `npx @lloydstellar/la2l send`, or the same five calls | [The REST API](rest-api.md) |
 | Built with an AI tool | The LA2L skill, or the paste text for Lovable and Bolt | [AI tools](ai-tools.md) |
 
 ## What happens

@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // la2l-server from this repository on 127.0.0.1, with a fresh data folder and no rate limits, and
-// the test receiver of the web SDK (npx la2l test-receiver) paired to it as LA2L in Live would
+// the test receiver of the web SDK (npx @lloydstellar/la2l test-receiver) paired to it as LA2L in Live would
 // be. Needs Node.js 22 or newer, and a build of sdk/js (npm run build there); CI has both.
 final class LocalLa2l implements AutoCloseable {
     /** The address for the client's server option. */

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>LA2L: Send to Live: LA2L for developers</title>
-<meta name="description" content="This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package la2l. Follow these notes whenever you build or change that part.…">
+<meta name="description" content="This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package @lloydstellar/la2l. Follow these notes whenever you build or change…">
 <link rel="alternate" type="text/markdown" href="paste-text.md">
 <link rel="icon" href="../logo.png">
 <link rel="stylesheet" href="style.css">
@@ -29,17 +29,17 @@
 </header>
 <main>
 <h1 id="la2l-send-to-live">LA2L: Send to Live</h1>
-<p>This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package <code>la2l</code>. Follow these notes whenever you build or change that part. Full docs: <a href="https://lloydstellar.nl/la2l/llms-full.txt">https://lloydstellar.nl/la2l/llms-full.txt</a></p>
+<p>This app sends sounds to Ableton Live with LA2L (Lloyd's App2Live), through the npm package <code>@lloydstellar/la2l</code>. Follow these notes whenever you build or change that part. Full docs: <a href="https://lloydstellar.nl/la2l/llms-full.txt">https://lloydstellar.nl/la2l/llms-full.txt</a></p>
 <h2 id="how-it-works">How it works</h2>
 <p>The user has LA2L, a Max for Live device, in Ableton Live. They click Pair app in it once and type the six-character code it shows into this app. After that the app sends WAV files with a description of each sound. When the user clicks Import in LA2L, each sound becomes a track in Live, warped to the tempo the app gave. No API key, no account.</p>
 <h2 id="install">Install</h2>
-<pre><code class="language-bash">npm install la2l</code></pre>
+<pre><code class="language-bash">npm install @lloydstellar/la2l</code></pre>
 <h2 id="the-button">The button</h2>
 <p><code>&lt;la2l-send-button&gt;</code> asks for the code the first time, sends, and shows the status. Give it a function that returns the sounds at the moment of the click. In React with TypeScript:</p>
 <pre><code class="language-tsx">import { useEffect, useRef } from 'react';
-import 'la2l/button';
-import type { La2lSendButton } from 'la2l/button';
-import { wavFromAudioBuffer } from 'la2l';
+import '@lloydstellar/la2l/button';
+import type { La2lSendButton } from '@lloydstellar/la2l/button';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 declare module 'react' {
   namespace JSX {
@@ -63,7 +63,7 @@ export function SendToLive({ bpm, render }: { bpm: number; render: () =&gt; Prom
 }</code></pre>
 <p>Set <code>sounds</code> through a ref as above; React 18 cannot pass a function to a custom element as a prop. In Vue, tell the compiler about the element: <code>isCustomElement: (tag) =&gt; tag.startsWith('la2l-')</code>.</p>
 <h2 id="without-the-button">Without the button</h2>
-<pre><code class="language-ts">import { LA2L, La2lError, wavFromAudioBuffer } from 'la2l';
+<pre><code class="language-ts">import { LA2L, La2lError, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'My app' }); // Live shows &quot;Paired with My app&quot;
 // Pair once, from a field with this line above it:

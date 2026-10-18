@@ -37,19 +37,19 @@
 <h2 id="in-a-browser">In a browser</h2>
 <p>Open <a href="../receiver">the test receiver</a>. It shows a code; pair your app with it as you would with Live, and send. Each package gets a report on the page. It works against the real server, so your app needs no change at all.</p>
 <h2 id="in-a-terminal">In a terminal</h2>
-<pre><code class="language-bash">npx la2l test-receiver</code></pre>
+<pre><code class="language-bash">npx @lloydstellar/la2l test-receiver</code></pre>
 <p>The same, in a terminal. With <code>--local</code> it starts an LA2L server in memory on <code>127.0.0.1</code> as well: no internet and no rate limits. Point your app at the address it prints:</p>
-<pre><code class="language-bash">npx la2l test-receiver --local
+<pre><code class="language-bash">npx @lloydstellar/la2l test-receiver --local
 #   LA2L test receiver, with an LA2L server in memory: http://127.0.0.1:41234/api
 #   In your app, use that address as the server and pair with code K7P 42Q.</code></pre>
 <pre><code class="language-js">const la2l = new LA2L({ appName: 'Web808', server: 'http://127.0.0.1:41234/api' });</code></pre>
 <p>The button takes it as an attribute: <code>&lt;la2l-send-button server=&quot;http://127.0.0.1:41234/api&quot;&gt;</code>.</p>
 <h2 id="in-your-tests">In your tests</h2>
-<p><code>startTestReceiver()</code> from <code>la2l/testing</code> does the same inside a test, in Node.js:</p>
+<p><code>startTestReceiver()</code> from <code>@lloydstellar/la2l/testing</code> does the same inside a test, in Node.js:</p>
 <pre><code class="language-js">import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LA2L, memoryStorage } from 'la2l';
-import { startTestReceiver } from 'la2l/testing';
+import { LA2L, memoryStorage } from '@lloydstellar/la2l';
+import { startTestReceiver } from '@lloydstellar/la2l/testing';
 
 test('the beat arrives in Live as a loop of one bar', async () =&gt; {
   const receiver = await startTestReceiver();

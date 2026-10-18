@@ -5,7 +5,7 @@ The server of Lloyd's App2Live. Apps pair with the LA2L device in Ableton Live t
 - API: `https://lloydstellar.nl/la2l/api`, described in [docs/server-api.md](../docs/server-api.md). The package format is [docs/manifest.md](../docs/manifest.md).
 - LA2L Sender, a page that pairs and sends sounds from a browser (WAV, or mp3, m4a and ZIP files that it turns into WAV): `https://lloydstellar.nl/la2l/`. It is also the reference client for apps (`public/sender.js`). Installed from Chrome on Android it is in the share menu of other apps. With `?big` it also sends a file of 150 MB that it makes itself, to test a long upload from a phone.
 - The test receiver, a page that stands in for LA2L in Live, so a developer can test an app without Ableton: `https://lloydstellar.nl/la2l/receiver`.
-- The SDK for the browser, built from `sdk/js` (the npm package `la2l`): `https://lloydstellar.nl/la2l/vendor/la2l.js`, the Send to Live button in `vendor/la2l-button.js`, and the test receiver of the page in `vendor/la2l-receiver.js`. LA2L Sender itself runs on it.
+- The SDK for the browser, built from `sdk/js` (the npm package `@lloydstellar/la2l`): `https://lloydstellar.nl/la2l/vendor/la2l.js`, the Send to Live button in `vendor/la2l-button.js`, and the test receiver of the page in `vendor/la2l-receiver.js`. LA2L Sender itself runs on it.
 - Web808, the drum machine example of the SDK, from `../examples/web-drum-machine`: `https://lloydstellar.nl/la2l/examples/drum-machine/`.
 
 It is Node.js 24 with no npm packages, in one Docker container on the VPS behind nginx, which does TLS. The container listens on `127.0.0.1:8787` only. Everything it keeps is in the Docker volume `la2l-server_la2l-data`: the SQLite database `la2l.db` and the WAV files of packages that wait for Live.

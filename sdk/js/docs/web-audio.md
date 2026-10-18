@@ -7,7 +7,7 @@ LA2L takes WAV files. These helpers make one from what your app has.
 What an `OfflineAudioContext` renders, or what `decodeAudioData` gives:
 
 ```js
-import { wavFromAudioBuffer } from 'la2l';
+import { wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const context = new OfflineAudioContext(2, Math.round(48000 * 2), 48000); // two seconds
 // ... connect your sources to context.destination and start them ...
@@ -20,7 +20,7 @@ Render a loop of exactly a whole number of beats: `60 / bpm * beats` seconds. Th
 ## Samples
 
 ```js
-import { wavFromSamples } from 'la2l';
+import { wavFromSamples } from '@lloydstellar/la2l';
 
 const wav = wavFromSamples([left, right], 44100); // two Float32Arrays, from -1 to 1
 const mono = wavFromSamples(samples, 44100, { bits: 32 }); // 32: float
@@ -33,7 +33,7 @@ const mono = wavFromSamples(samples, 44100, { bits: 32 }); // 32: float
 In a browser:
 
 ```js
-import { toWav } from 'la2l';
+import { toWav } from '@lloydstellar/la2l';
 
 const wav = await toWav(file); // a WAV that LA2L takes comes back as it is
 ```

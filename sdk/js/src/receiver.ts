@@ -2,7 +2,7 @@
 // uses only the device side of the API, as the device does: it shows a code, looks for packages
 // every few seconds, downloads and checks every file with the device's own checks, works out what
 // Live would do with each sound, and acks, so the app sees the same status as with Live. The page
-// at /la2l/receiver, `npx la2l test-receiver` and startTestReceiver() all run this.
+// at /la2l/receiver, `npx @lloydstellar/la2l test-receiver` and startTestReceiver() all run this.
 
 import { La2lError } from './errors.js';
 import { checkManifest, LIMITS, type Kind } from './manifest.js';

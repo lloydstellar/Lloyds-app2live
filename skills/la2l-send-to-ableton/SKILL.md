@@ -1,6 +1,6 @@
 ---
 name: la2l-send-to-ableton
-description: Use when the user wants to send audio from an app to Ableton Live, wants a "Send to Live" button, or names LA2L (Lloyd's App2Live). Covers web apps (the npm package la2l, Web Audio to WAV, the <la2l-send-button> web component), scripts in any language (npx la2l send), Android (the REST API) and any other language through the REST API; pairing with the code LA2L shows in Live; describing each sound (loop or one-shot, role, BPM) so it arrives in time; and testing without Ableton through the LA2L test receiver.
+description: Use when the user wants to send audio from an app to Ableton Live, wants a "Send to Live" button, or names LA2L (Lloyd's App2Live). Covers web apps (the npm package @lloydstellar/la2l, Web Audio to WAV, the <la2l-send-button> web component), scripts in any language (npx @lloydstellar/la2l send), Android (the REST API) and any other language through the REST API; pairing with the code LA2L shows in Live; describing each sound (loop or one-shot, role, BPM) so it arrives in time; and testing without Ableton through the LA2L test receiver.
 license: Apache-2.0
 compatibility: Web apps need a browser with Web Audio. The npm package and the local test receiver need Node.js 22.12 or newer (Deno and Bun work too).
 metadata:
@@ -19,23 +19,23 @@ Do the steps below in order. Prefer the SDK over raw HTTP: ten lines instead of 
 
 | The app is | Use |
 |---|---|
-| A web app with npm and a bundler (React, Vue, Svelte, Next.js, Vite) | `npm install la2l`: the client, or the button from `la2l/button` |
+| A web app with npm and a bundler (React, Vue, Svelte, Next.js, Vite) | `npm install @lloydstellar/la2l`: the client, or the button from `@lloydstellar/la2l/button` |
 | A web page without a build step | The button from jsDelivr (one `<script type="module">`) |
-| A script (Python, shell, anything that can run a command) | `npx la2l pair` and `npx la2l send` |
+| A script (Python, shell, anything that can run a command) | `npx @lloydstellar/la2l pair` and `npx @lloydstellar/la2l send` |
 | Android (Kotlin or Java) | The REST API from Kotlin, or a share with LA2L Sender: [references/android.md](references/android.md). The Android SDK is not published yet |
 | Anything else | The REST API: [references/api.md](references/api.md) |
 
 ## 2. Install
 
 ```bash
-npm install la2l
+npm install @lloydstellar/la2l
 ```
 
 ESM with type definitions, no dependencies. In a page without a build step:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
-        integrity="sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl" crossorigin="anonymous"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"
+        integrity="sha384-A/Nu56J/Oh1+eLYYZgGeFUEk9dgZSWIanzPgaba1I1IjsXk2135KwQ4TYD940D0C" crossorigin="anonymous"></script>
 ```
 
 ## 3. Pairing: one code field
@@ -43,7 +43,7 @@ ESM with type definitions, no dependencies. In a page without a build step:
 Show a field for the code once, with exactly this line above it: "In Live, click Pair app in LA2L and type the code it shows." Then:
 
 ```js
-import { LA2L } from 'la2l';
+import { LA2L } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' }); // Live shows "Paired with Web808"
 if (!la2l.paired) await la2l.pair(codeFromUser); // "K7P 42Q": case, spaces and dashes do not matter
@@ -56,7 +56,7 @@ The SDK keeps the token (localStorage in a browser, a private file in Node.js). 
 LA2L takes WAV only: PCM 16 or 24 bit (8 and 32 work too) or float 32 or 64 bit, mono or stereo, 8 to 192 kHz. Not MP3, not M4A, not OGG.
 
 ```js
-import { wavFromAudioBuffer, wavFromSamples, toWav } from 'la2l';
+import { wavFromAudioBuffer, wavFromSamples, toWav } from '@lloydstellar/la2l';
 
 const wav = wavFromAudioBuffer(renderedBuffer, { bits: 24 }); // from an OfflineAudioContext
 const wav2 = wavFromSamples([left, right], 48000);            // from Float32Arrays, -1 to 1
@@ -101,8 +101,8 @@ With the button, all of this is one element:
 ```html
 <la2l-send-button app-name="Web808"></la2l-send-button>
 <script type="module">
-  // Without a build step the helpers come from the same file as the button; with a bundler, from 'la2l'.
-  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js';
+  // Without a build step the helpers come from the same file as the button; with a bundler, from '@lloydstellar/la2l'.
+  import { wavFromAudioBuffer } from 'https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js';
   // renderLoop(bpm, schedule) renders one bar as an AudioBuffer: see references/web.md.
   document.querySelector('la2l-send-button').sounds = async () => ({
     title: 'Beat', bpm: 120,
@@ -140,10 +140,10 @@ Every error is a `La2lError` with a `code` and a `message` to show as it is.
 The test receiver stands in for LA2L in Live and says per sound what Live would do.
 
 ```bash
-npx la2l test-receiver --local
+npx @lloydstellar/la2l test-receiver --local
 ```
 
-It prints an address and a code, and runs until Ctrl+C: start it in the background, or in a second terminal, so you can go on. Point the app at the address with `new LA2L({ appName, server: '<address>' })` (or the button's `server` attribute), pair with the code, send, and read the report in the terminal. A loop must show up as `loop, warped in Beats mode at 120 BPM, 4 beats`, not as `one-shot`. In automated tests, use `startTestReceiver()` from `la2l/testing`: see [assets/check-with-test-receiver.mjs](assets/check-with-test-receiver.mjs). Against the real server, the page https://lloydstellar.nl/la2l/receiver does the same in a browser.
+It prints an address and a code, and runs until Ctrl+C: start it in the background, or in a second terminal, so you can go on. Point the app at the address with `new LA2L({ appName, server: '<address>' })` (or the button's `server` attribute), pair with the code, send, and read the report in the terminal. A loop must show up as `loop, warped in Beats mode at 120 BPM, 4 beats`, not as `one-shot`. In automated tests, use `startTestReceiver()` from `@lloydstellar/la2l/testing`: see [assets/check-with-test-receiver.mjs](assets/check-with-test-receiver.mjs). Against the real server, the page https://lloydstellar.nl/la2l/receiver does the same in a browser.
 
 ## More
 
@@ -152,4 +152,4 @@ It prints an address and a code, and runs until Ctrl+C: start it in the backgrou
 - [references/web.md](references/web.md): Web Audio, the button, and pages without a build step.
 - [references/android.md](references/android.md): Android: the SDK, a share with LA2L Sender, and the REST calls in Kotlin.
 - [assets/web-send.js](assets/web-send.js), [assets/button.html](assets/button.html): complete examples.
-- The full docs: https://lloydstellar.nl/la2l/developers/ and `node_modules/la2l/docs` after `npm install la2l`. `npx la2l agents-md` writes an index of those docs into the project's `AGENTS.md` and `CLAUDE.md`, so later sessions find them too.
+- The full docs: https://lloydstellar.nl/la2l/developers/ and `node_modules/@lloydstellar/la2l/docs` after `npm install @lloydstellar/la2l`. `npx @lloydstellar/la2l agents-md` writes an index of those docs into the project's `AGENTS.md` and `CLAUDE.md`, so later sessions find them too.

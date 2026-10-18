@@ -3,7 +3,7 @@
 // page needs no sample files. The loop is rendered with an OfflineAudioContext; the button turns it
 // into a WAV file and sends it.
 
-// The button and its WAV helpers. In your own page: from jsDelivr, or import 'la2l/button'.
+// The button and its WAV helpers. In your own page: from jsDelivr, or import '@lloydstellar/la2l/button'.
 import { wavFromAudioBuffer, wavFromSamples } from '../../vendor/la2l-button.js';
 
 const RATE = 48000;

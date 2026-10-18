@@ -8,8 +8,8 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 |---|---|---|
 | The API for machines | `../docs/openapi.yaml` (OpenAPI 3.1, the app side) and `../docs/app2live-1.schema.json` (the manifest) | Phase 1 |
 | Shared fixtures | `fixtures/` | Phase 1 |
-| `la2l` for npm, 0.1.0 | `js/` | Phase 2: the client, the WAV helpers, the checks of the device, `<la2l-send-button>`, the command line, and the test receivers. Phase 3: `npx la2l agents-md`. Not published: that waits for Erik's yes (npm account, the name, a public repository) |
-| The test receiver | the page `../server/public/receiver.html` (on `js/src/receiver.ts`, served as `vendor/la2l-receiver.js`), `npx la2l test-receiver [--local]`, `startTestReceiver()` from `la2l/testing` | Phases 1 and 2 |
+| `@lloydstellar/la2l` for npm, 0.1.0 | `js/` | Phase 2: the client, the WAV helpers, the checks of the device, `<la2l-send-button>`, the command line, and the test receivers. Phase 3: `npx @lloydstellar/la2l agents-md`. Its command is `la2l`. npm refused the name `la2l` on 2026-10-18 (too much like other packages), so it is scoped. Not published: that waits for Erik's yes (the placeholder, a public repository) |
+| The test receiver | the page `../server/public/receiver.html` (on `js/src/receiver.ts`, served as `vendor/la2l-receiver.js`), `npx @lloydstellar/la2l test-receiver [--local]`, `startTestReceiver()` from `@lloydstellar/la2l/testing` | Phases 1 and 2 |
 | LA2L Sender on the SDK | `../server/public/sender.js`, on `vendor/la2l.js` | Phase 2 |
 | Web808, the drum machine example | `../examples/web-drum-machine`, served at `https://lloydstellar.nl/la2l/examples/drum-machine/` | Phase 2 |
 | The server changes | `../server`, la2l-server 0.7.0 (API), 0.8.0 (pages), 0.9.0 (the developer pages), 0.10.0 (LA2L Sender as a share target) and 0.11.0 (the developer pages on the Android SDK) | Phases 1 to 5 |
@@ -25,10 +25,10 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 1. [BUILD-PROMPT.md](BUILD-PROMPT.md): the assignment. Section 16 says what always waits for Erik's yes (publishing, making the repository public, accounts, keys, contacting anyone, large downloads).
 2. [../docs/server-api.md](../docs/server-api.md) and [../docs/manifest.md](../docs/manifest.md): the contract in words. Both sides are final: add to them, never break them. Device 0.1.1 and today's LA2L Sender must keep working.
 3. [fixtures/README.md](fixtures/README.md): how the device, the server and every SDK are held to the same verdicts.
-4. [js/docs/](js/docs/): the manual of `la2l`, as it ships in the package.
+4. [js/docs/](js/docs/): the manual of `@lloydstellar/la2l`, as it ships in the package.
 5. [../server/CLAUDE.md](../server/CLAUDE.md): how the server is built, tested and deployed.
 
-## `la2l` in `js/`
+## `@lloydstellar/la2l` in `js/`
 
 | Source | Is |
 |---|---|
@@ -36,9 +36,9 @@ What app developers, and the AI tools they use, need to send sounds to LA2L in A
 | `src/audio.ts` | `wavFromSamples`, `wavFromAudioBuffer`, `toWav` |
 | `src/manifest.ts`, `src/wav.ts`, `src/plan.ts`, `src/text.ts`, `src/sha256.ts` | The checks of the device, ported with the same texts, and SHA-256 in pieces |
 | `src/receiver.ts` | `TestReceiver`: the device side, as the device does it. The page, the command line and `startTestReceiver` all run it |
-| `src/testing/local-server.ts`, `src/testing/index.ts` | `la2l/testing`: an LA2L server in memory that answers the app side as la2l-server does |
-| `src/button.ts`, `src/logo.ts` | `la2l/button`: `<la2l-send-button>`. `logo.ts` is made by `scripts/logo.mjs` from `assets/logo-48.png` |
-| `src/cli/main.ts`, `src/cli/agents-md.ts` | `npx la2l`; `agents-md` writes the docs index for AI coding agents into `AGENTS.md` and `CLAUDE.md` |
+| `src/testing/local-server.ts`, `src/testing/index.ts` | `@lloydstellar/la2l/testing`: an LA2L server in memory that answers the app side as la2l-server does |
+| `src/button.ts`, `src/logo.ts` | `@lloydstellar/la2l/button`: `<la2l-send-button>`. `logo.ts` is made by `scripts/logo.mjs` from `assets/logo-48.png` |
+| `src/cli/main.ts`, `src/cli/agents-md.ts` | The command `la2l` (`npx @lloydstellar/la2l` without installing); `agents-md` writes the docs index for AI coding agents into `AGENTS.md` and `CLAUDE.md` |
 | `docs/` | The manual in the package. The build writes the integrity hash of `dist/button.js` into it and into `README.md` |
 
 ## The Android SDK in `android/`
@@ -60,7 +60,7 @@ The versions of Gradle (8.14), the Android Gradle Plugin (8.13) and Kotlin (2.3)
 | Command | Where | Does |
 |---|---|---|
 | `npm ci` | `sdk/js` | Installs the pinned dev tools from the lockfile (TypeScript, esbuild, Redocly, Ajv, yaml, playwright-core, and React's types for the examples). The package itself has no runtime dependencies |
-| `npm run build` | `sdk/js` | `dist/` with tsc (what bundlers import, so `la2l` and `la2l/button` share one client), `dist/button.min.js` as one minified file for pages without a build step (jsDelivr), and `../server/public/vendor/` (`la2l.js`, `la2l-button.js` = `button.min.js`, `la2l-receiver.js`) with esbuild. It also writes the version and the integrity hash of `button.min.js` into the docs, the README and the examples. Commit those after every change in `src/` |
+| `npm run build` | `sdk/js` | `dist/` with tsc (what bundlers import, so `@lloydstellar/la2l` and `@lloydstellar/la2l/button` share one client), `dist/button.min.js` as one minified file for pages without a build step (jsDelivr), and `../server/public/vendor/` (`la2l.js`, `la2l-button.js` = `button.min.js`, `la2l-receiver.js`) with esbuild. It also writes the version and the integrity hash of `button.min.js` into the docs, the README and the examples. Commit those after every change in `src/` |
 | `npm test` | `sdk/js` | The tests, on `dist/`: build first. Among them the same app-side tests against la2l-server and the local test receiver, the whole chain into the simulated Live, the command line, and the port held to the fixtures and to the device's own code |
 | `npm run test:browser` | `sdk/js` | The test receiver page, LA2L Sender, the drum machine and the button in headless Chromium, against the real server. On the VPS: `LA2L_CHROMIUM=~/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome npm run test:browser`, with the Chromium that is already there; CI installs its own |
 | `npm run check:vendor` | `sdk/js` | Whether the committed vendor files and docs are what a fresh build makes (CI) |

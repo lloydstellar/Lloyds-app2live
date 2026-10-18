@@ -31,7 +31,7 @@
 <h1 id="la2l-for-developers">LA2L for developers</h1>
 <p>LA2L (Lloyd's App2Live) is a Max for Live device that brings sounds from apps into Ableton Live. Your app sends WAV files with a short description of each sound. In Live the user clicks <strong>Import</strong>, and every sound becomes an audio track, named after your app, coloured, and warped to your tempo.</p>
 <p>There is no API key and no developer account. The user pairs your app once with a code that LA2L shows in Live, and that code is the consent.</p>
-<pre><code class="language-js">import { LA2L, wavFromAudioBuffer } from 'la2l';
+<pre><code class="language-js">import { LA2L, wavFromAudioBuffer } from '@lloydstellar/la2l';
 
 const la2l = new LA2L({ appName: 'Web808' }); // Live shows &quot;Paired with Web808&quot;
 if (!la2l.paired) await la2l.pair(codeFromUser); // the code LA2L shows, like &quot;K7P 42Q&quot;
@@ -46,9 +46,9 @@ await delivery.imported(); // the user clicked Import in Live</code></pre>
 <div class="table"><table>
 <thead><tr><th>Your app</th><th>Use</th><th>Read</th></tr></thead>
 <tbody>
-<tr><td>A web app</td><td><code>npm install la2l</code>, or the Send to Live button without a build step</td><td><a href="web">Web apps</a>, <a href="button">The button</a></td></tr>
+<tr><td>A web app</td><td><code>npm install @lloydstellar/la2l</code>, or the Send to Live button without a build step</td><td><a href="web">Web apps</a>, <a href="button">The button</a></td></tr>
 <tr><td>An Android app</td><td>Five HTTPS calls from Kotlin or Java, or share the WAV files with LA2L Sender; the Android SDK comes later</td><td><a href="android">Android</a>, <a href="sharing">Sharing</a></td></tr>
-<tr><td>A script, or any other language</td><td><code>npx la2l send</code>, or the same five calls</td><td><a href="rest-api">The REST API</a></td></tr>
+<tr><td>A script, or any other language</td><td><code>npx @lloydstellar/la2l send</code>, or the same five calls</td><td><a href="rest-api">The REST API</a></td></tr>
 <tr><td>Built with an AI tool</td><td>The LA2L skill, or the paste text for Lovable and Bolt</td><td><a href="ai-tools">AI tools</a></td></tr>
 </tbody>
 </table></div>

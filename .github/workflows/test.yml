@@ -33,7 +33,7 @@ jobs:
         run: docker run --rm -v "$PWD:/mnt:ro" koalaman/shellcheck:v0.11.0 deploy/*.sh
         working-directory: server
 
-  # la2l on npm, on every Node.js version that still gets security fixes. Its tests also hold
+  # @lloydstellar/la2l on npm, on every Node.js version that still gets security fixes. Its tests also hold
   # docs/openapi.yaml and docs/app2live-1.schema.json to the real server and the fixtures.
   sdk-js:
     runs-on: ubuntu-latest

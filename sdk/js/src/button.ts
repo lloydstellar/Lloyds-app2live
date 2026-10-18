@@ -2,7 +2,7 @@
 // time, it asks for the code LA2L shows in Live; after that one click sends. Browser only; on a
 // server (pre-rendering) the module loads and does nothing.
 //
-//   <script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"></script>
+//   <script type="module" src="https://cdn.jsdelivr.net/npm/@lloydstellar/la2l@0.1.0/dist/button.min.js"></script>
 //   <la2l-send-button app-name="Web808"></la2l-send-button>
 //   <script type="module">
 //     document.querySelector('la2l-send-button').sounds = async () => ({

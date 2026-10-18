@@ -1,6 +1,6 @@
 # AI tools
 
-An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
+An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `@lloydstellar/la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
 
 ## The skill
 
@@ -18,11 +18,11 @@ Agents leave a skill unused more often than you would think. Name it in your pro
 ## A docs index in AGENTS.md
 
 ```bash
-npm install la2l
-npx la2l agents-md
+npm install @lloydstellar/la2l
+npx @lloydstellar/la2l agents-md
 ```
 
-This writes an index of the docs in `node_modules/la2l/docs` into `AGENTS.md`, and into `CLAUDE.md` when the project has one, with the rules that matter most. Agents read `AGENTS.md` at every task, so they find the docs of the version you installed instead of guessing. A new run, after an update of `la2l`, replaces the index.
+This writes an index of the docs in `node_modules/@lloydstellar/la2l/docs` into `AGENTS.md`, and into `CLAUDE.md` when the project has one, with the rules that matter most. Agents read `AGENTS.md` at every task, so they find the docs of the version you installed instead of guessing. A new run, after an update of `@lloydstellar/la2l`, replaces the index.
 
 ## Lovable, Bolt and other builders without a terminal
 
@@ -34,4 +34,4 @@ Paste [the paste text](paste-text.md) into the knowledge of the project: in Lova
 
 ## Check what the tool built
 
-Open [the test receiver](../receiver) in a second tab, pair the app with the code it shows, and send. The report says per sound what Live would do. A loop must show up as a loop at the tempo of the app, such as "Loop, warped in Beats mode at 120 BPM, 4 beats". When it says "One-shot", the app forgot `kind: 'loop'`. An agent that can run commands can test its own work: `npx la2l test-receiver --local` ([Testing](testing.md)).
+Open [the test receiver](../receiver) in a second tab, pair the app with the code it shows, and send. The report says per sound what Live would do. A loop must show up as a loop at the tempo of the app, such as "Loop, warped in Beats mode at 120 BPM, 4 beats". When it says "One-shot", the app forgot `kind: 'loop'`. An agent that can run commands can test its own work: `npx @lloydstellar/la2l test-receiver --local` ([Testing](testing.md)).
