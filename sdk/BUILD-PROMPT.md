@@ -542,7 +542,7 @@ BASE=https://lloydstellar.nl/la2l/api
 # 1. Pair, with the code LA2L shows in Live
 curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
   -d '{"code":"K7P 42Q","app_name":"curl test","app_id":"curl-1"}'
-#   -> {"app_token":"la2la_...","device_name":"ERIK-PC"}
+#   -> {"app_token":"la2la_...","device_name":"STUDIO-PC"}
 TOKEN=la2la_...
 
 # 2. Announce the package, with bytes and sha256 of every file

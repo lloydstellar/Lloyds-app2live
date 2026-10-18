@@ -269,14 +269,14 @@ test('a browser paired before the SDK stays paired: the old keys still work', as
   await context.addInitScript(([token]) => {
     if (!localStorage.getItem('la2l.token')) {
       localStorage.setItem('la2l.token', token);
-      localStorage.setItem('la2l.deviceName', 'ERIK-PC');
+      localStorage.setItem('la2l.deviceName', 'STUDIO-PC');
       localStorage.setItem('la2l.appId', 'old-app-id');
     }
   }, [p.appToken]);
   const page = await context.newPage();
   await page.goto(s.origin + '/');
   await page.waitForSelector('#paired:not([hidden])');
-  assert.equal(await page.textContent('#device-name'), 'ERIK-PC');
+  assert.equal(await page.textContent('#device-name'), 'STUDIO-PC');
   assert.equal(await page.evaluate(() => localStorage.getItem('la2l.appId')), 'old-app-id');
 });
 

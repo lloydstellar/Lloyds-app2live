@@ -364,14 +364,14 @@ Browser apps run on other origins (a web 808 on another site, the Sender page). 
   - A new device row for a `device_id` that still has an active device row: revoke the old row and its apps. That computer lost its old token (for example it unpaired while offline), and apps still linked to it would send sounds nobody imports; they learn it from a 401 and pair again.
   - Its app: when `app_id` is given and that device already has an active app with the same `app_id`, revoke that one first: pairing again replaces the old token. Then a new app row with a new app token (`la2la_` + 32 random bytes in base64url).
   - The pairing: status `paired`, `app_ref`, `app_name`, `claimed_at`.
-- Answer `200 {"app_token": "la2la_...", "device_name": "ERIK-PC"}`.
+- Answer `200 {"app_token": "la2la_...", "device_name": "STUDIO-PC"}`.
 - Wrong, used or expired code: `404 {"error": "This code does not work. Check the code in Live."}`. The same answer for all three, so a guesser learns nothing.
 - `app_name`: cleaned like a track name (letters of any language, digits, space and `_ - ( ) . ' & + # !`), 1 to 40 characters, default "App"; `cleanName(value, 'App', 40)` from `src/node/text.js` does exactly that. The device shows it: "Paired with LA2L Sender".
 - Rate limit: 10 per minute per IP.
 
 ### 8.3 `GET /app/me` (app token)
 
-`200 {"device_name", "app_name", "paired_at"}`. So an app can show "Paired with ERIK-PC" and find out it was unpaired (401). Updates `apps.last_seen_at`.
+`200 {"device_name", "app_name", "paired_at"}`. So an app can show "Paired with STUDIO-PC" and find out it was unpaired (401). Updates `apps.last_seen_at`.
 
 ### 8.4 `POST /app/unpair` (app token)
 
@@ -491,7 +491,7 @@ A small page at `https://lloydstellar.nl/la2l/` so Erik can test the whole chain
 **Step 1, Pair**
 
 - Without a token in `localStorage`: one field for the code (accepts `K7P 42Q`, `k7p42q`, `K7P-42Q`) and a **Pair** button. It sends `POST api/pair/claim` with `app_name` "LA2L Sender" and an `app_id`: a UUID made once and kept in `localStorage`.
-- Done: "Paired with ERIK-PC" and an **Unpair this browser** button (`POST api/app/unpair`, then forget the token).
+- Done: "Paired with STUDIO-PC" and an **Unpair this browser** button (`POST api/app/unpair`, then forget the token).
 - At load with a token: `GET api/app/me`; a 401 forgets the token and shows step 1 again.
 - Errors show the server's text: "This code does not work. Check the code in Live."
 
@@ -627,7 +627,7 @@ curl -sSI http://lloydstellar.nl/test/test-file-voor-max.wav | head -3   # still
 
 ### 13.1 Pushing from the VPS
 
-**Decided with Erik on 2026-10-16:** the VPS already has `gh` logged in as lloydstellar (https, scopes `repo` and `workflow`), so the clone pushes and opens pull requests through `gh`. There is no deploy key. A deploy key only limits access while no broader login is on the machine. The steps below are for a VPS without `gh`.
+**Decided with Erik on 2026-10-16:** the VPS already has `gh` logged in as lloydstellar (https), so the clone pushes and opens pull requests through `gh`. There is no deploy key. A deploy key only limits access while no broader login is on the machine. The steps below are for a VPS without `gh`.
 
 Use a **deploy key** for this one repository, so the VPS can push here and nowhere else. If Erik already had you set one up to clone the repository, check that it has write access and skip to the last step.
 
