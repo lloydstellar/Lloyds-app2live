@@ -58,7 +58,7 @@ The test receiver stands in for LA2L in Live: it shows a code, imports what you 
 - [Testing](https://lloydstellar.nl/la2l/developers/testing.md): the test receiver.
 - [AI tools](https://lloydstellar.nl/la2l/developers/ai-tools.md): the skill, the docs index for agents, the paste text, and `llms.txt`.
 
-Every page is also there as Markdown: add `.md` to its address. All pages in one file: [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt).
+Every page is also there as Markdown: add `.md` to its address, or read [index.md](https://lloydstellar.nl/la2l/developers/index.md) for this one. All pages in one file: [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt).
 
 <!-- https://lloydstellar.nl/la2l/developers/web.md -->
 
@@ -90,7 +90,7 @@ const result = await delivery.imported();
 status.textContent = result.status === 'imported' ? 'In Live' : 'In Live, partly';
 ```
 
-ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the [button](https://lloydstellar.nl/la2l/developers/button.md) from jsDelivr, which carries the same functions.
+ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the [button](https://lloydstellar.nl/la2l/developers/button.md) from jsDelivr; that one file also carries `LA2L`, `La2lError`, `wavFromAudioBuffer`, `wavFromSamples` and `toWav`.
 
 ## Pairing
 
@@ -112,6 +112,7 @@ await checkWav(file);                       // can LA2L use it? With LA2L's own 
 A loop must be a whole number of beats long: one bar of 4/4 lasts `4 * 60 / bpm` seconds, exactly 2 seconds at 120 BPM. Render it with an `OfflineAudioContext` of that length plus a tail, and add the tail to the start, so what rings past the end of the bar plays at the start of the next one:
 
 ```js
+// One bar of 4/4 at `bpm` as an AudioBuffer: schedule(ctx) starts your sources on the context.
 async function renderLoop(bpm, schedule, tailSeconds = 1) {
   const rate = 48000;
   const bar = Math.round(rate * (60 / bpm) * 4);
@@ -123,10 +124,12 @@ async function renderLoop(bpm, schedule, tailSeconds = 1) {
     const from = rendered.getChannelData(c);
     const to = loop.getChannelData(c);
     to.set(from.subarray(0, bar));
-    for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+    for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
   }
-  return wavFromAudioBuffer(loop);
+  return loop;
 }
+
+const wav = wavFromAudioBuffer(await renderLoop(120, schedule));
 ```
 
 ## Following a send
@@ -149,7 +152,8 @@ Every error is a `La2lError` with a `code` and a `message` that you can show as 
 | `rate_limited` | Wait `retryAfter` seconds. |
 | `server_full` | Show the message, often "Click Import in Live first". |
 | `network`, `server` | Try again later. |
-| `import_failed`, `expired` | Show the message; the sounds can be sent again. |
+| `import_failed` | Show the message. The package stays: the next Import in Live tries again, so do not send it again. |
+| `expired` | Show the message; send the sounds again. |
 | `aborted` | Your app stopped it, with an `AbortSignal`. |
 
 ## Content-Security-Policy
@@ -185,12 +189,12 @@ The package carries its docs, for the version you installed, in `node_modules/la
   document.querySelector('la2l-send-button').sounds = async () => ({
     title: 'Treinbeat',
     bpm: 92,
-    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop()), kind: 'loop', role: 'drums' }],
+    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop(92, schedule)), kind: 'loop', role: 'drums' }],
   });
 </script>
 ```
 
-The one file has the whole SDK in it, so the page imports the WAV helpers from the same address. `renderLoop()` is yours: [Web apps](https://lloydstellar.nl/la2l/developers/web.md) shows one.
+The one file carries the button with `LA2L`, `La2lError`, `wavFromAudioBuffer`, `wavFromSamples` and `toWav`, so the page imports the WAV helpers from the same address. `renderLoop()` is yours: [Web apps](https://lloydstellar.nl/la2l/developers/web.md) shows one that renders one bar as an `AudioBuffer`.
 
 ## With a bundler
 
@@ -295,28 +299,39 @@ A loop must be a whole number of beats long: `sampleRate * 60 / bpm * beats` fra
 ```kotlin
 const val BASE = "https://lloydstellar.nl/la2l/api"
 
-fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = "application/json"): Pair<Int, String> {
+class Answer(val status: Int, val json: org.json.JSONObject, val retryAfter: Int?) {
+    fun error(fallback: String) = java.io.IOException(json.optString("error").ifEmpty { fallback })
+}
+
+fun call(method: String, path: String, token: String?, body: ByteArray?, type: String = "application/json"): Answer {
     val c = java.net.URL(BASE + path).openConnection() as java.net.HttpURLConnection
+    c.connectTimeout = 15_000
+    c.readTimeout = 60_000
     c.requestMethod = method
     c.setRequestProperty("X-LA2L-Client", "my-app/1.0 (My app)")
     if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
-    if (body != null) {
-        c.doOutput = true
-        c.setRequestProperty("Content-Type", type)
-        c.setFixedLengthStreamingMode(body.size)
-        c.outputStream.use { it.write(body) }
+    try {
+        if (body != null) {
+            c.doOutput = true
+            c.setRequestProperty("Content-Type", type)
+            c.setFixedLengthStreamingMode(body.size)
+            c.outputStream.use { it.write(body) }
+        }
+        val status = c.responseCode
+        val text = (if (status < 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+        // An answer that is not JSON, such as an error page of a proxy, counts as an empty one.
+        val json = try { org.json.JSONObject(text) } catch (e: org.json.JSONException) { org.json.JSONObject() }
+        return Answer(status, json, c.getHeaderField("Retry-After")?.toIntOrNull())
+    } finally {
+        c.disconnect()
     }
-    val status = c.responseCode
-    val text = (if (status < 400) c.inputStream else c.errorStream)?.bufferedReader()?.readText() ?: ""
-    return status to text
 }
 
 fun pair(code: String, installId: String): String {
     val body = org.json.JSONObject().put("code", code).put("app_name", "My app").put("app_id", installId)
-    val (status, text) = call("POST", "/pair/claim", null, body.toString().toByteArray())
-    val json = org.json.JSONObject(text)
-    if (status != 200) throw java.io.IOException(json.optString("error", "Pairing failed."))
-    return json.getString("app_token") // keep it in SharedPreferences, Context.MODE_PRIVATE
+    val a = call("POST", "/pair/claim", null, body.toString().toByteArray())
+    if (a.status != 200) throw a.error("Pairing failed.")
+    return a.json.getString("app_token") // keep it in SharedPreferences, Context.MODE_PRIVATE
 }
 
 fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray): String {
@@ -326,20 +341,20 @@ fun send(token: String, title: String, bpm: Double, name: String, wav: ByteArray
         .put("source", org.json.JSONObject().put("app", "My app").put("platform", "android"))
         .put("tempo", org.json.JSONObject().put("bpm", bpm))
         .put("items", org.json.JSONArray().put(item))
-    val (status, text) = call("POST", "/packages", token, manifest.toString().toByteArray())
-    val created = org.json.JSONObject(text)
-    if (status != 201) throw java.io.IOException(created.optString("error", "Sending failed."))
-    val id = created.getString("package_id")
-    val put = call("PUT", created.getJSONObject("upload").getString("sound.wav"), token, wav, "audio/wav")
-    if (put.first != 200) throw java.io.IOException(org.json.JSONObject(put.second).optString("error", "Upload failed."))
+    val created = call("POST", "/packages", token, manifest.toString().toByteArray())
+    if (created.status != 201) throw created.error("Sending failed.")
+    val id = created.json.getString("package_id")
+    val put = call("PUT", created.json.getJSONObject("upload").getString("sound.wav"), token, wav, "audio/wav")
+    if (put.status != 200) throw put.error("The upload failed.")
     val commit = call("POST", "/packages/$id/commit", token, "{}".toByteArray())
-    if (commit.first != 200) throw java.io.IOException(org.json.JSONObject(commit.second).optString("error", "Sending failed."))
+    if (commit.status != 200) throw commit.error("Sending failed.")
     return id // then GET /packages/$id/status every few seconds until "imported"
 }
 ```
 
 - **401** on any call: the user unpaired your app in Live. Forget the token and show the code field again.
-- **429**: wait the seconds in `Retry-After`. **5xx** or no connection: try again later.
+- **429**: wait `retryAfter` seconds, from the `Retry-After` header. **5xx** or no connection: try again later.
+- A large file does not fit in memory: stream it from disk with `setFixedLengthStreamingMode(file.length())` and copy a `FileInputStream` to `outputStream`.
 - **422** names the sound and the problem, in plain English: show it.
 - The field for the code: "In Live, click Pair app in LA2L and type the code it shows."
 - Never log the token, and never put it in a URL.
@@ -444,11 +459,11 @@ BASE=https://lloydstellar.nl/la2l/api
 # 1. Pair, with the code LA2L shows in Live. Keep app_token like a password.
 curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
   -d '{"code":"K7P 42Q","app_name":"curl test","app_id":"curl-1"}'
-#   -> {"app_token":"la2la_...","device_name":"ERIK-PC"}
+#   -> {"app_token":"la2la_...","device_name":"STUDIO-PC"}
 TOKEN=la2la_...
 
 # 2. Announce the package, with bytes and sha256 of every file
-BYTES=$(stat -c %s kick.wav); SHA=$(sha256sum kick.wav | cut -d' ' -f1)
+BYTES=$(wc -c < kick.wav | tr -d ' '); SHA=$(shasum -a 256 kick.wav | cut -d' ' -f1)   # shasum: macOS and Linux
 curl -sS -X POST $BASE/packages -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
   "schema": "app2live/1", "title": "Curl test", "source": {"app": "curl test"}, "tempo": {"bpm": 120},
   "items": [{"id": "kick", "file": "kick.wav", "name": "Kick", "kind": "loop", "role": "drums",
@@ -509,14 +524,14 @@ Every package carries a short JSON description of its sounds, `app2live/1`. The 
 }
 ```
 
-In Live this becomes a scene "Treinbeat" with two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.
+In Live this becomes a scene "Treinbeat (Web808)" with two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.
 
 ## The package
 
 | Field | |
 |---|---|
 | `schema` | Required: `"app2live/1"`. |
-| `title` | The name of the scene, and of the folder on disk. Default "Untitled". |
+| `title` | The name of the scene, with the app after it, and of the folder on disk. Default "Untitled". |
 | `source.app` | Added to every track name: "Kick (Web808)". Default "App". |
 | `source.app_version`, `source.platform` | For your own use, and for support. |
 | `tempo.bpm` | 20 to 999: the tempo of every loop without a `bpm` of its own. |
@@ -620,7 +635,7 @@ The five calls of [the REST API](https://lloydstellar.nl/la2l/developers/rest-ap
 
 # AI tools
 
-An AI coding tool can build a Send to Live feature from these pages, and gets it right more often with one of the helpers below. Each one tells the tool the same few things: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
+An AI coding tool can build a Send to Live feature from these pages. The helpers below put the same few things in front of it: install `la2l`, pair with a code field, render WAV, give every sound `kind`, `role` and `bpm`, and test with the test receiver.
 
 ## The skill
 
@@ -650,7 +665,7 @@ Paste [the paste text](https://lloydstellar.nl/la2l/developers/paste-text.md) in
 
 ## llms.txt
 
-[llms.txt](https://lloydstellar.nl/la2l/llms.txt) lists these pages for language models, and [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt) holds them all in one file. Every page is there as Markdown too: add `.md` to its address.
+[llms.txt](https://lloydstellar.nl/la2l/llms.txt) lists these pages for language models, and [llms-full.txt](https://lloydstellar.nl/la2l/llms-full.txt) holds them all in one file. Every page is there as Markdown too: add `.md` to its address (the start page is `index.md`).
 
 ## Check what the tool built
 
@@ -736,7 +751,7 @@ const loop = new AudioBuffer({ numberOfChannels: 2, length: bar, sampleRate: rat
 for (let c = 0; c < 2; c++) {
   const from = out.getChannelData(c), to = loop.getChannelData(c);
   to.set(from.subarray(0, bar));
-  for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+  for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
 }
 const wav = wavFromAudioBuffer(loop);
 ```

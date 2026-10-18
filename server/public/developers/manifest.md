@@ -15,14 +15,14 @@ Every package carries a short JSON description of its sounds, `app2live/1`. The 
 }
 ```
 
-In Live this becomes a scene "Treinbeat" with two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.
+In Live this becomes a scene "Treinbeat (Web808)" with two tracks, "Kick (Web808)" and "Robot hallo (Web808)". The kick is a loop of 16 beats, warped at 92 BPM in Beats mode. The voice plays exactly as the app recorded it.
 
 ## The package
 
 | Field | |
 |---|---|
 | `schema` | Required: `"app2live/1"`. |
-| `title` | The name of the scene, and of the folder on disk. Default "Untitled". |
+| `title` | The name of the scene, with the app after it, and of the folder on disk. Default "Untitled". |
 | `source.app` | Added to every track name: "Kick (Web808)". Default "App". |
 | `source.app_version`, `source.platform` | For your own use, and for support. |
 | `tempo.bpm` | 20 to 999: the tempo of every loop without a `bpm` of its own. |

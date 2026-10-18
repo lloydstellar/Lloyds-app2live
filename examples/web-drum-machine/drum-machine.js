@@ -132,7 +132,7 @@ async function renderLoop(tempo) {
     const from = rendered.getChannelData(c);
     const to = loop.getChannelData(c);
     to.set(from.subarray(0, bar));
-    for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+    for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
   }
   return loop;
 }

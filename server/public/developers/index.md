@@ -56,4 +56,4 @@ The test receiver stands in for LA2L in Live: it shows a code, imports what you 
 - [Testing](testing.md): the test receiver.
 - [AI tools](ai-tools.md): the skill, the docs index for agents, the paste text, and `llms.txt`.
 
-Every page is also there as Markdown: add `.md` to its address. All pages in one file: [llms-full.txt](../llms-full.txt).
+Every page is also there as Markdown: add `.md` to its address, or read [index.md](index.md) for this one. All pages in one file: [llms-full.txt](../llms-full.txt).

@@ -78,6 +78,34 @@ test('assets/button.html: one bar of four kicks arrives as a loop of 4 beats at 
   }
 });
 
+test('renderLoop of the Web apps page: one bar as an AudioBuffer, a tail longer than a bar folded in, a WAV of 2 seconds', async () => {
+  const md = fs.readFileSync(path.join(ROOT, 'docs', 'developers', 'web.md'), 'utf8');
+  const fn = md.match(/async function renderLoop[\s\S]*?\n}\n/)[0];
+  const page = await pageWith({ [s.origin + '/skill/render.html']: `<!doctype html><script type="importmap">{"imports":{"la2l":"/vendor/la2l.js"}}</script><p>render</p>` });
+  await page.goto(s.origin + '/skill/render.html');
+  const out = await page.evaluate(async (fn) => {
+    const { wavFromAudioBuffer, checkWav } = await import('la2l');
+    const renderLoop = new Function(`return (${fn})`)();
+    // A click on every beat, ringing for 3 seconds: at 240 BPM that is three bars of tail.
+    const schedule = (bpm) => (ctx) => {
+      for (let beat = 0; beat < 4; beat++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.2, (beat * 60) / bpm);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start((beat * 60) / bpm);
+      }
+    };
+    const at120 = await renderLoop(120, schedule(120));
+    const at240 = await renderLoop(240, schedule(240), 3);
+    const info = await checkWav(wavFromAudioBuffer(at120));
+    const finite = Array.from(at240.getChannelData(0)).every(Number.isFinite);
+    return { kind: at120.constructor.name, length: at120.length, length240: at240.length, finite, duration: info.duration };
+  }, fn);
+  assert.deepEqual(out, { kind: 'AudioBuffer', length: 96000, length240: 48000, finite: true, duration: 2 });
+  assert.deepEqual(page.errors, []);
+});
+
 test('assets/web-send.js: pairs, sends a loop and a one-shot, and reports In Live', async () => {
   const c = await computer();
   try {

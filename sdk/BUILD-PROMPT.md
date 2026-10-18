@@ -373,7 +373,7 @@ A run passes when its package gets through the test receiver as a loop with a te
 
 ### 10.4 Developer pages and privacy
 
-Under `https://lloydstellar.nl/la2l/developers/`: start here; web; Android; sharing to LA2L Sender from an app (11.4); the REST API, with `openapi.yaml`; testing; AI tools; the button and the brand rules. Short pages, examples first. One source per page for both the HTML and the `.md` version; a small converter in `tools/` is fine, without runtime dependencies on the server.
+Under `https://lloydstellar.nl/la2l/developers/`: start here; web; Android; sharing to LA2L Sender from an app (11.4, built with phase 4, when LA2L Sender can take a share); the REST API, with `openapi.yaml`; testing; AI tools; the button and the brand rules. Short pages, examples first. One source per page for both the HTML and the `.md` version; a small converter in `tools/` is fine, without runtime dependencies on the server.
 
 Until the launch the server asks search engines to leave the developer pages out (`X-Robots-Tag: noindex`; `DEVELOPER_PAGES_INDEXED` in `server/src/static.js`).
 

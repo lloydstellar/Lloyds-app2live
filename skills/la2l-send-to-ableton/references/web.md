@@ -7,24 +7,27 @@ Render exactly one bar (or a whole number of bars) at the tempo, and fold what r
 ```js
 import { wavFromAudioBuffer } from 'la2l';
 
+// One bar of 4/4 at `bpm` as an AudioBuffer: schedule(ctx) starts your sources on the context.
 async function renderLoop(bpm, schedule, tailSeconds = 1) {
   const rate = 48000;
-  const bar = Math.round(rate * (60 / bpm) * 4); // one bar of 4/4
+  const bar = Math.round(rate * (60 / bpm) * 4);
   const ctx = new OfflineAudioContext(2, bar + Math.round(rate * tailSeconds), rate);
-  schedule(ctx); // connect sources to ctx.destination and start them at (step * 60 / bpm / 4)
+  schedule(ctx); // start your sources at step * 60 / bpm / 4
   const rendered = await ctx.startRendering();
   const loop = new AudioBuffer({ numberOfChannels: 2, length: bar, sampleRate: rate });
   for (let c = 0; c < 2; c++) {
     const from = rendered.getChannelData(c);
     const to = loop.getChannelData(c);
     to.set(from.subarray(0, bar));
-    for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+    for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
   }
-  return wavFromAudioBuffer(loop);
+  return loop;
 }
+
+const wav = wavFromAudioBuffer(await renderLoop(120, schedule));
 ```
 
-Send it with `kind: 'loop'`, the `bpm` and `lengthBeats: 4`.
+Send that WAV with `kind: 'loop'`, the `bpm` and `lengthBeats: 4`.
 
 ## Files the user picks
 

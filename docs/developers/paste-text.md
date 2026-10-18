@@ -76,7 +76,7 @@ const loop = new AudioBuffer({ numberOfChannels: 2, length: bar, sampleRate: rat
 for (let c = 0; c < 2; c++) {
   const from = out.getChannelData(c), to = loop.getChannelData(c);
   to.set(from.subarray(0, bar));
-  for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+  for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
 }
 const wav = wavFromAudioBuffer(loop);
 ```

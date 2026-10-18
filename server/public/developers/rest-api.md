@@ -26,11 +26,11 @@ BASE=https://lloydstellar.nl/la2l/api
 # 1. Pair, with the code LA2L shows in Live. Keep app_token like a password.
 curl -sS -X POST $BASE/pair/claim -H 'Content-Type: application/json' \
   -d '{"code":"K7P 42Q","app_name":"curl test","app_id":"curl-1"}'
-#   -> {"app_token":"la2la_...","device_name":"ERIK-PC"}
+#   -> {"app_token":"la2la_...","device_name":"STUDIO-PC"}
 TOKEN=la2la_...
 
 # 2. Announce the package, with bytes and sha256 of every file
-BYTES=$(stat -c %s kick.wav); SHA=$(sha256sum kick.wav | cut -d' ' -f1)
+BYTES=$(wc -c < kick.wav | tr -d ' '); SHA=$(shasum -a 256 kick.wav | cut -d' ' -f1)   # shasum: macOS and Linux
 curl -sS -X POST $BASE/packages -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
   "schema": "app2live/1", "title": "Curl test", "source": {"app": "curl test"}, "tempo": {"bpm": 120},
   "items": [{"id": "kick", "file": "kick.wav", "name": "Kick", "kind": "loop", "role": "drums",

@@ -39,10 +39,10 @@
   document.querySelector('la2l-send-button').sounds = async () =&gt; ({
     title: 'Treinbeat',
     bpm: 92,
-    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop()), kind: 'loop', role: 'drums' }],
+    sounds: [{ name: 'Beat', audio: wavFromAudioBuffer(await renderLoop(92, schedule)), kind: 'loop', role: 'drums' }],
   });
 &lt;/script&gt;</code></pre>
-<p>The one file has the whole SDK in it, so the page imports the WAV helpers from the same address. <code>renderLoop()</code> is yours: <a href="web">Web apps</a> shows one.</p>
+<p>The one file carries the button with <code>LA2L</code>, <code>La2lError</code>, <code>wavFromAudioBuffer</code>, <code>wavFromSamples</code> and <code>toWav</code>, so the page imports the WAV helpers from the same address. <code>renderLoop()</code> is yours: <a href="web">Web apps</a> shows one that renders one bar as an <code>AudioBuffer</code>.</p>
 <h2 id="with-a-bundler">With a bundler</h2>
 <pre><code class="language-js">import 'la2l/button';
 import { wavFromAudioBuffer } from 'la2l';</code></pre>

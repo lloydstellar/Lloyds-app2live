@@ -57,11 +57,12 @@ test('every link of the skill leads to a file of the skill', () => {
   }
 });
 
-test('every name the skill imports exists in the package', () => {
+test('every name the skill, the developer pages, the paste text and the package docs import exists in the package', () => {
   const modules = { la2l, 'la2l/button': button, 'la2l/testing': testing };
   const cdn = /^https:\/\/cdn\.jsdelivr\.net\/npm\/la2l@[\d.]+\/dist\/button\.min\.js$/;
+  const docs = (dir) => fs.readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => path.join(dir, f));
   let count = 0;
-  for (const file of files.filter((f) => /\.(md|html|m?js)$/.test(f))) {
+  for (const file of [...files.filter((f) => /\.(md|html|m?js)$/.test(f)), ...docs(path.join(REPO, 'docs', 'developers')), ...docs(path.join(PACKAGE, 'docs')), path.join(PACKAGE, 'README.md')]) {
     for (const [, names, from] of read(file).matchAll(/import\s*\{([^}]+)\}\s*from\s*'([^']+)'/g)) {
       if (!from.startsWith('la2l') && !from.includes('/npm/la2l@')) continue; // react, in the React example
       const mod = modules[from] || (cdn.test(from) ? button : null);
@@ -119,6 +120,18 @@ test('assets/check-with-test-receiver.mjs runs against the built package, as an 
     assert.match(out, /OK: Live would place it as a loop of 4 beats at 120 BPM\./);
   } finally {
     fs.rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('renderLoop of the skill is renderLoop of the page on Web apps, and returns the AudioBuffer', () => {
+  const fn = (file) => read(file).match(/async function renderLoop[\s\S]*?\n}\n/)[0];
+  const page = fn(path.join(REPO, 'docs', 'developers', 'web.md'));
+  assert.equal(fn(path.join(SKILL, 'references', 'web.md')), page);
+  assert.match(page, /\n  return loop;\n}\n$/);
+  // Every call gives it the tempo, and makes the WAV itself.
+  for (const file of [path.join(SKILL, 'SKILL.md'), path.join(REPO, 'docs', 'developers', 'button.md'), path.join(REPO, 'docs', 'developers', 'web.md')]) {
+    const code = [...read(file).matchAll(/```[a-z]*\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
+    for (const [call] of code.matchAll(/renderLoop\([^)]*\)/g)) assert.match(call, /^renderLoop\((\d+|bpm), schedule\)$|^renderLoop\(bpm, schedule, tailSeconds = 1\)$/, `${path.relative(REPO, file)}: ${call}`);
   }
 });
 

@@ -26,7 +26,7 @@ const result = await delivery.imported();
 status.textContent = result.status === 'imported' ? 'In Live' : 'In Live, partly';
 ```
 
-ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the [button](button.md) from jsDelivr, which carries the same functions.
+ESM for browsers, Node.js 22.12 and newer, Deno and Bun. A page without a build step loads the [button](button.md) from jsDelivr; that one file also carries `LA2L`, `La2lError`, `wavFromAudioBuffer`, `wavFromSamples` and `toWav`.
 
 ## Pairing
 
@@ -48,6 +48,7 @@ await checkWav(file);                       // can LA2L use it? With LA2L's own 
 A loop must be a whole number of beats long: one bar of 4/4 lasts `4 * 60 / bpm` seconds, exactly 2 seconds at 120 BPM. Render it with an `OfflineAudioContext` of that length plus a tail, and add the tail to the start, so what rings past the end of the bar plays at the start of the next one:
 
 ```js
+// One bar of 4/4 at `bpm` as an AudioBuffer: schedule(ctx) starts your sources on the context.
 async function renderLoop(bpm, schedule, tailSeconds = 1) {
   const rate = 48000;
   const bar = Math.round(rate * (60 / bpm) * 4);
@@ -59,10 +60,12 @@ async function renderLoop(bpm, schedule, tailSeconds = 1) {
     const from = rendered.getChannelData(c);
     const to = loop.getChannelData(c);
     to.set(from.subarray(0, bar));
-    for (let i = bar; i < from.length; i++) to[i - bar] += from[i];
+    for (let i = bar; i < from.length; i++) to[(i - bar) % bar] += from[i];
   }
-  return wavFromAudioBuffer(loop);
+  return loop;
 }
+
+const wav = wavFromAudioBuffer(await renderLoop(120, schedule));
 ```
 
 ## Following a send
@@ -85,7 +88,8 @@ Every error is a `La2lError` with a `code` and a `message` that you can show as 
 | `rate_limited` | Wait `retryAfter` seconds. |
 | `server_full` | Show the message, often "Click Import in Live first". |
 | `network`, `server` | Try again later. |
-| `import_failed`, `expired` | Show the message; the sounds can be sent again. |
+| `import_failed` | Show the message. The package stays: the next Import in Live tries again, so do not send it again. |
+| `expired` | Show the message; send the sounds again. |
 | `aborted` | Your app stopped it, with an `AbortSignal`. |
 
 ## Content-Security-Policy
