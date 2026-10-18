@@ -35,7 +35,7 @@ ESM with type definitions, no dependencies. In a page without a build step:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/la2l@0.1.0/dist/button.min.js"
-        integrity="sha384-DCfxAXK3uQxg3OATJBKMk0VOSXgO6PJAiyd+1SpwzTWa6Gbvc9GFc+kx1DhcRxGr" crossorigin="anonymous"></script>
+        integrity="sha384-dn1o9Tph7y4C/O1tkM+grXdkjsNCT03y/LIY/iEwXiCw0wyDQyAJMDDSiqcurWcl" crossorigin="anonymous"></script>
 ```
 
 ## 3. Pairing: one code field

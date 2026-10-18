@@ -14,26 +14,53 @@ function openDb() {
   });
 }
 
-/** The share with this id, taken out of IndexedDB, or null when it is not there (any more). */
-export async function takeShare(id) {
+// Runs fn(store) in one transaction; resolves to what fn returns, once the transaction is done.
+async function inStore(mode, fn) {
   const db = await openDb();
   try {
     return await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      const store = tx.objectStore(STORE);
-      let share = null;
-      const get = store.get(id);
-      get.onsuccess = () => {
-        share = get.result || null;
-        if (share) store.delete(id);
-      };
-      tx.oncomplete = () => resolve(share);
+      const tx = db.transaction(STORE, mode);
+      let result;
+      Promise.resolve(fn(tx.objectStore(STORE))).then((r) => (result = r), reject);
+      tx.oncomplete = () => resolve(result);
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
   } finally {
     db.close();
   }
+}
+
+const request = (req) => new Promise((resolve, reject) => {
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+/** The share with this id, or null when it is not there (any more). It stays until removeShare. */
+export function getShare(id) {
+  return inStore('readonly', async (store) => (await request(store.get(id))) || null);
+}
+
+/** Removes a share: it was sent, or the user cleared the list. */
+export function removeShare(id) {
+  return inStore('readwrite', (store) => request(store.delete(id)));
+}
+
+/**
+ * Removes the shares older than maxAgeMs, and resolves to the newest one that is left, or null.
+ * So a share that arrived while the page could not open it (offline, or Android closed the page)
+ * comes back, for a day.
+ */
+export function newestShare(maxAgeMs) {
+  return inStore('readwrite', async (store) => {
+    const all = await request(store.getAll());
+    let newest = null;
+    for (const s of all) {
+      if (!s || typeof s.at !== 'number' || s.at < Date.now() - maxAgeMs) store.delete(s && s.id);
+      else if (!newest || s.at > newest.at) newest = s;
+    }
+    return newest;
+  });
 }
 
 /**
@@ -52,7 +79,11 @@ export function manifestFromText(text) {
     return { error: 'The app shared a description of the sounds that is not valid JSON. Set them below.' };
   }
   if (!json || typeof json !== 'object' || Array.isArray(json)) return { error: 'The app shared a description of the sounds that LA2L cannot read. Set them below.' };
-  if (json.schema !== 'app2live/1') return { error: `The app shared a description in ${String(json.schema || 'an unknown form').slice(0, 30)}, which LA2L does not know. Set the sounds below.` };
+  // Only what JSON can hold is read, with typeof: a crafted value cannot run code or throw here.
+  if (json.schema !== 'app2live/1') {
+    const which = typeof json.schema === 'string' && json.schema ? json.schema.slice(0, 30) : 'an unknown form';
+    return { error: `The app shared a description in ${which}, which LA2L does not know. Set the sounds below.` };
+  }
   return { manifest: json };
 }
 

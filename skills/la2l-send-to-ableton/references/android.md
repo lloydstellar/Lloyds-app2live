@@ -1,6 +1,6 @@
 # Android
 
-The Android SDK sends sounds to LA2L from Kotlin or Java: `nl.lloydstellar:la2l`, a library without dependencies for Android 7.0 (API 24) and newer, and `nl.lloydstellar:la2l-ktx`, with suspend functions and a builder on top. They are in LA2L's own Maven repository. Without any network code, an app can also share its WAV files with LA2L Sender, the installed web app of LA2L, with the description of the sounds in `EXTRA_TEXT`: `La2lShare.intent` builds that share; https://lloydstellar.nl/la2l/developers/sharing
+The Android SDK sends sounds to LA2L from Kotlin or Java: `nl.lloydstellar:la2l`, a library without dependencies for Android 7.0 (API 24) and newer, and `nl.lloydstellar:la2l-ktx`, with suspend functions and a builder on top. They are in LA2L's own Maven repository. Without any network code, an app can also share its WAV files with LA2L Sender, the installed web app of LA2L, with the description of the sounds in `EXTRA_TEXT`: `La2lShare.intent` builds that share (https://lloydstellar.nl/la2l/developers/sharing).
 
 ```kotlin
 // settings.gradle.kts: dependencyResolutionManagement { repositories { maven("https://lloydstellar.nl/la2l/maven/") } }

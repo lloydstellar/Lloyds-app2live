@@ -38,4 +38,4 @@ import { toWav } from 'la2l';
 const wav = await toWav(file); // a WAV that LA2L takes comes back as it is
 ```
 
-`toWav` decodes through Web Audio, at 48 kHz unless you pass `sampleRate`, to 16 or 24 bit (`bits`). It needs a browser; in Node.js, convert with a tool such as ffmpeg first.
+`toWav` decodes through Web Audio, at 48 kHz unless you pass `sampleRate`, to 16 or 24 bit (`bits`). With `maxBytes`, a sound that would make a larger WAV is refused before the WAV is made. Decoding holds the whole sound in memory as float samples, so on a phone keep the input to a few megabytes. It needs a browser; in Node.js, convert with a tool such as ffmpeg first.

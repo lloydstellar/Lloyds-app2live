@@ -7,13 +7,16 @@
 
 import { LA2L, La2lError, checkWav, toWav } from './vendor/la2l.js';
 import { readZip } from './zip.js';
-import { takeShare, manifestFromText, itemFor, missingFiles } from './share.js';
+import { getShare, removeShare, newestShare, manifestFromText, itemFor, missingFiles } from './share.js';
 
 const APP_NAME = 'LA2L Sender';
 const MAX_SOUNDS = 32;
 const MAX_BYTES = 200 * 1048576;
-// An mp3 or m4a becomes WAV in memory: above this it takes too much memory on a phone.
-const MAX_DECODE = 20 * 1048576;
+// An mp3 or m4a becomes WAV in memory, as 48 kHz float samples first: above this, that takes too
+// much memory on a phone (10 MB of mp3 at 128 kbit/s is 11 minutes, 250 MB of samples).
+const MAX_DECODE = 10 * 1048576;
+// A share that LA2L Sender could not open at once (offline, or Android closed the page) comes back for a day.
+const SHARE_DAYS_MS = 24 * 3600 * 1000;
 // The sound files a ZIP file may hold; the rest is left out.
 const SOUND = /\.(wave?|mp3|m4a|aac|mp4|ogg|oga|opus|flac|webm)$/i;
 const KINDS = ['loop', 'oneshot'];
@@ -126,6 +129,7 @@ async function pair(event) {
     $('code').value = '';
     showPaired(deviceName);
     pairMessage('Done. In a moment Live says: Paired with LA2L Sender.');
+    if (shareNote) sendMessage(shareNote);
   } catch (e) {
     pairMessage(problem(e), true);
   } finally {
@@ -193,7 +197,7 @@ async function soundsFrom(list) {
         continue;
       }
       try {
-        const made = await toWav(file);
+        const made = await toWav(file, { maxBytes: MAX_BYTES });
         wav = new File([made], file.name.replace(/\.[^.]*$/, '') + '.wav', { type: 'audio/wav' });
       } catch (e) {
         refused.push(`${file.name}: ${problem(isWavName(file.name) ? notWav : e)}`);
@@ -227,6 +231,8 @@ function addRow({ file, from }) {
   el.querySelector('.remove').addEventListener('click', () => {
     rows = rows.filter((x) => x !== row);
     el.remove();
+    // Every sound of a share removed: the share is done with.
+    if (!rows.length) forgetShare();
   });
   rows.push(row);
   $('sounds').append(el);
@@ -279,6 +285,8 @@ function buildSend() {
     sounds.push(sound);
   }
   const send = { title: $('title').value.trim() || 'Sender test', sounds };
+  // A share described by its app: the tracks carry that app's name, as the description says.
+  if (shareApp) send.appName = shareApp;
   if (bpm !== null) send.bpm = bpm;
   return { send };
 }
@@ -316,7 +324,9 @@ async function send(event) {
   let first = 0;
   try {
     for (const [k, sounds] of parts.entries()) {
-      const title = parts.length > 1 ? `${built.send.title} (${k + 1} of ${parts.length})` : built.send.title;
+      // LA2L cuts a title at 60 characters: the part number must fit in them.
+      const suffix = parts.length > 1 ? ` (${k + 1} of ${parts.length})` : '';
+      const title = built.send.title.slice(0, 60 - suffix.length).trim() + suffix;
       const count = sounds.length;
       const offset = first;
       const where = parts.length > 1 ? `package ${k + 1} of ${parts.length}, ` : '';
@@ -341,11 +351,17 @@ async function send(event) {
       sent.push(entry);
       first += count;
     }
+    forgetShare();
     if (sent.length === 1) showSent(sent[0]);
     else showSentMany(sent);
   } catch (e) {
+    // The sounds of the packages that went are taken off the list, so a new Send sends the rest only.
+    if (sent.length) {
+      for (const r of rows.slice(0, first)) r.el.remove();
+      rows = rows.slice(first);
+    }
     if (e instanceof La2lError && e.code === 'not_paired') return lostPairing();
-    const done = sent.length ? ` Sent before this: ${sent.map((x) => x.title).join(', ')}.` : '';
+    const done = sent.length ? ` Sent before this: ${sent.map((x) => x.title).join(', ')}. Send sends the sounds that are left.` : '';
     sendMessage(problem(e) + done, true);
   } finally {
     fields.disabled = false;
@@ -564,10 +580,24 @@ async function sendBig() {
 
 // ---- sounds shared from another app ----
 
-// The description of a shared package: the title, the tempo, and per sound what the app said.
+let shareId = null; // the share in IndexedDB whose sounds are in the list
+let shareNote = ''; // what to say about it once this browser is paired
+let shareApp = null; // source.app of its description
+
+function forgetShare() {
+  if (shareId) removeShare(shareId).catch(() => {});
+  shareId = null;
+  shareNote = '';
+  shareApp = null;
+}
+
+const isNumber = (v) => typeof v === 'number' && Number.isFinite(v);
+
+// The description of a shared package: the tempo, and per sound what the app said. Only values of
+// the right type are read, so a crafted description cannot make the page stop here.
 function describe(manifest, added) {
-  const bpm = manifest.tempo && typeof manifest.tempo === 'object' ? Number(manifest.tempo.bpm) : NaN;
-  if (bpm >= 20 && bpm <= 999) $('bpm').value = String(bpm);
+  const tempo = manifest.tempo && typeof manifest.tempo === 'object' ? manifest.tempo : {};
+  if (isNumber(tempo.bpm) && tempo.bpm >= 20 && tempo.bpm <= 999) $('bpm').value = String(tempo.bpm);
   for (const row of added) {
     const q = (sel) => row.el.querySelector(sel);
     const it = itemFor(manifest, row.from) || itemFor(manifest, row.file.name);
@@ -578,8 +608,8 @@ function describe(manifest, added) {
     if (!it) continue;
     if (typeof it.name === 'string' && it.name.trim()) q('.name').value = it.name.trim().slice(0, 40);
     if (ROLES.includes(it.role)) q('.role').value = it.role;
-    if (Number(it.bpm) >= 20 && Number(it.bpm) <= 999) q('.item-bpm').value = String(Number(it.bpm));
-    if (Number(it.length_beats) > 0) q('.beats').value = String(Number(it.length_beats));
+    if (isNumber(it.bpm) && it.bpm >= 20 && it.bpm <= 999) q('.item-bpm').value = String(it.bpm);
+    if (isNumber(it.length_beats) && it.length_beats > 0) q('.beats').value = String(it.length_beats);
     if (typeof it.color === 'string' && /^#[0-9a-f]{6}$/i.test(it.color)) {
       const color = q('.color');
       const value = it.color.toUpperCase();
@@ -588,11 +618,11 @@ function describe(manifest, added) {
     }
     if (typeof it.id === 'string' && it.id) row.extra.id = it.id;
     const extras = [];
-    if (typeof it.warp_mode === 'string' || typeof it.warp_mode === 'number') {
+    if (typeof it.warp_mode === 'string' || isNumber(it.warp_mode)) {
       row.extra.warpMode = it.warp_mode;
       extras.push(`warp mode ${it.warp_mode}`);
     }
-    if (typeof it.gain_db === 'number' && Number.isFinite(it.gain_db)) {
+    if (isNumber(it.gain_db)) {
       row.extra.gainDb = it.gain_db;
       extras.push(`gain ${it.gain_db} dB`);
     }
@@ -600,35 +630,51 @@ function describe(manifest, added) {
   }
 }
 
-// LA2L Sender opened with ?share=<id>: the service worker kept what an app shared.
+// What an app shared: with ?share=<id> the share the service worker just kept; without it, a
+// share of the last day that the page could not open then. The share stays in IndexedDB until its
+// sounds are sent or removed.
 async function openShare() {
   const id = new URLSearchParams(location.search).get('share');
-  if (id === null) return;
   // Without ?share in the address, a reload does not look for it again.
-  history.replaceState(null, '', location.pathname);
+  if (id !== null) history.replaceState(null, '', location.pathname);
   const tell = (text, bad) => (la2l.paired ? sendMessage(text, bad) : pairMessage(text, bad));
   if (id === 'failed') return tell('The shared sounds could not be kept on this device, maybe for lack of room. Share them again.', true);
   let share = null;
+  let earlier = false;
   try {
-    share = await takeShare(id);
+    const newest = await newestShare(SHARE_DAYS_MS);
+    share = id !== null ? await getShare(id) : newest;
+    earlier = id === null && !!share;
   } catch (e) {
     // no IndexedDB: as if it were gone
   }
-  if (!share) return tell('The shared sounds are no longer here. Share them again.', true);
-  const { added, refused } = await addFiles(share.files);
+  if (!share) return id !== null ? tell('The shared sounds are no longer here. Share them again.', true) : undefined;
+  shareId = share.id;
+  const files = Array.isArray(share.files) ? share.files : [];
+  const { added, refused } = await addFiles(files);
   const described = manifestFromText(share.text);
   const manifest = described && described.manifest;
   const notes = [];
-  if (manifest) {
-    describe(manifest, added);
-    const missing = missingFiles(manifest, [...share.files.map((f) => f.name), ...added.map((r) => r.from)]);
-    if (missing.length) notes.push(`The description also names ${missing.join(', ')}, which ${missing.length === 1 ? 'was' : 'were'} not shared.`);
-  } else if (described && described.error) notes.push(described.error);
-  const title = (manifest && typeof manifest.title === 'string' && manifest.title.trim()) || share.title.trim();
-  if (title) $('title').value = title.slice(0, 60);
+  try {
+    if (manifest) {
+      describe(manifest, added);
+      const missing = missingFiles(manifest, [...files.map((f) => f.name), ...added.map((r) => r.from)]);
+      if (missing.length) notes.push(`The description also names ${missing.join(', ')}, which ${missing.length === 1 ? 'was' : 'were'} not shared.`);
+      if (manifest.source && typeof manifest.source === 'object' && typeof manifest.source.app === 'string' && manifest.source.app.trim()) shareApp = manifest.source.app.trim().slice(0, 40);
+    } else if (described && described.error) notes.push(described.error);
+  } catch (e) {
+    notes.push('The app shared a description of the sounds that LA2L cannot read. Set them below.');
+  }
+  // The title: the description's, else the share's, else the name of the one file that came.
+  let title = (manifest && typeof manifest.title === 'string' && manifest.title.trim()) || (typeof share.title === 'string' && share.title.trim()) || '';
+  if (!title) title = files.length === 1 ? files[0].name.replace(/\.[^.]*$/, '') : 'Shared sounds';
+  $('title').value = title.slice(0, 60);
   const n = added.length;
-  let text = n ? `${n} ${n === 1 ? 'sound' : 'sounds'} shared${manifest ? ', described by the app' : ''}. Check loop or one-shot, the BPM and the role, then send.` : 'No sound came with the share.';
+  const what = `${n} ${n === 1 ? 'sound' : 'sounds'} ${earlier ? 'shared earlier, here again' : 'shared'}${manifest ? ', described by the app' : ''}.`;
+  shareNote = n ? `${what} Check loop or one-shot, the BPM and the role, then send.` : '';
+  let text = n ? shareNote : 'No sound came with the share.';
   if (n && !la2l.paired) text = `Pair this browser with Live first. Then the ${n} shared ${n === 1 ? 'sound is' : 'sounds are'} ready to send.`;
+  if (!n) forgetShare();
   tell([text, ...refused, ...notes].join(' '), !n || refused.length > 0 || notes.length > 0);
 }
 
