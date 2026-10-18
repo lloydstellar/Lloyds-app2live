@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into the app that uses la2l: the network, and the provider that shares WAV files with
+     LA2L Sender (La2lShare). The provider is not exported; a share grants one read per file. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <provider
+            android:name="nl.lloydstellar.la2l.La2lFileProvider"
+            android:authorities="${applicationId}.la2l.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>

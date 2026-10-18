@@ -89,3 +89,43 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Bun
         run: bun test-runtimes/smoke.mjs
+
+  # The Android SDK and its two example apps. Android builds run here only, never on the VPS
+  # (sdk/BUILD-PROMPT.md, 12.5). The tests of the libraries run against the real server of this
+  # repository with the test receiver of sdk/js, so they need Node and a build of sdk/js. The
+  # example apps and the Maven repository come out as an artifact, to install on a phone.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build la2l for the integration tests
+        run: npm ci && npm run build
+        working-directory: sdk/js
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: 8.14.6
+      - name: Tests, the libraries, the example apps and the Maven repository
+        run: >-
+          gradle --no-daemon --stacktrace
+          :la2l:testDebugUnitTest :la2l-ktx:testDebugUnitTest
+          :la2l:assembleRelease :la2l-ktx:assembleRelease
+          :android-recorder:assembleDebug :android-java:assembleDebug
+          publishReleasePublicationToLocalRepository
+        working-directory: sdk/android
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: la2l-android
+          if-no-files-found: ignore
+          path: |
+            examples/android-recorder/build/outputs/apk/debug/*.apk
+            examples/android-java/build/outputs/apk/debug/*.apk
+            sdk/android/build/maven/
+            sdk/android/*/build/reports/tests/
