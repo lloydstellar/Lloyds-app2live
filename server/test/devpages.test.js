@@ -86,9 +86,9 @@ test('server/public/developers is what docs/developers makes, and nothing else',
   const made = build();
   assert.deepEqual(fs.readdirSync(OUT).sort(), Object.keys(made).sort());
   for (const [name, text] of Object.entries(made)) assert.equal(fs.readFileSync(path.join(OUT, name), 'utf8'), text, `${name}: run node tools/devpages.js`);
-  // The privacy statement waits for Erik's approval (sdk/BUILD-PROMPT.md, 10.4).
-  assert.ok(fs.existsSync(path.join(ROOT, 'docs', 'developers', 'privacy.md')));
-  assert.equal(PAGES.some(([name]) => name === 'privacy'), false);
+  // The privacy statement is a page, linked from the foot of every page instead of the menu.
+  assert.deepEqual(PAGES.find(([name]) => name === 'privacy').slice(0, 2), ['privacy', null]);
+  assert.match(made['web.html'], /<a href="privacy">Privacy<\/a>/);
 });
 
 let s;
@@ -130,7 +130,11 @@ test('every page, its Markdown twin, llms.txt and the machine-readable files are
   assert.deepEqual([atId.status, atId.headers['content-type'], JSON.parse(atId.body.toString()).$id], [200, 'application/json; charset=utf-8', schema.$id]);
   const r = await s.request('GET', '/developers');
   assert.deepEqual([r.status, r.headers.location], [301, 'developers/']);
-  for (const p of ['/developers/web.html', '/developers/web/', '/developers/privacy', '/developers/privacy.md', '/privacy', '/developers/../sender.js', '/developers/index', '/developers/README.md']) {
+  // The short address of the privacy statement, which LA2L Sender and the test receiver link to.
+  const privacy = await s.request('GET', '/privacy');
+  assert.deepEqual([privacy.status, privacy.headers.location], [301, 'developers/privacy']);
+  for (const page of ['/', '/receiver']) assert.match((await s.request('GET', page)).body.toString(), /<a href="developers\/privacy">Privacy<\/a>/, page);
+  for (const p of ['/developers/web.html', '/developers/web/', '/developers/../sender.js', '/developers/index', '/developers/README.md']) {
     assert.equal((await s.request('GET', p)).status, 404, p);
   }
   // The Sender and the receiver stay as search engines see them now.

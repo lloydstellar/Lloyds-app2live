@@ -1,8 +1,6 @@
 # Privacy
 
-DRAFT, not online yet. Erik approves this text before it goes to https://lloydstellar.nl/la2l/privacy. The parts in [brackets] are his to fill in.
-
-LA2L (Lloyd's App2Live) brings sounds from apps into Ableton Live through a server at lloydstellar.nl. This page says what that server keeps, why, and for how long. LA2L is made by [name], [contact address]. Ask there to see what the server keeps about you, or to have it removed.
+LA2L (Lloyd's App2Live) brings sounds from apps into Ableton Live through a server at lloydstellar.nl. This page says what that server keeps, why, and for how long. LA2L is made by Erik Griffioen, Jhr van Sypesteynlaan 7, 1231 XL Loosdrecht, the Netherlands. Write to him there, or through https://lloydstellar.nl/contact.html, to see what the server keeps about you, or to have it removed.
 
 ## What the server keeps
 
@@ -16,7 +14,7 @@ LA2L (Lloyd's App2Live) brings sounds from apps into Ableton Live through a serv
 
 **IP addresses.** To stop abuse, the server counts calls per IP address. Those counts live only in its memory and are gone within the hour. To limit how much one address can store, the server keeps a hash of the address with each package while it has files; the key of that hash also lives only in memory, so after a restart nobody can tell the address from the hash.
 
-**The log.** Every call is written to a log with the time, the IP address, what was asked, the answer, and the name and version of the app's LA2L software when the app sends them. The log is for finding faults and abuse. It is kept for [30 days; today the server keeps it by size, not by age: up to 50 MB while the server runs, and the 30 newest logs saved at its updates]. The web server of lloydstellar.nl keeps its own log of every visit, with the IP address, for 14 days.
+**The log.** Every call is written to a log with the time, the IP address, what was asked, the answer, the number the server gave the computer or app that asked, and the name and version of the app's LA2L software when the app sends them. The log is for finding faults and abuse. The running server keeps the newest 50 MB of it. When the server is updated, the log so far is saved on the server for 30 days. The web server of lloydstellar.nl keeps its own log of every visit, with the IP address, for 14 days.
 
 **Backups.** Every night the server makes a copy of its database (computers, apps and descriptions, never sound files). The newest 30 copies are kept, so something you removed can stay in a copy for up to 30 days.
 
@@ -24,7 +22,7 @@ LA2L (Lloyd's App2Live) brings sounds from apps into Ableton Live through a serv
 
 No cookies, no tracking, no analytics, no advertising. Nothing is sold or passed on to anyone. The pages of LA2L keep their pairing in your browser (`localStorage`); it leaves the browser only as the token in calls to this server.
 
-The server runs on a VPS at [hosting provider, country]. [Name] runs it, and nobody else has access.
+The server runs on a VPS at TransIP, in the Netherlands. Erik Griffioen runs it.
 
 ## Why
 
@@ -34,4 +32,4 @@ Pairing, sending and importing are the service you ask for when you pair an app 
 
 You may ask to see what the server keeps about you, to have it corrected or removed, and you may complain to the Autoriteit Persoonsgegevens, the Dutch data protection authority. Unpairing in Live removes your computer and its apps from the server within 30 days.
 
-[Date]
+Last changed on 18 October 2026.

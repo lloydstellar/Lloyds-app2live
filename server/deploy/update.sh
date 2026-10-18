@@ -5,8 +5,9 @@
 #
 # A new build means a new container, and Docker throws the log of the old one away. So this
 # script saves that log first, in ~/la2l-server-logs (LA2L_LOG_DIR to choose another folder),
-# and keeps the last 30 saved logs. The logs hold IP addresses: they stay on the VPS, outside
-# the repository. Then it backs up the database with deploy/backup.sh, so an update can be
+# and keeps the last 30 saved logs, none older than 30 days (the privacy statement says so;
+# deploy/backup.sh removes older ones every night too). The logs hold IP addresses: they stay on
+# the VPS, outside the repository. Then it backs up the database with deploy/backup.sh, so an update can be
 # undone (LA2L_SKIP_BACKUP=1 skips that). Then it builds, starts, and waits until the new server
 # answers its health check.
 
@@ -26,8 +27,9 @@ if docker inspect la2l-server >/dev/null 2>&1; then
   # With umask 077 a new folder and the log are readable by you only.
   (umask 077 && mkdir -p "$LOGS" && docker logs la2l-server >"$saved" 2>&1)
   echo "Saved the log of the server: $saved ($(wc -l <"$saved") lines)"
-  # Only the newest $KEEP saved logs stay.
+  # Only the newest $KEEP saved logs stay, and none older than 30 days.
   find "$LOGS" -maxdepth 1 -name 'la2l-server-*.log' -type f -printf '%T@ %p\n' | sort -rn | tail -n +$((KEEP + 1)) | cut -d' ' -f2- | xargs -r -d '\n' rm -f
+  find "$LOGS" -maxdepth 1 -name 'la2l-server-*.log' -type f -mtime +29 -delete
 fi
 
 if [ "${LA2L_SKIP_BACKUP:-}" != 1 ] && docker inspect la2l-server >/dev/null 2>&1; then
